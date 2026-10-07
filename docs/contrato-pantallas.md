@@ -21,15 +21,18 @@ Mientras G3 y G4 no existen, **`data/demo/` contiene un conjunto sintético con 
 La interfaz cambia entre datos reales y de demostración cambiando un directorio:
 
 ```python
-from whoami.contracts import DEMO
-from whoami.store import cargar
+from whoami.store import cargar, cargar_demo
 
-paquete = cargar(DEMO)   # demo sintético; cargar() lee el pipeline real (processed/ y outputs/)
+paquete = cargar_demo()  # demo sintético, todo en data/demo/
+paquete = cargar()       # pipeline real: grupos y evidencias de data/processed/, el resto de outputs/
 paquete.grupos           # tuple[Grupo, ...] ya en el orden de la bandeja
 paquete.evidencias       # dict[id_evidencia, Evidencia]
 ```
 
-`uv run whoami demo` regenera `data/demo/`. Las noticias de la demostración son inventadas (`sintetico: true`, URL
+`cargar` y `escribir` rechazan el paquete entero si algo rompe un esquema o una regla entre registros: una cita a
+una evidencia inexistente, un pasaje que no es literal, un miembro sin evidencia, una ficha que no coincide con su
+grupo, una revisión de un caso sin ficha, campos desconocidos o que faltan. `uv run whoami demo` regenera
+`data/demo/`. Las noticias de la demostración son inventadas (`sintetico: true`, URL
 `demo.invalid`); las cifras de Banco Mundial, INEC y USGS son las reales de `data/processed/`. La interfaz debe mostrar
 un aviso mientras `sintetico` sea verdadero.
 

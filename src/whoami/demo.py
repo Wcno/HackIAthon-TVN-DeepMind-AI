@@ -25,7 +25,6 @@ from whoami.schemas import (
     Respuesta,
     VersionContradictoria,
     VinculoContexto,
-    errores_de_citas,
     ordenar_bandeja,
 )
 from whoami.store import Paquete, cargar, escribir
@@ -360,41 +359,14 @@ def construir() -> Paquete:
         RegistroRevision("CASO-003", "requiere_evidencia", DEMO_REVIEWER, "2026-10-07T13:20:00Z", "Solo hay un titular."),
         RegistroRevision("CASO-005", "aprobado_como_borrador", DEMO_REVIEWER, "2026-10-07T13:30:00Z", "Aviso verificado con dos medios."),
     )
-    paquete = Paquete(tuple(ordenar_bandeja(grupos)), evidencias, tuple(fichas), consultas, revisiones)
-    _verificar(paquete)
-    return paquete
-
-
-def _verificar(paquete: Paquete) -> None:
-    """Cross-record rules that no single schema can see. Raises with every problem found."""
-    problemas = []
-    citas = [c for f in paquete.fichas for a in f.afirmaciones for c in a.citas] + [c for q in paquete.consultas for c in q.citas]
-    problemas += errores_de_citas(citas, paquete.evidencias)
-    for grupo in paquete.grupos:
-        problemas += [f"{grupo.id_grupo}: {m.id_noticia} no está en evidencias" for m in grupo.miembros if m.id_noticia not in paquete.evidencias]
-        problemas += [f"{grupo.id_grupo}: {v.id_evidencia} no está en evidencias" for v in grupo.contexto if v.id_evidencia not in paquete.evidencias]
-    casos = {f.id_caso: f for f in paquete.fichas}
-    por_grupo = {g.id_grupo: g for g in paquete.grupos}
-    for ficha in paquete.fichas:
-        origen = por_grupo.get(ficha.id_grupo)
-        if origen is None or origen.id_caso != ficha.id_caso or origen.puntaje != ficha.puntaje or origen.estado_revision != ficha.estado_revision:
-            problemas.append(f"{ficha.id_caso}: la ficha no coincide con su grupo")
-    for grupo in paquete.grupos:
-        if grupo.id_caso and grupo.id_caso not in casos:
-            problemas.append(f"{grupo.id_grupo}: id_caso {grupo.id_caso} sin ficha")
-    ultimo = {}
-    for revision in paquete.revisiones:
-        ultimo[revision.id_caso] = revision.estado
-    problemas += [f"{c}: la revisión más reciente ({e}) no coincide con la ficha" for c, e in ultimo.items() if casos[c].estado_revision != e]
-    if problemas:
-        raise ValueError("datos de demostración incoherentes:\n- " + "\n- ".join(problemas))
+    return Paquete(tuple(ordenar_bandeja(grupos)), evidencias, tuple(fichas), consultas, revisiones)
 
 
 def generar(directorio=DEMO) -> Paquete:
     """Writes the synthetic set and reads it back: what the interface loads must equal what was built."""
     paquete = construir()
-    escribir(paquete, directorio)
-    leido = cargar(directorio)
+    escribir(paquete, directorio, directorio)
+    leido = cargar(directorio, directorio)
     if leido != paquete:
         raise AssertionError("los archivos de demostración no se leen igual que se escribieron")
     return leido
