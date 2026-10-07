@@ -1,7 +1,13 @@
+import hashlib
+import json
+import re
+
 import numpy as np
 import pytest
 
 from whoami import embeddings
+from whoami.pipeline import run
+from whoami.pipeline.run import PipelineInputError, default_vectors_path, load_vectors
 from whoami.embeddings import (
     DIMENSIONS,
     DOCUMENT_PREFIX,
@@ -10,6 +16,7 @@ from whoami.embeddings import (
     QUERY_PREFIX,
     Embedder,
     document_text,
+    embed_corpus,
     fetch_model,
     model_dir,
 )
@@ -158,3 +165,93 @@ def test_the_real_model_returns_unit_vectors_of_768_dimensions():
 
     assert vectors.shape == (2, 768)
     assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=1e-3)
+
+
+# ----------------------------------------------------------------------------------------------- corpus
+
+
+class FakeEmbedder:
+    def __init__(self):
+        self.documents = []
+
+    def embed_documents(self, texts):
+        self.documents.extend(texts)
+        rng = np.random.default_rng(3)
+        vectors = rng.normal(size=(len(texts), DIMENSIONS)).astype(np.float32)
+        return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+
+
+def fake_model_dir(tmp_path):
+    directory = tmp_path / "model"
+    (directory / "onnx").mkdir(parents=True)
+    (directory / "tokenizer.json").write_bytes(b"tok")
+    (directory / "onnx" / "model.onnx").write_bytes(b"graph")
+    (directory / "onnx" / "model_q4.onnx_data").write_bytes(b"data")
+    return directory
+
+
+ROWS = [
+    {"id_noticia": "N-1", "titulo": "Sube el agua", "descripcion": "Lluvias en Chiriquí"},
+    {"id_noticia": "N-2", "titulo": "Estrenan una película", "descripcion": ""},
+]
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def test_the_corpus_is_embedded_with_the_text_recipe_and_saved_as_float16(tmp_path):
+    embedder = FakeEmbedder()
+
+    path = embed_corpus(ROWS, embedder, tmp_path / "out", fake_model_dir(tmp_path))
+
+    assert path == tmp_path / "out" / "embeddinggemma-300m-q4.npy"
+    assert embedder.documents == ["Sube el agua. Lluvias en Chiriquí", "Estrenan una película"]
+    saved = np.load(path)
+    assert saved.dtype == np.float16
+    assert saved.shape == (2, 768)
+
+
+def test_the_manifest_records_how_the_vectors_were_made(tmp_path):
+    path = embed_corpus(ROWS, FakeEmbedder(), tmp_path / "out", fake_model_dir(tmp_path))
+
+    manifest = json.loads((path.parent / "manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["modelo"] == embeddings.MODEL_REPO
+    assert manifest["revision"] == MODEL_REVISION
+    assert manifest["archivos"] == {
+        "onnx/model_q4.onnx": sha256(b"graph"),
+        "onnx/model_q4.onnx_data": sha256(b"data"),
+        "tokenizer.json": sha256(b"tok"),
+    }
+    assert manifest["nombre"] == "embeddinggemma-300m-q4"
+    assert manifest["dimensiones"] == 768
+    assert manifest["dtype"] == "float16"
+    assert manifest["prefijo_documento"] == DOCUMENT_PREFIX
+    assert manifest["prefijo_consulta"] == QUERY_PREFIX
+    assert manifest["receta_texto"] == embeddings.TEXT_RECIPE
+    assert manifest["sha256_vectores"] == sha256(path.read_bytes())
+    assert manifest["ids"] == ["N-1", "N-2"]
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", manifest["fecha_UTC"])
+
+
+def test_the_saved_vectors_load_back_through_the_pipeline(tmp_path):
+    path = embed_corpus(ROWS, FakeEmbedder(), tmp_path / "out", fake_model_dir(tmp_path))
+
+    assert load_vectors(path, ROWS).shape == (2, 768)
+
+
+def test_vectors_that_changed_after_the_manifest_was_written_are_rejected(tmp_path):
+    path = embed_corpus(ROWS, FakeEmbedder(), tmp_path / "out", fake_model_dir(tmp_path))
+    np.save(path, np.zeros((2, 768), dtype=np.float16))
+
+    with pytest.raises(PipelineInputError, match="sha256_vectores"):
+        load_vectors(path, ROWS)
+
+
+def test_the_default_vectors_are_the_model_file_even_next_to_other_arrays(tmp_path, monkeypatch):
+    path = embed_corpus(ROWS, FakeEmbedder(), tmp_path / "out", fake_model_dir(tmp_path))
+    np.save(path.parent / "otro.npy", np.zeros((2, 4)))
+    monkeypatch.setattr(run, "EMBEDDINGS_DIR", path.parent)
+
+    assert default_vectors_path() == path

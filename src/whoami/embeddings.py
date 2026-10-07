@@ -3,9 +3,12 @@
 The same model embeds the corpus (`whoami embed`) and, later, user queries, so both live behind `Embedder`.
 """
 
+import hashlib
+import json
 import os
 import shutil
 from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
@@ -109,3 +112,38 @@ class Embedder:
         }
         vectors = np.asarray(self._session.run(["sentence_embedding"], feed)[0], dtype=np.float32)
         return vectors / np.clip(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12, None)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def embed_corpus(
+    rows: Sequence[Mapping[str, str]], embedder: Any, output_dir: Path, model_directory: Path | None = None
+) -> Path:
+    """Embeds every news row (in order) and writes the float16 vectors plus the manifest that explains them."""
+    model_directory = model_directory or model_dir()
+    vectors = embedder.embed_documents([document_text(row) for row in rows]).astype(np.float16)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / f"{MODEL_NAME}.npy"
+    np.save(path, vectors)
+    manifest = {
+        "modelo": MODEL_REPO,
+        "revision": MODEL_REVISION,
+        "archivos": {name: _sha256(model_directory / _LAYOUT[name]) for name in MODEL_FILES},
+        "nombre": MODEL_NAME,
+        "dimensiones": DIMENSIONS,
+        "dtype": "float16",
+        "prefijo_documento": DOCUMENT_PREFIX,
+        "prefijo_consulta": QUERY_PREFIX,
+        "receta_texto": TEXT_RECIPE,
+        "sha256_vectores": _sha256(path),
+        "ids": [row["id_noticia"] for row in rows],
+        "fecha_UTC": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path

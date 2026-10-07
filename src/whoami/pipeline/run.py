@@ -15,6 +15,7 @@ import numpy as np
 
 from whoami import store
 from whoami.contracts import MANIFEST_JSON, OUTPUTS, PROCESSED
+from whoami.embeddings import MODEL_NAME
 from whoami.pipeline.context import link_context
 from whoami.pipeline.evidence import load_news_rows, load_official_evidence, news_evidence
 from whoami.pipeline.provenance import merge_provenances, provenance
@@ -158,7 +159,10 @@ def build(
 
 
 def default_vectors_path() -> Path:
-    """The only `.npy` in `data/processed/embeddings/`."""
+    """The vectors of the corpus model (`whoami embed`); else the only `.npy` in `data/processed/embeddings/`."""
+    preferred = EMBEDDINGS_DIR / f"{MODEL_NAME}.npy"
+    if preferred.exists():
+        return preferred
     found = sorted(EMBEDDINGS_DIR.glob("*.npy"))
     if len(found) != 1:
         raise PipelineInputError(
@@ -174,7 +178,11 @@ def load_vectors(path: Path, rows: Sequence[Mapping[str, str]]) -> np.ndarray:
     manifest = path.parent / "manifest.json"
     if not manifest.exists():
         raise PipelineInputError(f"no existe {manifest}: debe listar los ids en el orden de los vectores")
-    ids = json.loads(manifest.read_text(encoding="utf-8"))["ids"]
+    described = json.loads(manifest.read_text(encoding="utf-8"))
+    ids = described["ids"]
+    expected_hash = described.get("sha256_vectores")
+    if expected_hash is not None and hashlib.sha256(path.read_bytes()).hexdigest() != expected_hash:
+        raise PipelineInputError(f"{path} no coincide con sha256_vectores de {manifest}: regenera los vectores con `whoami embed`")
     if ids != [row["id_noticia"] for row in rows]:
         raise PipelineInputError(f"los ids de {manifest} no coinciden con noticias.csv (mismo orden y mismas noticias)")
     vectors = np.load(path)

@@ -4,6 +4,7 @@
     whoami build                        data/raw to data/processed (offline)
     whoami refresh                      ingest + build
     whoami demo                         write the synthetic contract set to data/demo (offline)
+    whoami embed                        embed noticias.csv with the local model to data/processed/embeddings (offline)
     whoami pipeline [--vectors PATH]    news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl (offline)
 """
 
@@ -15,11 +16,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from whoami import demo
+from whoami.embeddings import Embedder, embed_corpus
 from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
 from whoami.ingest.news import ingest as news_ingest
 from whoami.ingest.news.sources import SOURCES
 from whoami.pipeline import run as pipeline
+from whoami.pipeline.evidence import load_news_rows
 
 
 @dataclass(frozen=True)
@@ -46,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--only", help="comma-separated keys: news sources, worldbank, usgs, inec")
     commands.add_parser("build")
     commands.add_parser("demo")
+    commands.add_parser("embed")
     pipeline_command = commands.add_parser("pipeline")
     pipeline_command.add_argument(
         "--vectors", type=Path, help="embeddings .npy next to a manifest.json with their ids (default: the only one)"
@@ -55,6 +59,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "demo":
         output = demo.generate()
         print(f"data/demo: {len(output.grupos)} grupos, {len(output.fichas)} fichas, {len(output.consultas)} consultas")
+        return 0
+
+    if args.command == "embed":
+        path = embed_corpus(load_news_rows(), Embedder(), pipeline.EMBEDDINGS_DIR)
+        print(f"{path}: vectores y manifest.json escritos")
         return 0
 
     if args.command == "pipeline":
