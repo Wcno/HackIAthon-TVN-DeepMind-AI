@@ -4,9 +4,9 @@
     whoami build                        data/raw to data/processed (offline)
     whoami refresh                      ingest + build
     whoami demo                         write the synthetic contract set to data/demo (offline)
-    whoami generar [--generador single|two] [--modelo M] [--top N] [--recuperador bm25|emb|hybrid]
-                   [--compuerta coseno|llm|ambas] [--consultas PATH] [--implicacion]
-                                        case files and answers to outputs/ (calls the LLM)
+    whoami generar [--modelo M] [--top N] [--consultas PATH] [--sin-implicacion]
+                                        case files and answers to outputs/ (calls the LLM): two-step generator,
+                                        hybrid retriever, cosine gate; the entailment check is on unless --sin-implicacion
     whoami embed                        embed noticias.csv with the local model to data/processed/embeddings (offline)
     whoami pipeline [--vectors PATH] [--sin-llm] [--modelo-llm MODEL]
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;

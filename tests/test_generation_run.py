@@ -53,8 +53,7 @@ def workspace(tmp_path):
 
 
 def config(queries, **overrides):
-    values = dict(modelo=MODEL, top=len(DEMO.grupos), recuperador="bm25",
-                  consultas=queries, implicacion=False)
+    values = dict(modelo=MODEL, top=len(DEMO.grupos), consultas=queries, implicacion=False)
     return RunConfig(**values | overrides)
 
 
@@ -131,17 +130,32 @@ def test_queries_file_needs_id_and_text_and_ignores_the_rest(tmp_path):
     assert run.load_queries(path) == [("D-1", "¿Qué?"), ("D-2", "¿Cómo?")]
 
 
-def test_cli_defaults_and_options(workspace, monkeypatch, capsys):
+def run_cli(workspace, monkeypatch, *extra):
     data, outputs, queries = workspace
     llm = FakeLLM(demo_model)
     monkeypatch.setattr(run, "default_llm", lambda: llm)
     monkeypatch.setattr(run, "LocalEmbedder", lambda: FakeEmbedder(True))
     monkeypatch.setattr(run, "PROCESSED", data)
     monkeypatch.setattr(run, "OUTPUTS", outputs)
-    monkeypatch.setattr(sys, "argv", ["whoami", "generar", "--consultas", str(queries), "--recuperador", "bm25"])
+    monkeypatch.setattr(sys, "argv", ["whoami", "generar", "--consultas", str(queries), *extra])
     assert cli.main() == 0
     verify(load(data, outputs))
+    return llm
+
+
+def test_the_command_checks_entailment_by_default(workspace, monkeypatch, capsys):
+    llm = run_cli(workspace, monkeypatch)
+    assert "g4-implicacion" in {call["purpose"] for call in llm.calls}
     assert "fichas" in capsys.readouterr().out
+
+
+def test_sin_implicacion_turns_the_entailment_check_off(workspace, monkeypatch):
+    llm = run_cli(workspace, monkeypatch, "--sin-implicacion")
+    assert "g4-implicacion" not in {call["purpose"] for call in llm.calls}
+
+
+def test_the_default_model_is_the_production_one():
+    assert run.DEFAULT_MODEL == "gemini-3.5-flash-lite"
 
 
 def test_the_demo_queries_file_has_the_non_synthetic_devset_queries():

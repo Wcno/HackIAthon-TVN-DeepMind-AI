@@ -27,16 +27,14 @@ from whoami.schemas import CaseFile, Evidence, Group, OutputSet
 from whoami.store import read_jsonl, write
 
 DEFAULT_QUERIES = DATA / "consultas_demo.jsonl"
-DEFAULT_MODEL = "gemma-4-26b-a4b-it"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 VECTORS_FILE = "evidencias_vectores.npy"
-RETRIEVERS = ("bm25", "emb", "hybrid")
 
 
 @dataclass(frozen=True)
 class RunConfig:
     modelo: str
     top: int
-    recuperador: str
     consultas: Path
     implicacion: bool
 
@@ -44,15 +42,14 @@ class RunConfig:
 def add_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument("--modelo", default=DEFAULT_MODEL)
     command.add_argument("--top", type=int, default=10, help="groups to generate a case file for (insufficient ones are skipped)")
-    command.add_argument("--recuperador", choices=RETRIEVERS, default="hybrid")
     command.add_argument("--consultas", type=Path, default=DEFAULT_QUERIES, help="JSONL with id and consulta")
-    command.add_argument("--implicacion", action="store_true", help="check every kept claim is supported by its passages")
+    command.add_argument(
+        "--sin-implicacion", action="store_false", dest="implicacion", help="skip the check that every kept claim is supported by its passages (saves calls)"
+    )
 
 
 def config_from(args: argparse.Namespace) -> RunConfig:
-    return RunConfig(
-        args.modelo, args.top, args.recuperador, args.consultas, args.implicacion
-    )
+    return RunConfig(args.modelo, args.top, args.consultas, args.implicacion)
 
 
 class CountingLLM:
@@ -147,7 +144,7 @@ def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Pat
         source,
         generator,
         load_queries(config.consultas),
-        retriever=retrievers[config.recuperador],
+        retriever=retrievers["hybrid"],
         gate=CosineGate(retrievers["emb"]),
         llm=counting,
         model=config.modelo,
