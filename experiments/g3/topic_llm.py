@@ -1,7 +1,11 @@
-"""Topic classification with an LLM, one headline per call (strict JSON). Usage: topic_llm.py <model> <input.jsonl> <out.jsonl>"""
+"""Topic classification with an LLM, one headline per call (strict JSON), live calls.
+
+    uv run --all-groups python experiments/g3/topic_llm.py <model> <input.jsonl> <out.jsonl>
+
+e.g. input `experiments/g3/datos/topic_gold.jsonl`, output `experiments/g3/datos/topic_pred_gemma.jsonl`.
+"""
 import json, sys
 from concurrent.futures import ThreadPoolExecutor
-sys.path.insert(0, "/home/jwhoami/Development/projects/hackathons/hackiaton-whoamisfc/src")
 from whoami.llm import default_llm
 
 TOPICS = ["economia", "logistica_canal", "turismo", "servicios_publicos", "eventos_naturales", "regulacion", "sin_tema"]

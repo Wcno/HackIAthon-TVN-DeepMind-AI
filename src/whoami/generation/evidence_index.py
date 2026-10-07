@@ -16,7 +16,7 @@ import numpy as np
 
 from whoami.contracts import PROCESSED
 from whoami.embeddings import Embedder as LocalEmbedder
-from whoami.embeddings import model_dir
+from whoami.embeddings import model_dir  # noqa: F401  (re-exported for callers of this module)
 from whoami.generation.retrieval import (
     BM25Index,
     BM25Retriever,

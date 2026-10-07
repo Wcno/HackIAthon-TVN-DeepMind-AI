@@ -1,8 +1,10 @@
 """Retrieval bake-off: pool top-k of every model, judge with Gemma, compute recall@5 and nDCG@10.
 
-    python retrieval_eval.py pool     # needs vectors/*.npy and qvectors/*.npy
-    python retrieval_eval.py judge    # live Gemma calls (cached, ledgered)
-    python retrieval_eval.py score
+    uv run --all-groups python experiments/g3/retrieval_eval.py pool     # needs vectors/*.npy and qvectors/*.npy
+    uv run --all-groups python experiments/g3/retrieval_eval.py judge    # live Gemma calls (cached, ledgered)
+    uv run --all-groups python experiments/g3/retrieval_eval.py score
+
+Labeled data lives in `datos/`; model vectors are generated under `vectors/` and `qvectors/` (see README).
 """
 
 import json
@@ -16,7 +18,8 @@ import numpy as np
 from corpus import rows, text
 
 HERE = Path(__file__).parent
-QUERIES = [json.loads(line) for line in (HERE / "queries.jsonl").open()]
+DATA = HERE / "datos"
+QUERIES = [json.loads(line) for line in (DATA / "queries.jsonl").open()]
 K_POOL = 10
 
 
@@ -38,10 +41,10 @@ def pool() -> None:
     corpus = load_vectors("vectors")
     queries = load_vectors("qvectors")
     ranked = rankings(corpus, queries, K_POOL)
-    for name, ranking in json.loads((HERE / "bm25_rank.json").read_text()).items() if (HERE / "bm25_rank.json").exists() else []:
+    for name, ranking in json.loads((DATA / "bm25_rank.json").read_text()).items() if (DATA / "bm25_rank.json").exists() else []:
         ranked[name] = ranking
     pools = {q["qid"]: sorted({int(i) for model in ranked.values() for i in model[q["qid"]]}) for q in QUERIES}
-    (HERE / "pools.json").write_text(json.dumps(pools))
+    (DATA / "pools.json").write_text(json.dumps(pools))
     print({qid: len(p) for qid, p in pools.items()}, sum(len(p) for p in pools.values()))
 
 
@@ -77,13 +80,12 @@ JUDGE_SYSTEM = (
 
 
 def judge() -> None:
-    sys.path.insert(0, "/home/jwhoami/Development/projects/hackathons/hackiaton-whoamisfc/src")
     from whoami.llm import InvalidJSON, default_llm
 
     llm = default_llm()
     corpus = rows()
-    pools = json.loads((HERE / "pools.json").read_text())
-    path = HERE / "judgments.json"
+    pools = json.loads((DATA / "pools.json").read_text())
+    path = DATA / "judgments.json"
     judgments = json.loads(path.read_text()) if path.exists() else {}
 
     def judge_chunk(query: dict, candidates: list[int], attempt: int = 0) -> dict[str, int]:
@@ -140,10 +142,10 @@ def recall(ranked: list[int], grades: dict[str, int], k: int, threshold: int = 2
 
 def score(subset: list[int] | None = None, label: str = "corpus completo") -> dict:
     """Metrics per model. `subset` restricts ranking to those corpus rows (for the Gemini sample)."""
-    judgments = json.loads((HERE / "judgments.json").read_text())
+    judgments = json.loads((DATA / "judgments.json").read_text())
     corpus = load_vectors("vectors")
     queries = load_vectors("qvectors")
-    extra = json.loads((HERE / "bm25_rank_full.json").read_text()) if (HERE / "bm25_rank_full.json").exists() else {}
+    extra = json.loads((DATA / "bm25_rank_full.json").read_text()) if (DATA / "bm25_rank_full.json").exists() else {}
     results = {}
     for model in sorted(set(corpus) & set(queries)) + list(extra):
         if model in extra:

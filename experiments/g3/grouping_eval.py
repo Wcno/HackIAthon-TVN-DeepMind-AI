@@ -1,12 +1,17 @@
-"""Duplicate grouping bake-off (T02) on labeled pairs: pairwise P/R/F1 of 'same event'."""
+"""Duplicate grouping bake-off (T02) on labeled pairs: pairwise P/R/F1 of 'same event'.
+
+    uv run --all-groups python experiments/g3/grouping_eval.py
+
+Needs `vectors/<model>.npy` for each model listed below (see README); writes `datos/grouping_results.json`.
+"""
 import json, re, unicodedata
 from datetime import datetime
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering, HDBSCAN
-from corpus import rows, text
+from corpus import DATA, HERE, rows
 
 r = rows(); n = len(r)
-pairs = [json.loads(l) for l in open("pairs_gold.jsonl")]
+pairs = [json.loads(l) for l in (DATA / "pairs_gold.jsonl").open()]
 hours = np.array([datetime.fromisoformat(x["fecha_publicacion"].replace("Z", "+00:00")).timestamp() / 3600 for x in r])
 WINDOW_H = 72
 
@@ -54,7 +59,7 @@ def report(name, labels):
 
 out = []
 for model in ["gemma300m", "jina_v3", "e5_large", "jina_v2_es", "minilm", "potion_m2v", "qwen3_06b_q"]:
-    v = np.load(f"vectors/{model}.npy"); sim = v @ v.T
+    v = np.load(HERE / "vectors" / f"{model}.npy"); sim = v @ v.T
     sims = sorted(sim[p["i"], p["j"]] for p in pairs)
     for thr in np.round(np.arange(0.70, 0.96, 0.025), 3):
         out.append(report(f"{model} umbral {thr} + ventana 72h", union_find(sim, thr)))
@@ -80,4 +85,4 @@ out.sort(key=lambda x: -x[0])
 print("F1_estricto  nombre  (P,R,F1 estricto)  (P,R,F1 laxo)  grupos>1  mayor")
 for f1, name, strict, loose, ng, big in out[:30]:
     print(f"{f1:.3f}  {name:55s} {strict} {loose} {ng} {big}")
-json.dump([dict(name=o[1], strict=o[2], loose=o[3], groups=o[4], largest=o[5]) for o in out], open("grouping_results.json", "w"), ensure_ascii=False, indent=0)
+json.dump([dict(name=o[1], strict=o[2], loose=o[3], groups=o[4], largest=o[5]) for o in out], (DATA / "grouping_results.json").open("w"), ensure_ascii=False, indent=0)

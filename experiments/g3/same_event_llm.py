@@ -1,10 +1,14 @@
-"""Gemma 'same event?' check on grey-zone pairs."""
-import json, sys
+"""Gemma 'same event?' check on grey-zone pairs (live calls, cached and ledgered).
+
+    uv run --all-groups python experiments/g3/same_event_llm.py
+
+Needs `vectors/gemma300m.npy` (see README); writes `datos/same_event_gemma.json`.
+"""
+import json
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
-sys.path.insert(0, "/home/jwhoami/Development/projects/hackathons/hackiaton-whoamisfc/src")
 from whoami.llm import InvalidJSON, default_llm
-from corpus import rows, text
+from corpus import DATA, HERE, rows, text
 
 SYSTEM = ("Decides si dos noticias informan del MISMO hecho concreto (el mismo suceso, anuncio o decisión, aunque con otras palabras "
           "o una reacción del mismo día). No basta con el mismo tema ni con la misma historia en desarrollo: un nuevo paso, "
@@ -23,10 +27,10 @@ def same(i, j):
         return None
 
 if __name__ == "__main__":
-    v = np.load("vectors/gemma300m.npy")
-    pairs = [p for p in (json.loads(l) for l in open("pairs_gold.jsonl")) if p["etiqueta"] != 1 and 0.65 <= float(v[p["i"]] @ v[p["j"]]) < 0.8]
+    v = np.load(HERE / "vectors/gemma300m.npy")
+    pairs = [p for p in (json.loads(l) for l in (DATA / "pairs_gold.jsonl").open()) if p["etiqueta"] != 1 and 0.65 <= float(v[p["i"]] @ v[p["j"]]) < 0.8]
     with ThreadPoolExecutor(2) as pool:
         preds = list(pool.map(lambda p: same(p["i"], p["j"]), pairs))
-    json.dump([{"p": p["p"], "gold": p["etiqueta"], "gemma": g} for p, g in zip(pairs, preds)], open("same_event_gemma.json", "w"))
+    json.dump([{"p": p["p"], "gold": p["etiqueta"], "gemma": g} for p, g in zip(pairs, preds)], (DATA / "same_event_gemma.json").open("w"))
     ok = sum((g is True) == (p["etiqueta"] == 2) for p, g in zip(pairs, preds))
     print("gemma accuracy on grey pairs", ok, "/", len(pairs), "invalid", sum(g is None for g in preds))

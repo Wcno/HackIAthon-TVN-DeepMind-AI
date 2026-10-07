@@ -1,8 +1,10 @@
-"""Corpus loading and the text recipe shared by every experiment."""
+"""Corpus loading, paths and the text recipe shared by every experiment."""
 import csv
 from pathlib import Path
 
-REPO = Path("/home/jwhoami/Development/projects/hackathons/hackiaton-whoamisfc")
+HERE = Path(__file__).parent
+REPO = HERE.parents[1]
+DATA = HERE / "datos"
 NEWS = REPO / "data/processed/noticias.csv"
 TEXT_RECIPE = "titulo + '. ' + descripcion (si hay descripción); si no, titulo"
 

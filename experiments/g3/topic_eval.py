@@ -1,36 +1,41 @@
-"""Topic classification bake-off on the 300-item gold set."""
+"""Topic classification bake-off on the 300-item gold set.
+
+    uv run --all-groups python experiments/g3/topic_eval.py [model ...]
+
+Needs `vectors/` and `dvectors/` for each model (see README). The keyword baseline is the packaged
+`whoami.pipeline.topics_keywords.classify_keywords`.
+"""
 import json, sys
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
-from corpus import rows, text
-import teammate_classifier as tc
+from corpus import DATA, HERE, rows, text
+from whoami.pipeline.topics_keywords import classify_keywords
 
 TOPICS = ["economia","logistica_canal","turismo","servicios_publicos","eventos_naturales","regulacion","sin_tema"]
-PDF_TO_SLUG = {"economía":"economia","logística/Canal":"logistica_canal","turismo":"turismo","servicios públicos":"servicios_publicos","eventos naturales":"eventos_naturales","regulación":"regulacion"}
 r = rows(); idx = {x["id_noticia"]: i for i, x in enumerate(r)}
-gold = [json.loads(l) for l in open("topic_gold.jsonl")]
+gold = [json.loads(l) for l in (DATA / "topic_gold.jsonl").open()]
 gi = np.array([idx[g["id_noticia"]] for g in gold]); y = np.array([g["tema"] for g in gold])
-gemma = {json.loads(l)["id_noticia"]: json.loads(l) for l in open("topic_pred_gemma.jsonl")}
+gemma = {json.loads(l)["id_noticia"]: json.loads(l) for l in (DATA / "topic_pred_gemma.jsonl").open()}
 gemma_pred = np.array([gemma[g["id_noticia"]]["tema"] for g in gold])
 
 def f1(pred): return round(f1_score(y, pred, labels=TOPICS, average="macro", zero_division=0), 3)
 def f1_six(pred): return round(f1_score(y, pred, labels=TOPICS[:6], average="macro", zero_division=0), 3)
 
 results = {}
-kw_orig = np.array([PDF_TO_SLUG[tc.keyword_baseline(text(r[i])).topic] for i in gi])
-kw_ours = np.array([PDF_TO_SLUG[c.topic] if c.confidence > 0 else "sin_tema" for c in (tc.keyword_baseline(text(r[i])) for i in gi)])
+kw_ours = np.array([topic for topic, _, _ in classify_keywords([text(r[i]) for i in gi])])
+kw_orig = np.where(kw_ours == "sin_tema", "economia", kw_ours)  # the original baseline defaulted to economy
 results["palabras_clave (original, sin coincidencia -> economía)"] = (f1(kw_orig), f1_six(kw_orig), 0)
 results["palabras_clave (sin coincidencia -> sin_tema)"] = (f1(kw_ours), f1_six(kw_ours), 0)
 results["gemma por titular"] = (f1(gemma_pred), f1_six(gemma_pred), 300)
 
-dlabels = np.array(json.load(open("dvectors/labels.json")))
+dlabels = np.array(json.load((HERE / "dvectors/labels.json").open()))
 skf = StratifiedKFold(5, shuffle=True, random_state=0)
 best = {}
 for model in sys.argv[1:] or ["minilm","mpnet","potion_m2v","jina_v2_es","e5_small","e5_large","gemma300m","qwen3_06b_q","jina_v3"]:
-    X = np.load(f"vectors/{model}.npy")[gi]
-    D = np.load(f"dvectors/{model}.npy")
+    X = np.load(HERE / "vectors" / f"{model}.npy")[gi]
+    D = np.load(HERE / "dvectors" / f"{model}.npy")
     zs = dlabels[np.argmax(X @ D.T, axis=1)]
     results[f"zero-shot descripciones [{model}]"] = (f1(zs), f1_six(zs), 0)
     cent = np.empty(len(y), dtype=object); lr = np.empty(len(y), dtype=object); lr_margin = np.zeros(len(y))

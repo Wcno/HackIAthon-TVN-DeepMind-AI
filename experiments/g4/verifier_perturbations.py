@@ -7,7 +7,9 @@ import argparse
 import json
 from pathlib import Path
 
+from whoami.generation.entailment import EntailmentChecker
 from whoami.generation.verifier import check_claim
+from whoami.llm import default_llm
 from whoami.schemas import Citation, Claim
 from whoami.store import load_demo
 
@@ -55,18 +57,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="gemma-4-26b-a4b-it")
     args = parser.parse_args()
-    import sys
-
-    sys.path.insert(0, str(HERE))
-    from case_files_devset import entailment
-    from whoami.llm import default_llm
-
     llm = default_llm()
+    entailment = EntailmentChecker(llm, args.model)
     items, evidences = claims()
     rows = []
     for label, how, claim in items:
         det = check_claim(claim, evidences)
-        verdict = entailment(llm, args.model, claim, evidences)
+        verdict = entailment.check(claim, evidences)
         rows.append({"id": claim.id_afirmacion, "etiqueta": label, "perturbacion": how, "determinista_rechaza": bool(det.issues),
                      "motivos": list(det.issues), "implicacion": verdict})
     out = HERE / "resultados" / f"verificadores_{args.model}.jsonl"

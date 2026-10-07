@@ -1,12 +1,20 @@
-"""Step 5: explicit keyword rules vs embedding similarity for linking news to an official indicator family."""
+"""Step 5: explicit keyword rules vs embedding similarity for linking news to an official indicator family.
+
+    uv run --all-groups python experiments/g3/context_eval.py
+
+Needs the local embedding model and the corpus vectors (`whoami embed`); writes `datos/context_links.json`.
+"""
 import json
+from pathlib import Path
 import numpy as np
 from whoami.embeddings import Embedder
-from whoami.pipeline.context import DEFAULT_RULES, link_context
+from whoami.pipeline.context import link_context
 from whoami.pipeline.evidence import load_news_rows, load_official_evidence
 from whoami.pipeline.run import load_vectors, default_vectors_path
 from whoami.schemas import parse_utc
 from whoami.embeddings import document_text
+
+DATA = Path(__file__).parent / "datos"
 
 FAMILIES = {
     "inflacion": "inflación y precios al consumidor en Panamá",
@@ -35,5 +43,5 @@ print("rule links", len(rule_links), "emb links", len(emb_links), "both", len(se
 out = []
 for i in sorted(set(rule_links) | set(emb_links)):
     out.append({"i": i, "titulo": rows[i]["titulo"][:110], "regla": rule_links.get(i), "emb": emb_links.get(i), "sim": round(float(sims[i].max()), 3)})
-json.dump(out, open("/tmp/claude-1000/-home-jwhoami-Development-projects-hackathons-hackiaton-whoamisfc/74c314a4-bb07-4927-9e0f-c1eb16cedb42/scratchpad/exp/context_links.json", "w"), ensure_ascii=False, indent=0)
+json.dump(out, (DATA / "context_links.json").open("w"), ensure_ascii=False, indent=0)
 for o in out: print(o["i"], "| R:", (o["regla"] or "-")[:28], "| E:", o["emb"] or "-", o["sim"], "|", o["titulo"])

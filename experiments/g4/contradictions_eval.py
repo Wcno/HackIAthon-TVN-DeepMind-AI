@@ -9,15 +9,13 @@ figures that are not in conflict (different places or different events). Labeled
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
+from query_devset import load_evidences
 from whoami.generation.contradictions import LLMContradictionChecker, RuleBasedChecker
 from whoami.schemas import Components, Evidence, Group, Member, Score
 
 HERE = Path(__file__).parent
-sys.path.insert(0, str(HERE))
-from query_devset import load_evidences  # noqa: E402
 
 POSITIVES = [
     ("N-28b94956af41", "N-2854bda599c2", "denuncias de médicos: más de 80 vs más de 70"),

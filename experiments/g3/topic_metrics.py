@@ -1,8 +1,14 @@
+"""Macro F1 of a topic prediction file against `datos/topic_gold.jsonl`.
+
+    uv run --all-groups python experiments/g3/topic_metrics.py <pred.jsonl>
+"""
 import json, sys
-from collections import Counter
+from pathlib import Path
 from sklearn.metrics import f1_score, classification_report
 TOPICS = ["economia","logistica_canal","turismo","servicios_publicos","eventos_naturales","regulacion","sin_tema"]
-def report(pred_path, gold_path="topic_gold.jsonl", show=False):
+GOLD = Path(__file__).parent / "datos" / "topic_gold.jsonl"
+
+def report(pred_path, gold_path=GOLD, show=False):
     gold = {json.loads(l)["id_noticia"]: json.loads(l)["tema"] for l in open(gold_path)}
     pred = {json.loads(l)["id_noticia"]: json.loads(l)["tema"] for l in open(pred_path)}
     ids = [i for i in gold if i in pred]

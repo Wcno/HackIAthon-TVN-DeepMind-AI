@@ -1,7 +1,6 @@
 import json
 
 import numpy as np
-import pytest
 
 from whoami.llm import InvalidJSON
 from whoami.pipeline.topics import (

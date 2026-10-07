@@ -15,7 +15,6 @@
 
 import argparse
 import json
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path

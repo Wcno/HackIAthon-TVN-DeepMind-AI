@@ -5,9 +5,7 @@ builds the real ones.
 """
 
 import argparse
-import json
 from collections import Counter
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 

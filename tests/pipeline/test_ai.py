@@ -3,7 +3,6 @@ from datetime import UTC, datetime, timedelta
 
 import numpy as np
 
-from whoami.llm import InvalidJSON
 from whoami.pipeline.ai import CountingLLM, ai_components
 
 CUTOFF = datetime(2026, 10, 7, 12, tzinfo=UTC)
