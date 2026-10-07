@@ -143,12 +143,12 @@ def test_ledger_spent_counts_chat_misses_since_the_window_start(tmp_path: Path):
     assert ledger.spent("chat", since) == 1
 
 
-def test_ledger_spent_sums_texts_for_embedding_models(tmp_path: Path):
+def test_ledger_spent_sums_texts_of_sent_batches_and_one_unit_per_rejected_attempt(tmp_path: Path):
     ledger = make_ledger(tmp_path)
     ledger.record(model="emb", purpose="p", cache="miss", status="ok", latency_s=0.1, n_texts=50)
     ledger.record(model="emb", purpose="p", cache="miss", status="error:500", latency_s=0.1, n_texts=20)
     ledger.record(model="emb", purpose="p", cache="hit", status="ok", latency_s=0.0, n_texts=7)
-    assert ledger.spent("emb", NOW - timedelta(days=1)) == 70
+    assert ledger.spent("emb", NOW - timedelta(days=1)) == 51
 
 
 def test_ledger_without_a_file_has_nothing_spent_and_an_empty_summary(tmp_path: Path):
@@ -561,13 +561,13 @@ def test_embed_cap_counts_texts_and_is_checked_before_each_batch(tmp_path: Path)
     assert (llm.spent(EMBEDDING), llm.remaining(EMBEDDING)) == (2, 1)
 
 
-def test_embed_retries_a_429_and_counts_the_failed_texts(tmp_path: Path):
+def test_embed_retries_a_429_and_counts_the_rejected_attempt_as_one_unit(tmp_path: Path):
     fake = FakeTime()
     client = FakeClient(HttpError(429), embedding_response([1], [2]))
     llm = make_llm(tmp_path, client, fake)
     llm.embed(EMBEDDING, ["a", "b"], purpose="t", dimensions=1)
     assert fake.sleeps == [1.0]
-    assert llm.spent(EMBEDDING) == 4
+    assert llm.spent(EMBEDDING) == 3
 
 
 def test_embed_rejects_chat_models_and_handles_no_texts(tmp_path: Path):
@@ -606,4 +606,15 @@ def test_chat_limiter_keeps_headroom_under_the_published_rpm(tmp_path: Path):
         llm.complete(CHAT, [{"role": "user", "content": f"q{n}"}], purpose="t")
     assert fake.sleeps == []
     llm.complete(CHAT, [{"role": "user", "content": "una más"}], purpose="t")
+    assert fake.sleeps and fake.sleeps[0] > 0
+
+
+def test_embedding_limiter_counts_texts_not_requests(tmp_path: Path):
+    per_minute = int(MODELS[EMBEDDING].rpm * RATE_HEADROOM)
+    client = FakeClient(embedding_response(*[[1]] * per_minute), embedding_response([1]))
+    fake = FakeTime()
+    llm = make_llm(tmp_path, client, fake)
+    llm.embed(EMBEDDING, [f"t{n}" for n in range(per_minute)], purpose="t", dimensions=1, batch_size=per_minute)
+    assert fake.sleeps == []
+    llm.embed(EMBEDDING, ["uno más"], purpose="t", dimensions=1)
     assert fake.sleeps and fake.sleeps[0] > 0

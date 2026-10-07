@@ -252,7 +252,7 @@ class LLM:
     ) -> tuple[Any, float]:
         for attempt in range(self._max_retries + 1):
             self._enforce_cap(limits, cost)
-            self._limiter(limits).acquire(tokens)
+            self._limiter(limits).acquire(tokens, units=max(n_texts, 1))
             started = self._monotonic()
             try:
                 response = send()

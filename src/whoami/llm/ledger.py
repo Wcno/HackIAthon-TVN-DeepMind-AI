@@ -24,7 +24,9 @@ def _is_miss(entry: dict[str, Any]) -> bool:
 
 
 def _quota_cost(entry: dict[str, Any]) -> int:
-    """Chat attempts cost one call; embedding attempts cost one per text sent."""
+    """Chat attempts cost one call; an embedding batch costs one per text, a rejected attempt one unit."""
+    if entry["status"] != "ok":
+        return 1
     return max(entry["n_texts"], 1)
 
 
