@@ -189,3 +189,16 @@ def test_htmx_errors_and_draft_claims_preserve_screen_contract(settings):
             assert claim["tipo"] in draft
             for citation in claim["citas"]:
                 assert "/evidence/" + citation["id_evidencia"] in draft
+
+
+def test_empty_optional_form_note_remains_valid_g2_history(settings):
+    with TestClient(create_app(settings)) as client:
+        repository = client.app.state.repository
+        case = repository.case("CASO-001")
+        response = client.post("/cases/CASO-001/review", data={
+            "state": "descartado", "actor": "Reviewer", "expected_version": case["version"], "note": "   ",
+        })
+        assert response.status_code == 200
+        records = [ReviewRecord.model_validate(record) for record in repository.current_review_records("CASO-001")]
+        assert transition_errors(records) == []
+        assert records[-1].nota is None

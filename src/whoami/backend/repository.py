@@ -211,6 +211,7 @@ class EditorialRepository:
             return [dict(row) for row in connection.execute("SELECT reason, timestamp, content_version FROM audit_events WHERE case_id = ? ORDER BY id", (case_id,))]
 
     def review(self, case_id: str, *, state: str, actor: str, note: str | None, expected_version: int) -> dict:
+        note = note.strip() or None if note is not None else None
         if state not in REVIEW_STATES or not actor.strip():
             raise InvalidReview("A valid state and a human reviewer are required.")
         with self.connection() as connection:
