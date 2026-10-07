@@ -20,6 +20,7 @@ MAGNITUDE_TOLERANCE = 0.3
 COUNTRY = "PAN"
 NO_CONTEXT_REASON = "Ningún indicador ni evento oficial del paquete mide este tema; no se fuerza un vínculo."
 NO_QUAKE_REASON = "Ningún sismo del catálogo USGS coincide en fecha con la noticia."
+OTHER_COUNTRY_REASON = "La noticia trata de otro país; los indicadores y sismos del paquete son de Panamá."
 
 #: Finds the official record a rule points at: (official evidence, group text as written, earliest member date).
 EvidenceFinder = Callable[[Mapping[str, Evidence], str, datetime], Evidence | None]
@@ -166,7 +167,16 @@ DEFAULT_RULES: tuple[ContextRule, ...] = (
     ),
     ContextRule(
         name="pib",
-        keywords=("PIB", "crecimiento económico", "economía creció", "economía crece"),
+        keywords=(
+            "PIB",
+            "producto interno bruto",
+            "crecimiento económico",
+            "economía creció",
+            "economía crece",
+            "economía panameña crece",
+            "economía panameña creció",
+            "economía panameña acelera",
+        ),
         topics=_MACRO_TOPICS,
         evidence=first_found(
             latest_point("INEC-pib_constante_var_interanual-"), latest_point("WB-PAN-NY.GDP.MKTP.KD.ZG-")
@@ -220,6 +230,8 @@ def link_context(
     rules: Iterable[ContextRule] = DEFAULT_RULES,
 ) -> tuple[tuple[ContextLink, ...], str | None]:
     """Links per rule that fires, and the reason there is none when nothing could be linked."""
+    if _names_another_country(group_text):
+        return (), OTHER_COUNTRY_REASON
     folded = fold(group_text)
     links: dict[str, ContextLink] = {}
     unfound_reasons: list[str] = []

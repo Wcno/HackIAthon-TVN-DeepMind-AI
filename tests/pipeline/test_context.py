@@ -181,8 +181,10 @@ CHOCO_OFFICIAL = {CHOCO_QUAKE.id_evidencia: CHOCO_QUAKE}
 def test_a_quake_in_colombia_is_not_linked_to_news_about_a_quake_in_colombia():
     links, reason = link("Fuerte terremoto sacude el Chocó, en Colombia", official=CHOCO_OFFICIAL)
 
+    from whoami.pipeline.context import OTHER_COUNTRY_REASON
+
     assert links == ()
-    assert reason == NO_QUAKE
+    assert reason == OTHER_COUNTRY_REASON
 
 
 def test_news_naming_another_country_still_links_when_it_also_names_a_panamanian_province():
@@ -224,3 +226,30 @@ def test_naming_the_us_geological_survey_does_not_make_a_panamanian_quake_foreig
     links, _ = link("Sismo sacude el país, informó el Servicio Geológico de Estados Unidos")
 
     assert ids(links) == ["USGS-us1"]
+
+
+def test_gdp_phrasings_found_by_the_embedding_comparison_link_to_gdp():
+    from whoami.pipeline.context import DEFAULT_RULES
+    from whoami.pipeline.text import fold
+
+    pib = next(rule for rule in DEFAULT_RULES if rule.name == "pib")
+    for headline in (
+        "Producto Interno Bruto de Panamá crece 6.4% en el segundo trimestre de 2026",
+        "Economía panameña crece 8.49% en julio de 2026, según el INEC",
+        "La economía panameña acelera: de 4.8% en el primer trimestre a 6.4% en el segundo",
+    ):
+        assert pib.matched_keyword(fold(headline), "economia") is not None, headline
+
+
+def test_news_about_another_country_gets_no_panamanian_indicator():
+    from datetime import UTC, datetime
+
+    from whoami.pipeline.context import OTHER_COUNTRY_REASON, link_context
+
+    links, reason = link_context(
+        "EEUU reactiva segundo punto fronterizo para la exportación de ganado de México",
+        datetime(2026, 9, 20, tzinfo=UTC),
+        "economia",
+        {},
+    )
+    assert links == () and reason == OTHER_COUNTRY_REASON
