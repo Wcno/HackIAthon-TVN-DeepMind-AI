@@ -79,6 +79,15 @@ class Ledger:
             if entry["model"] == model and _is_miss(entry)
         )
 
+    def recent_calls(self, model: str, since: datetime) -> list[tuple[datetime, int, int]]:
+        """Network calls of a model since a moment, as `(time, tokens, units)`, so a new process can resume the
+        rate limit where the previous one left it."""
+        return [
+            (_parse_ts(entry["ts"]), entry["total_tokens"], _quota_cost(entry))
+            for entry in self._entries(since)
+            if entry["model"] == model and _is_miss(entry)
+        ]
+
     def summary(self, since: datetime | None = None) -> dict[str, dict[str, Any]]:
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for entry in self._entries(since):
