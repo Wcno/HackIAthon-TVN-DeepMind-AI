@@ -331,15 +331,18 @@ def build_outputs(
     llm,
     model: str,
     top_n: int = 5,
+    skip_insufficient: bool = False,
 ) -> OutputSet:
-    """Case files for the `top_n` groups of the inbox and answers for the queries, validated with `verify`.
+    """Case files for the `top_n` groups of the inbox (not counting `insuficiente` ones when `skip_insufficient`)
+    and answers for the queries, validated with `verify`.
 
     Groups, evidence and the review history come from `output_set_in`; groups without a case file end with
     `id_caso=None` and reviews of cases that were not generated are left out.
     """
     evidences = output_set_in.evidencias
     case_files: list[CaseFile] = []
-    for group in sort_inbox(output_set_in.grupos)[:top_n]:
+    inbox = [g for g in sort_inbox(output_set_in.grupos) if not (skip_insufficient and g.estado_evidencia == "insuficiente")]
+    for group in inbox[:top_n]:
         id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
         try:
             case_file, _, _ = generator.generate(group, evidences, id_caso)

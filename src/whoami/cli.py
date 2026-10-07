@@ -4,6 +4,9 @@
     whoami build                        data/raw to data/processed (offline)
     whoami refresh                      ingest + build
     whoami demo                         write the synthetic contract set to data/demo (offline)
+    whoami generar [--generador single|two] [--modelo M] [--top N] [--recuperador bm25|emb|hybrid]
+                   [--compuerta coseno|llm|ambas] [--consultas PATH] [--implicacion]
+                                        case files and answers to outputs/ (calls the LLM)
 """
 
 import argparse
@@ -12,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from whoami import demo
+from whoami.generation import run
 from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
 from whoami.ingest.news import ingest as news_ingest
@@ -42,7 +46,11 @@ def main() -> int:
         command.add_argument("--only", help="comma-separated keys: news sources, worldbank, usgs, inec")
     commands.add_parser("build")
     commands.add_parser("demo")
+    run.add_arguments(commands.add_parser("generar"))
     args = parser.parse_args()
+
+    if args.command == "generar":
+        return run.main(args)
 
     if args.command == "demo":
         output = demo.generate()
