@@ -8,7 +8,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from whoami.backend.pipeline import PipelineBundle
@@ -52,20 +52,29 @@ class EditorialRepository:
                 CREATE TABLE IF NOT EXISTS cases (
                     id TEXT PRIMARY KEY, body TEXT NOT NULL, content_hash TEXT NOT NULL,
                     version INTEGER NOT NULL CHECK (version > 0),
-                    active INTEGER NOT NULL DEFAULT 1
+                    active INTEGER NOT NULL DEFAULT 1,
+                    content_version INTEGER NOT NULL DEFAULT 1
                 );
                 CREATE TABLE IF NOT EXISTS reviews (
                     id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
                     state TEXT NOT NULL, actor TEXT, timestamp TEXT NOT NULL,
-                    note TEXT, version INTEGER NOT NULL
+                    note TEXT, version INTEGER NOT NULL,
+                    content_version INTEGER NOT NULL DEFAULT 1
                 );
                 CREATE INDEX IF NOT EXISTS review_history ON reviews(case_id, timestamp, id);
                 CREATE TABLE IF NOT EXISTS generation_cache (
                     key TEXT PRIMARY KEY, body TEXT NOT NULL, created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
+                    reason TEXT NOT NULL, timestamp TEXT NOT NULL, content_version INTEGER NOT NULL
+                );
             """)
             if "active" not in {row["name"] for row in connection.execute("PRAGMA table_info(cases)")}:
                 connection.execute("ALTER TABLE cases ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
+            for table in ("cases", "reviews"):
+                if "content_version" not in {row["name"] for row in connection.execute(f"PRAGMA table_info({table})")}:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN content_version INTEGER NOT NULL DEFAULT 1")
 
     @contextmanager
     def connection(self):
@@ -87,11 +96,10 @@ class EditorialRepository:
             for previous in connection.execute("SELECT * FROM cases WHERE active = 1").fetchall():
                 if previous["id"] not in incoming_cases:
                     version = previous["version"] + 1
-                    connection.execute("UPDATE cases SET active = 0, version = ? WHERE id = ?", (version, previous["id"]))
-                    self._insert_review(connection, {
-                        "id_caso": previous["id"], "estado": "requiere_evidencia", "responsable": None,
-                        "fecha": datetime.now(UTC).isoformat(), "nota": "Case withdrawn from the active pipeline; approval revoked.",
-                    }, version)
+                    content_version = previous["content_version"] + 1
+                    connection.execute("UPDATE cases SET active = 0, version = ?, content_version = ? WHERE id = ?",
+                                       (version, content_version, previous["id"]))
+                    self._insert_audit(connection, previous["id"], "Case withdrawn from the active pipeline; approval revoked.", content_version)
             for kind, rows, id_field in (
                 ("group", bundle.groups, "id_grupo"),
                 ("evidence", bundle.evidence, "id_evidencia"),
@@ -116,22 +124,38 @@ class EditorialRepository:
                                        (case["id_caso"], canonical_json(body), digest))
                     seed = sorted((review for review in bundle.reviews if review["id_caso"] == case["id_caso"]),
                                   key=lambda review: datetime.fromisoformat(review["fecha"]))
+                    # Demo review dates are synthetic and may be later today.
+                    # Anchor that simulated history before import time, preserving
+                    # source timestamps in notes. Real human decisions use real UTC.
+                    now = datetime.now(UTC)
+                    shift = timedelta(0)
+                    if seed and case.get("sintetico"):
+                        latest = datetime.fromisoformat(seed[-1]["fecha"])
+                        if latest >= now:
+                            shift = latest - now + timedelta(seconds=1)
                     for review in seed:
+                        if shift:
+                            review = review | {"fecha": (datetime.fromisoformat(review["fecha"]) - shift).isoformat(),
+                                               "nota": (review["nota"] or "") + f" [Synthetic seed date {review['fecha']} anchored at import.]"}
                         self._insert_review(connection, review, 1)
                 elif existing["content_hash"] != digest or not existing["active"]:
                     version = existing["version"] + 1
-                    connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ?, active = 1 WHERE id = ?",
-                                       (canonical_json(body), digest, version, case["id_caso"]))
-                    self._insert_review(connection, {
-                        "id_caso": case["id_caso"], "estado": "en_revision", "responsable": None,
-                        "fecha": datetime.now(UTC).isoformat(), "nota": "Pipeline content changed; human review required.",
-                    }, version)
+                    content_version = existing["content_version"] + 1
+                    connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ?, active = 1, content_version = ? WHERE id = ?",
+                                       (canonical_json(body), digest, version, content_version, case["id_caso"]))
+                    self._insert_audit(connection, case["id_caso"], "Pipeline content changed; human review required.", content_version)
+
+    @staticmethod
+    def _insert_audit(connection, case_id: str, reason: str, content_version: int) -> None:
+        connection.execute("INSERT INTO audit_events(case_id, reason, timestamp, content_version) VALUES (?, ?, ?, ?)",
+                           (case_id, reason, datetime.now(UTC).isoformat(), content_version))
 
     @staticmethod
     def _insert_review(connection, review: dict, version: int) -> None:
         timestamp = datetime.fromisoformat(review["fecha"]).astimezone(UTC).isoformat(timespec="microseconds")
-        connection.execute("INSERT INTO reviews(case_id, state, actor, timestamp, note, version) VALUES (?, ?, ?, ?, ?, ?)",
-                           (review["id_caso"], review["estado"], review["responsable"], timestamp, review["nota"], version))
+        content_version = connection.execute("SELECT content_version FROM cases WHERE id = ?", (review["id_caso"],)).fetchone()[0]
+        connection.execute("INSERT INTO reviews(case_id, state, actor, timestamp, note, version, content_version) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                           (review["id_caso"], review["estado"], review["responsable"], timestamp, review["nota"], version, content_version))
 
     def records(self, kind: str) -> list[dict]:
         with self.connection() as connection:
@@ -146,9 +170,10 @@ class EditorialRepository:
 
     @staticmethod
     def _current_review(connection, case_id: str):
-        # Seed fixtures can have future dates. A committed decision on a newer case
-        # version supersedes the seed; timestamps order records within that version.
-        return connection.execute("SELECT * FROM reviews WHERE case_id = ? ORDER BY version DESC, timestamp DESC, id DESC LIMIT 1", (case_id,)).fetchone()
+        # Decisions apply only to the content version that was reviewed.
+        return connection.execute("""SELECT reviews.* FROM reviews JOIN cases ON cases.id = reviews.case_id
+                                  WHERE case_id = ? AND reviews.content_version = cases.content_version
+                                  ORDER BY timestamp DESC, reviews.id DESC LIMIT 1""", (case_id,)).fetchone()
 
     def case(self, case_id: str) -> dict:
         with self.connection() as connection:
@@ -164,14 +189,26 @@ class EditorialRepository:
             return case | {"titulo": group["titulo"], "tema": group["tema"], "estado_evidencia": group["estado_evidencia"],
                            "puntaje": group["puntaje"]["valor"], "componentes": group["puntaje"]["componentes"],
                            "ids_fuente": cited_ids(case), "estado_revision": review["state"] if review else "nuevo",
-                           "version": row["version"]}
+                           "version": row["version"], "content_version": row["content_version"]}
 
     def review_history(self, case_id: str) -> list[dict]:
         self.case(case_id)
         with self.connection() as connection:
             return [{"id_caso": row["case_id"], "estado": row["state"], "responsable": row["actor"],
-                     "fecha": row["timestamp"], "nota": row["note"], "version": row["version"]}
+                     "fecha": row["timestamp"], "nota": row["note"], "version": row["version"],
+                     "content_version": row["content_version"]}
                     for row in connection.execute("SELECT * FROM reviews WHERE case_id = ? ORDER BY version, timestamp, id", (case_id,))]
+
+    def current_review_records(self, case_id: str) -> list[dict]:
+        """G2-compatible human history for the current content version only."""
+        current_version = self.case(case_id)["content_version"]
+        return [{key: value for key, value in review.items() if key not in ("version", "content_version")}
+                for review in self.review_history(case_id) if review["content_version"] == current_version]
+
+    def audit_history(self, case_id: str) -> list[dict]:
+        self.case(case_id)
+        with self.connection() as connection:
+            return [dict(row) for row in connection.execute("SELECT reason, timestamp, content_version FROM audit_events WHERE case_id = ? ORDER BY id", (case_id,))]
 
     def review(self, case_id: str, *, state: str, actor: str, note: str | None, expected_version: int) -> dict:
         if state not in REVIEW_STATES or not actor.strip():

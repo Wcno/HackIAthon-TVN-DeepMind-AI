@@ -65,9 +65,16 @@ Removed cases are archived, excluded from active views and cannot be reviewed;
 their history is retained and approval is revoked. Restoring them requires review.
 Review updates use a single transaction with optimistic version checks; they
 never rewrite G3/G4 JSONL outputs. The SQLite review ledger owns live state.
-Seed history is ordered by UTC date. Subsequent case versions supersede seed
-records even when synthetic demo timestamps are in the future. The real
-decision timestamp is preserved.
+Human decisions are attached to a content version and ordered by UTC date.
+A changed/restored case starts a new review cycle in `nuevo`; previous decisions
+remain historical. Automatic invalidations are separate audit events, never
+anonymous human reviews. `current_review_records(case_id)` returns the current
+cycle in G2's exact record shape, compatible with `ReviewRecord` and its shared
+transition validator. The interface labels decisions on older content as history.
+
+Future dates in synthetic demo reviews are anchored before first import, with
+the original synthetic timestamps preserved in their notes. Real human decision
+timestamps are never shifted. Unchanged seed files do not reset decisions on restart.
 
 Fiches and generation cache survive a process restart. Exporting SQLite
 decisions back to a delivery `fichas.jsonl` is an integration concern for the
@@ -112,3 +119,10 @@ abstention, escaped source text, restart persistence, stale decisions,
 insufficient evidence, approval invalidation, 429/503 recovery, deadline,
 cache invalidation and invalid provider outputs. HTTP transports are mocked;
 no credentials or network are used by tests.
+
+Publication uses `scripts/push_g5.ps1`: it checks that PR #32 was merged by
+G2's developer, the final merge and latest `origin/prod` are ancestors of G5,
+the checkout is clean, and tests pass. A cancelled dependency blocks push.
+An open tracking issue is reported separately; the developer's integrated PR
+is the evidence that its implementation is complete. Run the two-axis code
+review on the final diff before invoking this script.

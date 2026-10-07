@@ -10,6 +10,7 @@ from whoami.backend.app import create_app
 from whoami.backend.pipeline import PipelineBundle, load_pipeline
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord
 from whoami.backend.settings import Settings
+from whoami.schemas import ReviewRecord, current_review_state, transition_errors
 
 
 @pytest.fixture
@@ -53,6 +54,9 @@ def test_human_decision_survives_restart_and_keeps_seed_files_untouched(settings
         assert case["version"] == 2
         assert "Editorial reviewer" in client.get("/cases/CASO-001/review").text
         assert state in client.get("/inbox").text
+        records = [ReviewRecord.model_validate(record) for record in client.app.state.repository.current_review_records("CASO-001")]
+        assert transition_errors(records) == []
+        assert current_review_state(records, "CASO-001") == state
     assert (settings.output_directory / "fichas.jsonl").read_bytes() == seed
 
 
@@ -94,9 +98,16 @@ def test_pipeline_changes_revoke_approval_and_preserve_history(settings):
     approved = repository.case("CASO-001")
     changed_cases = tuple(dict(item, accion_recomendada="Changed recommendation") if item["id_caso"] == "CASO-001" else item for item in bundle.cases)
     repository.import_bundle(replace(bundle, cases=changed_cases))
-    assert repository.case("CASO-001")["estado_revision"] == "en_revision"
+    assert repository.case("CASO-001")["estado_revision"] == "nuevo"
     assert repository.case("CASO-001")["version"] == approved["version"] + 1
     assert any(review["estado"] == "aprobado_como_borrador" for review in repository.review_history("CASO-001"))
+    assert repository.current_review_records("CASO-001") == []
+    changed = repository.case("CASO-001")
+    repository.review("CASO-001", state="en_revision", actor="Reviewer", note="Check the new content", expected_version=changed["version"])
+    records = [ReviewRecord.model_validate(record) for record in repository.current_review_records("CASO-001")]
+    assert transition_errors(records) == []
+    assert all(record.responsable == "Reviewer" for record in records)
+    assert repository.audit_history("CASO-001")
 
 
 def test_precomputed_queries_abstention_and_safe_html(settings):
@@ -152,10 +163,11 @@ def test_removed_cases_are_archived_and_cannot_remain_approved(settings):
     with pytest.raises(MissingRecord):
         repository.review("CASO-005", state="en_revision", actor="Reviewer", note="Reopen", expected_version=2)
     with repository.connection() as connection:
-        assert connection.execute("SELECT count(*) FROM reviews WHERE case_id = 'CASO-005'").fetchone()[0] == original_history + 1
-        assert repository._current_review(connection, "CASO-005")["state"] == "requiere_evidencia"
+        assert connection.execute("SELECT count(*) FROM reviews WHERE case_id = 'CASO-005'").fetchone()[0] == original_history
+        assert repository._current_review(connection, "CASO-005") is None
     repository.import_bundle(bundle)
-    assert repository.case("CASO-005")["estado_revision"] == "en_revision"
+    assert repository.case("CASO-005")["estado_revision"] == "nuevo"
+    assert repository.current_review_records("CASO-005") == []
 
 
 def test_htmx_errors_and_draft_claims_preserve_screen_contract(settings):

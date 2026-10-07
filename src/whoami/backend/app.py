@@ -145,7 +145,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/cases/{case_id}/review", response_class=HTMLResponse)
     def review(request: Request, case_id: str):
         return render(request, "review", "Revisión humana", case=request.app.state.editorial.case(case_id),
-                      history=request.app.state.repository.review_history(case_id))
+                      history=request.app.state.repository.review_history(case_id),
+                      audit=request.app.state.repository.audit_history(case_id))
 
     @app.post("/cases/{case_id}/review", response_class=HTMLResponse)
     def update_review(request: Request, case_id: str, decision: Annotated[ReviewRequest, Form()]):

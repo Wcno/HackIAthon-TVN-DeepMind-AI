@@ -41,7 +41,8 @@
   <form method="post" action="/cases/{{ case.id_caso|urlencode }}/review" hx-post="/cases/{{ case.id_caso|urlencode }}/review" hx-target="#screen" hx-swap="outerHTML">
   <input type="hidden" name="expected_version" value="{{ case.version }}"><label>Decisión <select name="state">{% for state in review_states %}<option value="{{ state }}">{{ state }}</option>{% endfor %}</select></label>
   <label>Responsable <input name="actor" required maxlength="120"></label><label>Nota <textarea name="note" maxlength="2000"></textarea></label><button>Guardar decisión</button></form>
-  <h2>Historial</h2>{% for item in history %}<article><p>{{ item.fecha|panama_time }} (Panamá) · {{ item.estado }} · {{ item.responsable or 'Revisión pendiente' }}</p><p>{{ item.nota or '' }}</p></article>{% endfor %}
+  <h2>Historial humano</h2>{% for item in history %}<article><p>{{ item.fecha|panama_time }} (Panamá) · {{ item.estado }} · {{ item.responsable or 'Revisión pendiente' }} · {% if item.content_version == case.content_version %}Contenido actual{% else %}Versión anterior: decisión histórica{% endif %}</p><p>{{ item.nota or '' }}</p></article>{% endfor %}
+  {% if audit %}<h2>Cambios del contenido</h2>{% for event in audit %}<p>{{ event.timestamp|panama_time }} (Panamá): cambió el contenido del caso. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}{% endif %}
 {% elif screen == 'queries' %}
   <form method="get"><label>Consulta <input name="q" required maxlength="2000"></label><button>Consultar</button></form>
   <h2>Consultas disponibles</h2>{% for item in examples %}<p><a href="/queries?q={{ item.consulta|urlencode }}">{{ item.consulta }}</a></p>{% endfor %}
