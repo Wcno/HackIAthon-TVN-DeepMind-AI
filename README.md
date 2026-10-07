@@ -32,6 +32,19 @@ La rama de integración y producción es `prod`. Cada cambio se desarrolla en un
 
 También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen pushes directos a `prod`.
 
+### Clasificación de titulares
+
+La primera capacidad de IA vive en `src/ai/classifier.py`. `classify_with_gemini`
+usa la salida JSON estricta de Gemini para asignar un tema y una confianza validada;
+el texto de la fuente se delimita como contenido no confiable para evitar inyección
+de instrucciones. `keyword_baseline` es un baseline transparente para comparar la
+clasificación semántica. Los casos sintéticos de desarrollo están en
+`data/classification_samples.jsonl` y las pruebas no requieren red ni una API key:
+
+```bash
+python -m pytest -q
+```
+
 ### Configuración de GitHub y despliegue
 
 - Usar `prod` como rama predeterminada.
