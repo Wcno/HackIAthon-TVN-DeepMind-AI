@@ -70,6 +70,8 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
             assert response.status_code == 200, path
             assert "text/html" in response.headers["content-type"]
             assert "Demostración" in response.text
+            if path == "/quality":
+                assert "Integridad: verified" in response.text
             checked.append({"path": path, "status": response.status_code})
         for answer in bundle.answers:
             response = client.get("/queries", params={"q": answer["consulta"]})
@@ -114,4 +116,5 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
             "real_http_views": checked, "query_outcomes": [answer["estado"] for answer in bundle.answers],
             "saved_transitions": decisions, "different_processes": first_pid != second_pid,
             "state_after_restart": exported.review_state("CASO-001"), "g2_export": counts,
+            "snapshot_integrity": "verified",
         }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

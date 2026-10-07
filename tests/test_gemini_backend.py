@@ -88,8 +88,15 @@ def test_final_and_invalid_responses_do_not_enter_cache_or_expose_secrets(tmp_pa
     asyncio.run(scenario())
 
 
-def test_invalid_cached_response_is_controlled_and_regenerated_online(tmp_path):
+@pytest.mark.parametrize("key_access", [False, True])
+def test_invalid_cached_response_is_controlled_and_regenerated_online(tmp_path, key_access):
     async def scenario():
+        def check(value):
+            if key_access:
+                if not isinstance(value["answer"], str):
+                    raise ValueError("Invalid answer")
+            else:
+                validate(value)
         settings = Settings(database=tmp_path / "db.sqlite3", offline=False, gemini_api_key="test-secret")
         repository = EditorialRepository(settings.database)
         calls = []
@@ -99,10 +106,10 @@ def test_invalid_cached_response_is_controlled_and_regenerated_online(tmp_path):
             return httpx.Response(200, json={"choices": [{"message": {"content": '{"answer":"supported"}'}}]})
 
         client = GeminiClient(repository, settings, transport=httpx.MockTransport(handler))
-        await client.generate(MESSAGES, EVIDENCE, validate=validate)
+        await client.generate(MESSAGES, EVIDENCE, validate=check)
         with repository.connection() as connection:
             connection.execute("UPDATE generation_cache SET body = ?", ('{"wrong":true}',))
-        repaired = await client.generate(MESSAGES, EVIDENCE, validate=validate)
+        repaired = await client.generate(MESSAGES, EVIDENCE, validate=check)
         assert repaired.content == {"answer": "supported"} and not repaired.cached
         assert len(calls) == 2
         await client.close()
@@ -110,7 +117,7 @@ def test_invalid_cached_response_is_controlled_and_regenerated_online(tmp_path):
             connection.execute("UPDATE generation_cache SET body = ?", ("invalid JSON",))
         offline = GeminiClient(repository, replace(settings, offline=True), transport=httpx.MockTransport(handler))
         with pytest.raises(GenerationUnavailable, match="cached response is invalid"):
-            await offline.generate(MESSAGES, EVIDENCE, validate=validate)
+            await offline.generate(MESSAGES, EVIDENCE, validate=check)
         assert len(calls) == 2
         await offline.close()
 

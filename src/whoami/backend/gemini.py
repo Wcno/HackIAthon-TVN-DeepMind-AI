@@ -14,6 +14,9 @@ from whoami.backend.repository import EditorialRepository, content_hash
 from whoami.backend.settings import Settings
 
 
+_INVALID_RESPONSE_ERRORS = (ValueError, KeyError, IndexError, TypeError, AttributeError)
+
+
 class GenerationUnavailable(ValueError):
     pass
 
@@ -57,7 +60,7 @@ class GeminiClient:
                                 raise ValueError("Expected cached JSON object")
                             validate(cached)
                             return GenerationResult(cached, True, 0)
-                    except (ValueError, TypeError, AttributeError):
+                    except _INVALID_RESPONSE_ERRORS:
                         self.repository.cache_delete(key)
                         if self.settings.offline:
                             raise GenerationUnavailable("The cached response is invalid; online regeneration is required.") from None
@@ -85,7 +88,7 @@ class GeminiClient:
                 if not isinstance(content, dict):
                     raise ValueError("Expected a JSON object")
                 validate(content)
-            except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+            except _INVALID_RESPONSE_ERRORS:
                 raise GenerationUnavailable("The provider returned an invalid structured response.") from None
             self.repository.cache_put(key, content)
             return GenerationResult(content, False, attempt)

@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-07T06:01:42.801627+00:00",
+  "timestamp_utc": "2026-10-07T06:08:12.139193+00:00",
   "synthetic": true,
   "real_http_views": [
     {
@@ -215,5 +215,6 @@
     "fichas.jsonl": 5,
     "revisiones.jsonl": 11,
     "consultas.jsonl": 4
-  }
+  },
+  "snapshot_integrity": "verified"
 }
