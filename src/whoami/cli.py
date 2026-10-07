@@ -3,6 +3,7 @@
     whoami ingest [--only tvn,usgs,inec]     download feeds and APIs to data/raw (network)
     whoami build                        data/raw to data/processed (offline)
     whoami refresh                      ingest + build
+    whoami demo                         write the synthetic contract set to data/demo (offline)
 """
 
 import argparse
@@ -10,6 +11,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from whoami import demo
 from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
 from whoami.ingest.news import ingest as news_ingest
@@ -39,7 +41,13 @@ def main() -> int:
         command = commands.add_parser(name)
         command.add_argument("--only", help="comma-separated keys: news sources, worldbank, usgs, inec")
     commands.add_parser("build")
+    commands.add_parser("demo")
     args = parser.parse_args()
+
+    if args.command == "demo":
+        paquete = demo.generar()
+        print(f"data/demo: {len(paquete.grupos)} grupos, {len(paquete.fichas)} fichas, {len(paquete.consultas)} consultas")
+        return 0
 
     only = set(args.only.split(",")) if getattr(args, "only", None) else None
     known = set().union(*(dataset.keys for dataset in DATASETS.values()))

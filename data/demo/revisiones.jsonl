@@ -1,0 +1,5 @@
+{"id_caso": "CASO-001", "estado": "nuevo", "responsable": null, "fecha": "2026-10-07T12:00:00Z", "nota": null}
+{"id_caso": "CASO-001", "estado": "en_revision", "responsable": "Revisor de demostración", "fecha": "2026-10-07T13:00:00Z", "nota": "Pendiente confirmar la cifra con el comunicado."}
+{"id_caso": "CASO-002", "estado": "en_revision", "responsable": "Revisor de demostración", "fecha": "2026-10-07T13:10:00Z", "nota": "Esperando el dato oficial del INEC."}
+{"id_caso": "CASO-003", "estado": "requiere_evidencia", "responsable": "Revisor de demostración", "fecha": "2026-10-07T13:20:00Z", "nota": "Solo hay un titular."}
+{"id_caso": "CASO-005", "estado": "aprobado_como_borrador", "responsable": "Revisor de demostración", "fecha": "2026-10-07T13:30:00Z", "nota": "Aviso verificado con dos medios."}
