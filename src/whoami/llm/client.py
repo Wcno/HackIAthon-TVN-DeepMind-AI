@@ -15,14 +15,14 @@ from openai import OpenAI
 
 from whoami.llm.cache import ResponseCache
 from whoami.llm.ledger import Ledger
-from whoami.llm.models import MODELS, RATE_HEADROOM, ModelLimits
+from whoami.llm.models import MODELS, RATE_HEADROOM, TOKEN_HEADROOM, ModelLimits
 from whoami.llm.ratelimit import RateLimiter
 from whoami.llm.settings import Settings
 
 RETRYABLE_STATUS_CODES: Final = frozenset({429, 500, 503})
 MAX_BACKOFF_S: Final = 60
 DEFAULT_MAX_TOKENS_ESTIMATE: Final = 512
-CHARS_PER_TOKEN: Final = 4
+CHARS_PER_TOKEN: Final = 3  # Spanish tokenizes denser than English; overestimating is the safe side
 
 
 class LLMError(RuntimeError):
@@ -231,7 +231,7 @@ class LLM:
     def _limiter(self, limits: ModelLimits) -> RateLimiter:
         if limits.name not in self._limiters:
             self._limiters[limits.name] = RateLimiter(
-                max(int(limits.rpm * RATE_HEADROOM), 1), max(int(limits.tpm * RATE_HEADROOM), 1), self._monotonic, self._sleep
+                max(int(limits.rpm * RATE_HEADROOM), 1), max(int(limits.tpm * TOKEN_HEADROOM), 1), self._monotonic, self._sleep
             )
         return self._limiters[limits.name]
 
