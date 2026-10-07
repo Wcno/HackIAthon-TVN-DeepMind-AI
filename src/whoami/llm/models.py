@@ -13,6 +13,10 @@ class ModelLimits:
     kind: Literal["chat", "embedding"]
 
 
+#: Share of the published RPM and TPM the limiter targets. Google counts per calendar minute and the quota
+#: is shared by every process on the project key, so a sliding window at 100 % still peaked at 32/30 RPM.
+RATE_HEADROOM: Final = 0.8
+
 MODELS: Final = {
     m.name: m
     for m in (
