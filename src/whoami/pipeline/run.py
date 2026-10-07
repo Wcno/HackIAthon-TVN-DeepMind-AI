@@ -28,6 +28,7 @@ from whoami.schemas import Evidence, Group, Member, OutputSet, parse_utc, sort_i
 
 Classifier = Callable[[Sequence[Mapping[str, str]], np.ndarray], list[tuple[str, float, str]]]
 Grouper = Callable[[np.ndarray, Sequence[datetime]], list[list[int]]]
+Configure = Callable[[Sequence[Mapping[str, str]], np.ndarray], tuple[Classifier, Grouper]]
 
 SIMILARITY_THRESHOLD = 0.85  # cosine; only `group_by_similarity`, kept to compare against the default grouper
 EMBEDDINGS_DIR = PROCESSED / "embeddings"
@@ -203,11 +204,16 @@ def run(
     outputs: Path = OUTPUTS,
     classify: Classifier = classify_by_keywords,
     group: Grouper = group_agglomerative,
+    configure: Configure | None = None,
 ) -> OutputSet:
-    """Reads the processed data, builds the groups and writes them where `store.load` reads them."""
+    """Reads the processed data, builds the groups and writes them where `store.load` reads them.
+
+    `configure(rows, vectors) -> (classify, group)` builds both from the loaded data and replaces the two arguments."""
     rows = load_news_rows()
     vectors = load_vectors(vectors_path or default_vectors_path(), rows)
     fecha_corte = parse_utc(json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))["fecha_corte_UTC"])
+    if configure is not None:
+        classify, group = configure(rows, vectors)
     output = build(rows, vectors, classify, group, fecha_corte)
     store.write(output, data, outputs)
     return output

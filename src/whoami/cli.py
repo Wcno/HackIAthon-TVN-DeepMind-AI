@@ -5,7 +5,9 @@
     whoami refresh                      ingest + build
     whoami demo                         write the synthetic contract set to data/demo (offline)
     whoami embed                        embed noticias.csv with the local model to data/processed/embeddings (offline)
-    whoami pipeline [--vectors PATH]    news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl (offline)
+    whoami pipeline [--vectors PATH] [--sin-llm] [--modelo-llm MODEL]
+                                        news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
+                                        --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
 """
 
 import argparse
@@ -21,8 +23,12 @@ from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
 from whoami.ingest.news import ingest as news_ingest
 from whoami.ingest.news.sources import SOURCES
+from whoami.llm import LLMError, default_llm
 from whoami.pipeline import run as pipeline
+from whoami.pipeline.ai import CountingLLM, ai_components
 from whoami.pipeline.evidence import load_news_rows
+from whoami.pipeline.report import format_summary
+from whoami.pipeline.topics import DEFAULT_LLM_MODEL
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument(
         "--vectors", type=Path, help="embeddings .npy next to a manifest.json with their ids (default: the only one)"
     )
+    pipeline_command.add_argument("--sin-llm", action="store_true", help="no LLM at all: logistic topics, embeddings-only grouping")
+    pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     args = parser.parse_args(argv)
 
     if args.command == "demo":
@@ -68,11 +76,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "pipeline":
         try:
-            output = pipeline.run(args.vectors)
-        except pipeline.PipelineInputError as error:
+            llm = None if args.sin_llm else CountingLLM(default_llm())
+        except KeyError as error:
+            parser.error(f"falta la variable de entorno {error.args[0]}: define la clave o corre con --sin-llm")
+        try:
+            output = pipeline.run(args.vectors, configure=ai_components(llm, args.modelo_llm))
+        except (pipeline.PipelineInputError, LLMError) as error:
             parser.error(str(error))
-        ranges = Counter(group.puntaje.rango for group in output.grupos)
-        print(f"data/processed: {len(output.grupos)} grupos ({dict(ranges)}), {len(output.evidencias)} evidencias")
+        print(format_summary(output, llm.counts() if llm else None))
         return 0
 
     only = set(args.only.split(",")) if getattr(args, "only", None) else None
