@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from whoami.llm.client import Completion, LLMError
-from whoami.schemas import Evidence
+from whoami.schemas import Components, Evidence, Group, Member, Score, parse_utc
 
 
 class FakeLLM:
@@ -72,4 +72,35 @@ def by_id(*evidences: Evidence) -> dict[str, Evidence]:
     return {e.id_evidencia: e for e in evidences}
 
 
-__all__ = ["FakeLLM", "LLMError", "by_id", "indicator", "news"]
+def member(id_: str, medio: str = "TVN", procedencia: str | None = None, fecha: str = "2026-10-05T14:00:00Z",
+           alcance: str = "titular_descripcion") -> Member:
+    return Member(
+        id_noticia=id_,
+        titulo="Titular",
+        url="https://x.invalid",
+        medio=medio,
+        procedencia=procedencia or medio,
+        fecha_publicacion=parse_utc(fecha),
+        alcance_texto=alcance,
+        recirculada_en=None,
+    )
+
+
+def group(members: list[Member], *, estado: str = "parcial", id_grupo: str = "G-1", context: tuple = (), why: str = "sin contexto") -> Group:
+    score = Score.from_components(
+        Components(R=0.5, I=0.5, U=0.5, N=0.5, E=0.5), {name: "x" for name in "RIUNE"}
+    )
+    return Group(
+        id_grupo=id_grupo,
+        titulo="Grupo",
+        tema="economia",
+        miembros=tuple(members),
+        puntaje=score,
+        estado_evidencia=estado,
+        contexto=context,
+        sin_contexto_motivo=None if context else why,
+        id_caso=None,
+    )
+
+
+__all__ = ["FakeLLM", "LLMError", "by_id", "group", "indicator", "member", "news"]

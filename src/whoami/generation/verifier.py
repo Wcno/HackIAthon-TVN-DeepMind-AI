@@ -70,7 +70,7 @@ class _Token:
         return self.text[0].isdigit()
 
 
-def _parse_digits(token: str) -> list[Decimal]:
+def parse_digits(token: str) -> list[Decimal]:
     """`1.500` and `1,500` are 1500; `1,5` and `1.5` are 1.5; `1.234,56` and `1,234.56` are 1234.56."""
     separators = re.findall(r"[.,]", token)
     if not separators:
@@ -123,7 +123,7 @@ def normalize_numbers(text: str) -> list[Decimal]:
     while index < len(tokens):
         token = tokens[index]
         if token.is_number:
-            values = _parse_digits(token.text)
+            values = parse_digits(token.text)
             index += 1
             if len(values) == 1:
                 multiplier, index = _digit_multiplier(tokens, index, adjacent)
