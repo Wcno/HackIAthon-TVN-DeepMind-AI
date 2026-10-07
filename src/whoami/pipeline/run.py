@@ -18,6 +18,7 @@ from whoami.contracts import MANIFEST_JSON, OUTPUTS, PROCESSED
 from whoami.embeddings import MODEL_NAME
 from whoami.pipeline.context import link_context
 from whoami.pipeline.evidence import load_news_rows, load_official_evidence, news_evidence
+from whoami.pipeline.grouping import GROUP_WINDOW, group_agglomerative, unit_vectors
 from whoami.pipeline.provenance import merge_provenances, provenance
 from whoami.pipeline.recirculation import apply_recirculations, group_recirculations, metadata_recirculation
 from whoami.pipeline.scoring import evidence_state, score_group
@@ -28,18 +29,12 @@ from whoami.schemas import Evidence, Group, Member, OutputSet, parse_utc, sort_i
 Classifier = Callable[[Sequence[Mapping[str, str]], np.ndarray], list[tuple[str, float, str]]]
 Grouper = Callable[[np.ndarray, Sequence[datetime]], list[list[int]]]
 
-SIMILARITY_THRESHOLD = 0.85  # cosine; the experiments will tune it
-GROUP_WINDOW = timedelta(hours=72)  # the same event is reported within three days
+SIMILARITY_THRESHOLD = 0.85  # cosine; only `group_by_similarity`, kept to compare against the default grouper
 EMBEDDINGS_DIR = PROCESSED / "embeddings"
 
 
 class PipelineInputError(Exception):
     """An input of the pipeline is missing or does not match the news; the message says what to fix."""
-
-
-def _unit(vectors: np.ndarray) -> np.ndarray:
-    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-    return vectors / np.where(norms == 0, 1.0, norms)
 
 
 def group_by_similarity(
@@ -49,7 +44,7 @@ def group_by_similarity(
     window: timedelta = GROUP_WINDOW,
 ) -> list[list[int]]:
     """Single-link: pairs above the threshold and inside the window are joined, most similar first."""
-    unit = _unit(np.asarray(vectors, dtype=float))
+    unit = unit_vectors(np.asarray(vectors, dtype=float))
     similarity = unit @ unit.T
     hours = np.array([date.timestamp() / 3600 for date in dates])
     close = np.abs(hours[:, None] - hours[None, :]) <= window.total_seconds() / 3600
@@ -127,7 +122,7 @@ def build(
 ) -> OutputSet:
     """`official` defaults to every official record in `data/processed/`."""
     official = load_official_evidence() if official is None else official
-    unit = _unit(np.asarray(vectors, dtype=float))
+    unit = unit_vectors(np.asarray(vectors, dtype=float))
     dates = [parse_utc(row["fecha_publicacion"]) for row in rows]
     topics = classify(rows, unit)
 
@@ -135,7 +130,7 @@ def build(
     for indices in group(unit, dates):
         ordered = sorted(indices, key=lambda i: (dates[i], rows[i]["id_noticia"]))
         members = _members_of([rows[i] for i in ordered])
-        centroid = _unit(unit[ordered].mean(axis=0, keepdims=True))[0]
+        centroid = unit_vectors(unit[ordered].mean(axis=0, keepdims=True))[0]
         central = ordered[int(np.argmax(unit[ordered] @ centroid))]
         drafts.append((ordered, members, centroid, rows[central]["titulo"]))
 
@@ -207,7 +202,7 @@ def run(
     data: Path = PROCESSED,
     outputs: Path = OUTPUTS,
     classify: Classifier = classify_by_keywords,
-    group: Grouper = group_by_similarity,
+    group: Grouper = group_agglomerative,
 ) -> OutputSet:
     """Reads the processed data, builds the groups and writes them where `store.load` reads them."""
     rows = load_news_rows()

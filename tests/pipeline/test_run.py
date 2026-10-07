@@ -310,3 +310,12 @@ def test_vectors_whose_ids_differ_from_the_news_are_rejected(tmp_path):
 
     with pytest.raises(PipelineInputError, match="ids"):
         load_vectors(path, ROWS)
+
+
+def test_the_pipeline_groups_with_agglomerative_average_linkage_by_default():
+    import inspect
+
+    from whoami.pipeline.grouping import group_agglomerative
+    from whoami.pipeline.run import run
+
+    assert inspect.signature(run).parameters["group"].default is group_agglomerative
