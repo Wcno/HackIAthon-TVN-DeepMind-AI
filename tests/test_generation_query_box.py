@@ -173,3 +173,18 @@ def test_official_answers_keep_their_period():
     llm = FakeLLM([model_answer(respuesta="Fueron 44,36 % del PIB en 2024.", citas=[indicator_cite])])
     answer = ask(llm, query="¿Cuánto representaron las exportaciones en 2024?")
     assert answer.estado == "respondida"
+
+
+def test_a_contradiction_version_with_a_figure_its_record_lacks_is_dropped():
+    from whoami.generation.query_box import _distinct_versions
+    from whoami.schemas import Evidence
+
+    def news(news_id: str, title: str) -> Evidence:
+        return Evidence(id_evidencia=news_id, tipo="noticia", titulo=title, url="https://x.invalid", fecha=None, campos={"titulo": title})
+
+    evidences = {"N-a": news("N-a", "Metro transportó 9 millones"), "N-b": news("N-b", "Metro transportó 11 millones")}
+    raw = [
+        {"valor": "9 millones", "alcance": "A", "id_evidencia": "N-a"},
+        {"valor": "15 millones", "alcance": "B", "id_evidencia": "N-b"},
+    ]
+    assert [v.valor for v in _distinct_versions(raw, {"N-a", "N-b"}, evidences)] == ["9 millones"]

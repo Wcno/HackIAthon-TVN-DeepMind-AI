@@ -292,16 +292,19 @@ def check_citations(citations: Iterable[Citation], evidences: Mapping[str, Evide
 
 
 def supported_numbers(citations: Iterable[Citation], evidences: Mapping[str, Evidence]) -> set[Decimal]:
-    """Numbers of the cited passages and of the full cited fields, plus the period of official figures."""
+    """Numbers of the cited passages and of every field of the cited evidence records.
+
+    A figure taken from another field of the same record (its publication date, its period) is still grounded in
+    that record; a figure from a record nobody cited is not.
+    """
     supported: set[Decimal] = set()
     for citation in citations:
         evidence = evidences.get(citation.id_evidencia)
         supported.update(normalize_numbers(citation.pasaje))
         if evidence is None:
             continue
-        supported.update(normalize_numbers(evidence.campos.get(citation.campo, "")))
-        if evidence.tipo in OFFICIAL_KINDS:
-            supported.update(normalize_numbers(evidence.campos.get("periodo", "")))
+        for value in evidence.campos.values():
+            supported.update(normalize_numbers(value))
     return supported
 
 

@@ -6,7 +6,7 @@ from typing import Any
 from whoami.generation.jsonschemas import answer_schema, response_format, to_answer
 from whoami.generation.prompting import Gate, build_messages
 from whoami.generation.retrieval import Retriever
-from whoami.generation.verifier import check_citations, unsupported_numbers
+from whoami.generation.verifier import check_citations, normalize_numbers, unsupported_numbers
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
@@ -33,17 +33,30 @@ def _abstention(id_consulta: str, consulta: str, motivo: str, faltante: str | No
     )
 
 
-def _distinct_versions(raw: Sequence[Mapping[str, Any]], allowed: set[str]) -> list[ContradictionVersion]:
-    """Versions that cite a retrieved evidence, keeping only the first of each value and of each evidence."""
+def _distinct_versions(
+    raw: Sequence[Mapping[str, Any]], allowed: set[str], evidences: Mapping[str, Evidence]
+) -> list[ContradictionVersion]:
+    """Versions that cite a retrieved evidence whose record supports their figures, keeping only the first of each
+    value and of each evidence."""
     versions: list[ContradictionVersion] = []
     for item in raw:
         version = ContradictionVersion.model_validate(item)
         if (
             version.id_evidencia in allowed
+            and _version_supported(version, evidences)
             and all(version.valor != v.valor and version.id_evidencia != v.id_evidencia for v in versions)
         ):
             versions.append(version)
     return versions
+
+
+def _version_supported(version: ContradictionVersion, evidences: Mapping[str, Evidence]) -> bool:
+    """Every figure of the version appears in some field of the record it names."""
+    record = evidences.get(version.id_evidencia)
+    if record is None:
+        return False
+    in_record = {number for value in record.campos.values() for number in normalize_numbers(value)}
+    return set(normalize_numbers(version.valor)) <= in_record
 
 
 def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Evidence], allowed: set[str]) -> dict:
@@ -58,7 +71,7 @@ def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Ev
     cited = [c for c in map(Citation.model_validate, data["citas"]) if c.id_evidencia in allowed]
     citations = check_citations(cited, evidences).valid
     text = data.get("respuesta")
-    versions = _distinct_versions(data["versiones"], allowed)
+    versions = _distinct_versions(data["versiones"], allowed, evidences)
     citations_json = [c.model_dump() for c in citations]
     if state == "contradiccion" and len(versions) >= 2:
         return {"estado": "contradiccion", "citas": citations_json, "versiones": [v.model_dump() for v in versions]}

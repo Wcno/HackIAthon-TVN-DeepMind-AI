@@ -181,3 +181,21 @@ def test_verify_case_file_reports_per_claim_issues():
     )
     report = verify_case_file(case_file, EVIDENCES)
     assert len(report.valid_claims) == 1 and not report.issues and not report.repaired
+
+
+def test_a_date_from_the_cited_record_publication_date_is_supported():
+    from whoami.generation.verifier import unsupported_numbers
+    from whoami.schemas import Citation, Evidence
+
+    evidence = Evidence(
+        id_evidencia="N-18aa523e6849",
+        tipo="noticia",
+        titulo="Sismos en Chiriquí de magnitud 5.4",
+        url="https://example.invalid/sismo",
+        fecha=None,
+        campos={"titulo": "Sismos en Chiriquí de magnitud 5.4", "fecha_publicacion": "2026-09-12T19:56:08Z"},
+    )
+    citation = Citation(id_evidencia="N-18aa523e6849", campo="titulo", pasaje="Sismos en Chiriquí de magnitud 5.4")
+    text = "El 12 de septiembre de 2026 se reportó un sismo de magnitud 5.4 en Chiriquí."
+    assert unsupported_numbers(text, [citation], {evidence.id_evidencia: evidence}) == []
+    assert unsupported_numbers("Hubo 7 heridos.", [citation], {evidence.id_evidencia: evidence}) == [7]
