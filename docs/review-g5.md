@@ -1,46 +1,50 @@
-# G5 review before publication
+# G5 completion review
 
 Fixed base: `bcc0fba494f128d8b232afad8aae50976e36be79` (the final G2 merge).
-Reviewed implementation: `587ae0e83ec41c2130e1a309f8b3be4977a0307a`.
-Command: `git diff bcc0fba...587ae0e`.
-Commits: `fe25583`, `f62ff19`, `09b1213`, `0a9407e`, `587ae0e`.
+Reviewed implementation: `645043aaea24c9cebc874bfe714bf99fcb5511e4`.
+Command: `git diff bcc0fba...645043a`.
 
-Two independent axes ran through the `code-review` skill. Findings were fixed
-and the affected behavior checked again. No approval or comment was submitted
-to G2 PR #32. NoSkill007 implemented its final contract in `92c3e6e` and merged
-it at `bcc0fba`; G5 includes that exact integration.
+The `code-review` skill ran independent Standards and Spec reviews. Findings
+were corrected and the affected behavior verified. No review or approval was
+submitted to PR #32. NoSkill007 corrected and merged G2 at `bcc0fba` before
+G5 publication; that exact commit is included.
 
 ## Standards
 
-**No documented violations remain.** Fixed findings included removed cases
-remaining approved, JSON errors on HTMX requests, a hardcoded provider endpoint,
-automatic events being stored as invalid human reviews and empty optional
-notes violating G2's `NonEmpty | None` contract.
+**0 documented violations, 0 concrete problems pending, 0 suggested smells.**
 
-Automatic invalidations now use audit events. Human reviews belong to a content
-version and their current-cycle export validates against `ReviewRecord` and
-`transition_errors`. Dates use UTC ordering; original timestamps of synthetic
-future-dated seed reviews are retained in notes when anchoring their demo
-history before import. Real human timestamps are unchanged.
+The final review confirmed consistent SQLite exports, versioned human history,
+separate audit events, controlled cache repair, bounded provider calls, actual
+SHA-256 comparisons and platform-stable snapshot line endings. Cached and new
+provider responses use the same validation error handling. The direct-key
+validator regression reproduced the last cache bug and passes after the fix.
 
-Two optional smells remain: the inbox ordering key repeats G2's sorting rule,
-and the template dispatches by screen. They are not correctness blockers for
-this two-day MVP. Shared claim/quality partials support the G6 presentation work.
+Ranking uses G2's shared function and screens use separate partials, resolving
+both observations from the earlier MVP review. Code and engineering names are
+English; challenge fields and editorial text retain their Spanish contract.
 
 ## Spec
 
-**No pending findings within issue #23.** All eight screens serve conforming
-fixtures; fiches, review states, reviewers and dates persist in SQLite.
-Editorial packages show claim types, attribution and navigable citations.
-HTML/HTMX errors retain HTTP status codes. Cached JSON generation includes
-prompt, model and evidence identity/content; retries for 429/503 stay within
-the configured deadline. G4 owns live retrieval/generation integration, and
-G6 owns the final presentation, as documented in the backend contract.
+**0 pending findings within issue #23.**
 
-Publication checks that the other developer merged G2, both that merge and
-latest `origin/prod` are included, the checkout is clean and the test suite
-passes. The linked G2 tracking issue remains open administratively; its merged
-resolution is the implementation-completion evidence.
+All eight screen types serve the supplied data, with citations, statement types
+and Panama dates. The real HTTP acceptance starts Uvicorn, opens all supplied
+group/case/evidence views, exercises human decisions, terminates it and starts a
+second process against the same database. State, actor and note survive.
 
-Final counts: Standards 0 documented findings / 2 optional smells; Spec 0
-pending findings. There is no remaining blocking issue in either axis.
+The export CLI reads a consistent SQLite snapshot, validates it through G2,
+writes fiches/reviews/precomputed queries, and its output reloads through G2's
+actual loader. Concurrent reviewers cannot overwrite each other. Generation
+cache keys include prompt, model, parameters and evidence identity/content;
+invalid cache entries are repaired online or fail honestly offline. 429/503
+retries and provider waiting remain bounded.
+
+The quality view verifies frozen bytes rather than merely counting hashes.
+`.gitattributes` corrects the Windows checkout mismatch without altering source
+values. CI validates Windows/Linux Python 3.12 and builds the wheel. G4's live
+generation pipeline and G6's final visual design are separate issues.
+
+Final counts: Standards 0; Spec 0. Runtime evidence and its G2 delivery sample
+are under `outputs/validation/`. PR #33 supplies the integration surface; its
+external review and CI state must be checked before merging under the README
+workflow.

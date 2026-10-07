@@ -131,7 +131,7 @@ The G5 tests exercise all eight views and fragments, cited queries and
 abstention, escaped source text, restart persistence, stale decisions,
 insufficient evidence, approval invalidation, 429/503 recovery, deadline,
 cache invalidation and invalid provider outputs. HTTP transports are mocked;
-no credentials or network are used by tests.
+no live API credentials or external network are used by tests.
 
 The process acceptance test starts an actual Uvicorn server over loopback,
 opens every supplied group/case/evidence view, traverses human review states,
