@@ -16,6 +16,9 @@ class ModelLimits:
 #: Share of the published RPM and TPM the limiter targets. Google counts per calendar minute and the quota
 #: is shared by every process on the project key, so a sliding window at 100 % still peaked at 32/30 RPM.
 RATE_HEADROOM: Final = 0.8
+#: Tokens get a wider margin: our estimate before the call is approximate, and a 1.5K-token judge run at 100 %
+#: still peaked at 14.66K of Gemma's 16K TPM.
+TOKEN_HEADROOM: Final = 0.7
 
 MODELS: Final = {
     m.name: m
