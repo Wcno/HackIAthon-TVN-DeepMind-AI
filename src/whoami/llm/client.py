@@ -43,8 +43,11 @@ class Completion:
     latency_s: float
 
     def json(self) -> Any:
+        """The first JSON value of the text; Gemma sometimes wraps it in Markdown code fences."""
+        text = self.text.strip().removeprefix("```json").removeprefix("```").lstrip()
         try:
-            return json.loads(self.text)
+            value, _ = json.JSONDecoder().raw_decode(text)
+            return value
         except ValueError as error:
             raise LLMError(f"{self.model} did not return valid JSON") from error
 
