@@ -639,3 +639,14 @@ def test_schema_call_with_invalid_json_raises_and_is_not_cached(tmp_path: Path):
         llm.complete(CHAT, USER_MESSAGE, purpose="t", response_format=schema)
     assert llm.complete(CHAT, USER_MESSAGE, purpose="t", response_format=schema).json() == {"juicios": []}
     assert len(client.chat_calls) == 2
+
+
+def test_a_new_process_resumes_the_rate_limit_from_the_ledger(tmp_path: Path):
+    allowed = int(MODELS[CHAT].rpm * RATE_HEADROOM)
+    first = make_llm(tmp_path, FakeClient(*[chat_response() for _ in range(allowed)]))
+    for n in range(allowed):
+        first.complete(CHAT, [{"role": "user", "content": f"q{n}"}], purpose="t")
+    fake = FakeTime()
+    second = make_llm(tmp_path, FakeClient(chat_response()), fake)
+    second.complete(CHAT, [{"role": "user", "content": "otra"}], purpose="t")
+    assert fake.sleeps and fake.sleeps[0] > 0

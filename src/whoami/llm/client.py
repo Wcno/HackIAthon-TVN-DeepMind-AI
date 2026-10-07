@@ -6,7 +6,7 @@ import random
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 import numpy as np
@@ -16,7 +16,7 @@ from openai import OpenAI
 from whoami.llm.cache import ResponseCache
 from whoami.llm.ledger import Ledger
 from whoami.llm.models import MODELS, RATE_HEADROOM, TOKEN_HEADROOM, ModelLimits
-from whoami.llm.ratelimit import RateLimiter
+from whoami.llm.ratelimit import WINDOW_S, RateLimiter
 from whoami.llm.settings import Settings
 
 RETRYABLE_STATUS_CODES: Final = frozenset({429, 500, 503})
@@ -93,6 +93,7 @@ class LLM:
         self._max_retries = max_retries
         self._cache = ResponseCache(settings.cache_dir)
         self._ledger = Ledger(settings.ledger_path, clock)
+        self._clock = clock
         self._limiters: dict[str, RateLimiter] = {}
 
     def complete(
@@ -247,9 +248,13 @@ class LLM:
 
     def _limiter(self, limits: ModelLimits) -> RateLimiter:
         if limits.name not in self._limiters:
-            self._limiters[limits.name] = RateLimiter(
+            limiter = RateLimiter(
                 max(int(limits.rpm * RATE_HEADROOM), 1), max(int(limits.tpm * TOKEN_HEADROOM), 1), self._monotonic, self._sleep
             )
+            now = self._clock()
+            recent = self._ledger.recent_calls(limits.name, now - timedelta(seconds=WINDOW_S))
+            limiter.seed([((now - at).total_seconds(), tokens, units) for at, tokens, units in recent])
+            self._limiters[limits.name] = limiter
         return self._limiters[limits.name]
 
     def _enforce_cap(self, limits: ModelLimits, cost: int) -> None:
