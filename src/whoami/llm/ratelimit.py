@@ -1,5 +1,6 @@
-"""Per-model requests-per-minute and tokens-per-minute limiter over a 60 s sliding window."""
+"""Per-model requests-per-minute and tokens-per-minute limiter over a 60 s sliding window, safe across threads."""
 
+import threading
 from collections import deque
 from collections.abc import Callable
 
@@ -19,15 +20,20 @@ class RateLimiter:
         self._clock = clock
         self._sleep = sleep
         self._requests: deque[list[float]] = deque()  # [timestamp, tokens]
+        self._lock = threading.Lock()
 
     def acquire(self, tokens: int) -> None:
-        while (wait := self._wait_needed(tokens)) > 0:
-            self._sleep(wait)
-        self._requests.append([self._clock(), tokens])
+        with self._lock:
+            while (wait := self._wait_needed(tokens)) > 0:
+                self._sleep(wait)
+            self._requests.append([self._clock(), tokens])
 
     def adjust(self, estimated: int, actual: int) -> None:
-        if self._requests and self._requests[-1][1] == estimated:
-            self._requests[-1][1] = actual
+        with self._lock:
+            for request in reversed(self._requests):
+                if request[1] == estimated:
+                    request[1] = actual
+                    return
 
     def _wait_needed(self, tokens: int) -> float:
         now = self._clock()
