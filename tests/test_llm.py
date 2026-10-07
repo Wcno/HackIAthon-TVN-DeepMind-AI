@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from whoami.llm import default_llm
-from whoami.llm.client import LLM, CapExceeded, Completion, LLMError
+from whoami.llm.client import LLM, CapExceeded, Completion, InvalidJSON, LLMError
 from whoami.llm.cache import ResponseCache
 from whoami.llm.ledger import Ledger, format_summary
 from whoami.llm.models import MODELS, ModelLimits, RATE_HEADROOM
@@ -629,3 +629,13 @@ def test_complete_retries_a_timed_out_call(tmp_path: Path):
     client = FakeClient(APITimeoutError("Request timed out."), chat_response("ok"))
     assert make_llm(tmp_path, client, fake).complete(CHAT, USER_MESSAGE, purpose="t").text == "ok"
     assert fake.sleeps == [1.0]
+
+
+def test_schema_call_with_invalid_json_raises_and_is_not_cached(tmp_path: Path):
+    schema = {"type": "json_schema", "json_schema": {"name": "x", "strict": True, "schema": {"type": "object"}}}
+    client = FakeClient(chat_response(' {"juicios": [{"d": 1,' + " " * 200), chat_response('{"juicios": []}'))
+    llm = make_llm(tmp_path, client)
+    with pytest.raises(InvalidJSON):
+        llm.complete(CHAT, USER_MESSAGE, purpose="t", response_format=schema)
+    assert llm.complete(CHAT, USER_MESSAGE, purpose="t", response_format=schema).json() == {"juicios": []}
+    assert len(client.chat_calls) == 2

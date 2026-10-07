@@ -33,6 +33,12 @@ class LLMError(RuntimeError):
     pass
 
 
+class InvalidJSON(LLMError):
+    """A schema-constrained call returned text that is not JSON (Gemma can degenerate into whitespace).
+
+    Not cached, so the caller can retry with a different request."""
+
+
 class CapExceeded(LLMError):
     """Raised before any network call that would exceed the model's cap; never retried."""
 
@@ -47,13 +53,17 @@ class Completion:
     latency_s: float
 
     def json(self) -> Any:
-        """The first JSON value of the text; Gemma sometimes wraps it in Markdown code fences."""
-        text = self.text.strip().removeprefix("```json").removeprefix("```").lstrip()
-        try:
-            value, _ = json.JSONDecoder().raw_decode(text)
-            return value
-        except ValueError as error:
-            raise LLMError(f"{self.model} did not return valid JSON") from error
+        return _parse_json(self.text, self.model)
+
+
+def _parse_json(text: str, model: str) -> Any:
+    """The first JSON value of the text; Gemma sometimes wraps it in Markdown code fences."""
+    text = text.strip().removeprefix("```json").removeprefix("```").lstrip()
+    try:
+        value, _ = json.JSONDecoder().raw_decode(text)
+        return value
+    except ValueError as error:
+        raise InvalidJSON(f"{model} did not return valid JSON") from error
 
 
 def _status_of(error: Exception) -> str:
@@ -136,8 +146,11 @@ class LLM:
 
         def send() -> Any:
             response = self._client.chat.completions.create(**request)
-            if not response.choices[0].message.content:
+            content = response.choices[0].message.content
+            if not content:
                 raise LLMError(f"{model} returned empty content")
+            if response_format is not None:
+                _parse_json(content, model)
             return response
 
         response, latency = self._send_with_retries(
