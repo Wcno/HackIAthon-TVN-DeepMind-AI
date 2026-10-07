@@ -46,5 +46,5 @@ generation pipeline and G6's final visual design are separate issues.
 
 Final counts: Standards 0; Spec 0. Runtime evidence and its G2 delivery sample
 are under `outputs/validation/`. PR #33 supplies the integration surface; its
-external review and CI state must be checked before merging under the README
-workflow.
+CI must pass before merging under the README workflow. The owner's updated
+instruction makes peer review optional and removes required approval.

@@ -24,7 +24,7 @@ The test suite includes a real HTTP server restart and G2 export round-trip.
 
 ## Flujo de trabajo del equipo
 
-La rama de integración y producción es `prod`. Cada cambio se desarrolla en una rama corta y se revisa una sola vez mediante un pull request hacia `prod`. No usamos una rama `dev` en este flujo.
+La rama de integración y producción es `prod`. Cada cambio se desarrolla en una rama corta y se integra mediante un pull request hacia `prod`, con los checks configurados en verde. La revisión de otro integrante es opcional y no se requiere una aprobación para fusionar. No usamos una rama `dev` en este flujo.
 
 1. Actualizar `prod` y crear una rama para el cambio:
 
@@ -46,8 +46,8 @@ La rama de integración y producción es `prod`. Cada cambio se desarrolla en un
    ```
 
 3. Abrir un pull request con destino a `prod`, explicando qué cambió y cómo probarlo.
-4. Un compañero revisa el pull request. Los ajustes se suben a la misma rama.
-5. Con una aprobación y los checks configurados en verde, hacer squash merge y eliminar la rama del cambio.
+4. La revisión de un compañero es opcional. Los ajustes se suben a la misma rama.
+5. Con los checks configurados en verde, hacer squash merge y eliminar la rama del cambio.
 6. Desplegar la versión integrada en `prod` usando el proveedor que acuerde el equipo.
 
 También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen pushes directos a `prod`.
@@ -55,8 +55,7 @@ También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen p
 ### Configuración de GitHub y despliegue
 
 - Usar `prod` como rama predeterminada.
-- Proteger `prod`: exigir pull request y una aprobación de otro integrante; aplicar la regla también a administradores e impedir force pushes y la eliminación de la rama.
-- Invalidar aprobaciones cuando se suban cambios nuevos al pull request.
+- Proteger `prod`: exigir pull request y los checks configurados, sin aprobaciones obligatorias; aplicar la regla también a administradores e impedir force pushes y la eliminación de la rama.
 - Exigir los checks de `G5 validation`: pruebas y build en Windows y Linux. La protección de rama debe configurarse en GitHub.
 - Configurar el proveedor de despliegue para publicar desde `prod`; actualmente no hay un despliegue configurado.
 
