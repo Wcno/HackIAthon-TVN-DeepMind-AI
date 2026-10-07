@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from whoami.generation.jsonschemas import answer_schema, response_format, to_answer
-from whoami.generation.prompting import Gate, build_messages
+from whoami.generation.prompting import Gate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import check_citations, normalize_numbers, unsupported_numbers
 from whoami.llm.client import LLMError
@@ -75,7 +75,8 @@ def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Ev
     text = data.get("respuesta")
     versions = _distinct_versions(data["versiones"], allowed, evidences)
     citations_json = [c.model_dump() for c in citations]
-    if state == "contradiccion" and len(versions) >= 2:
+    # Two verified versions with distinct values are a contradiction, whatever state the model chose.
+    if len(versions) >= 2:
         return {"estado": "contradiccion", "citas": citations_json, "versiones": [v.model_dump() for v in versions]}
     if state in ("respondida", "contradiccion") and text and citations and not unsupported_numbers(
         text, citations, evidences
@@ -101,7 +102,8 @@ def answer_query(
         )
     ids = [i for i, _ in hits]
     try:
-        completion = llm.complete(
+        data = complete_json(
+            llm,
             model,
             build_messages(TASK, [evidences[i] for i in ids], user_query=consulta),
             purpose="consulta",
@@ -109,7 +111,7 @@ def answer_query(
             response_format=response_format("respuesta", answer_schema(ids)),
             max_tokens=ANSWER_MAX_TOKENS,
         )
-        cleaned = _verified(completion.json(), consulta, evidences, set(ids))
+        cleaned = _verified(data, consulta, evidences, set(ids))
         if cleaned["estado"] == "abstencion":
             return _abstention(id_consulta, consulta, cleaned["motivo_abstencion"], cleaned["faltante"])
         return to_answer(cleaned, id_consulta, consulta)

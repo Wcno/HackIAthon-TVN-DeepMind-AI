@@ -147,7 +147,7 @@ def test_a_false_contradiction_without_verifiable_citations_abstains():
     ["esto no es json", {"estado": "respondida"}, [1, 2], {"estado": "quizas"}, LLMError("sin respuesta")],
 )
 def test_a_malformed_model_answer_becomes_an_abstention(failure):
-    answer = ask(FakeLLM([failure]))
+    answer = ask(FakeLLM([failure, failure]))
     assert (answer.estado, answer.motivo_abstencion) == ("abstencion", INVALID_ANSWER_REASON)
     assert answer.faltante
 
@@ -196,3 +196,17 @@ def test_the_answer_call_caps_its_output_so_a_degenerate_model_fails_fast():
     llm = FakeLLM([model_answer()])
     ask(llm)
     assert llm.calls[0]["max_tokens"] == ANSWER_MAX_TOKENS
+
+
+def test_two_verified_versions_make_a_contradiction_even_if_the_model_says_answered():
+    from whoami.generation.query_box import _verified
+    from whoami.schemas import Evidence
+
+    def item(news_id: str, title: str) -> Evidence:
+        return Evidence(id_evidencia=news_id, tipo="noticia", titulo=title, url="https://x.invalid", fecha=None, campos={"titulo": title})
+
+    evidences = {"N-a": item("N-a", "Más de 80 denuncias"), "N-b": item("N-b", "Más de 70 denuncias")}
+    data = {"estado": "respondida", "respuesta": "Hay dos cifras: 80 y 70.",
+            "citas": [{"id_evidencia": "N-a", "campo": "titulo", "pasaje": "Más de 80 denuncias"}],
+            "versiones": [{"valor": "más de 80", "alcance": "A", "id_evidencia": "N-a"}, {"valor": "más de 70", "alcance": "B", "id_evidencia": "N-b"}]}
+    assert _verified(data, "¿Cuántas?", evidences, {"N-a", "N-b"})["estado"] == "contradiccion"

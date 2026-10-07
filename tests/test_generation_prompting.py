@@ -122,7 +122,7 @@ def test_retrieval_gate_abstains_without_hits():
 
 
 def llm_gate(answer) -> tuple[LLMGate, FakeLLM]:
-    llm = FakeLLM([answer])
+    llm = FakeLLM([answer, answer])
     return LLMGate(llm, "modelo", EVIDENCES), llm
 
 
@@ -164,3 +164,12 @@ def test_both_gate_needs_both_to_agree_and_skips_the_second_when_the_first_refus
     refusing_llm, _ = llm_gate({"respondible": False, "motivo": "no", "faltante": "algo"})
     decision = BothGate(RetrievalGate(1.0, 1), refusing_llm).decide("¿?", HITS)
     assert (decision.answerable, decision.motivo) == (False, "no")
+
+
+def test_invalid_json_is_retried_once_with_a_compact_json_nudge():
+    from whoami.generation.prompting import COMPACT_JSON_NUDGE, complete_json
+
+    llm = FakeLLM(["{ incompleto", {"respondible": True}])
+    messages = [{"role": "system", "content": "reglas"}, {"role": "user", "content": "consulta"}]
+    assert complete_json(llm, "modelo", messages, purpose="p") == {"respondible": True}
+    assert llm.calls[1]["messages"][0]["content"] == "reglas" + COMPACT_JSON_NUDGE

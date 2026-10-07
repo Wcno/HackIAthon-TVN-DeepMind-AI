@@ -32,7 +32,7 @@ from whoami.generation.jsonschemas import (
     to_package,
 )
 from whoami.generation.entailment import EntailmentChecker
-from whoami.generation.prompting import Gate, build_messages
+from whoami.generation.prompting import Gate, build_messages, complete_json
 from whoami.generation.query_box import answer_query
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import VerificationReport, verify_claims
@@ -144,7 +144,8 @@ class _Generator:
         self._entailment = entailment
 
     def _complete(self, messages: list[dict], purpose: str, ids: Sequence[str], schema: dict) -> dict:
-        completion = self._llm.complete(
+        data = complete_json(
+            self._llm,
             self._model,
             messages,
             purpose=purpose,
@@ -152,7 +153,6 @@ class _Generator:
             response_format=response_format(purpose, schema),
             max_tokens=GENERATION_MAX_TOKENS,
         )
-        data = completion.json()
         if not isinstance(data, dict):
             raise ValueError("el modelo no devolvió un objeto JSON")
         return data

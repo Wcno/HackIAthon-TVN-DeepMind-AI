@@ -107,7 +107,7 @@ def test_without_any_grounded_claim_the_case_is_not_generated():
 
 @pytest.mark.parametrize("failure", ["no es json", {"otra": 1}, {"afirmaciones": []}, LLMError("boom")])
 def test_an_unusable_model_answer_means_no_case(failure):
-    gen, _ = generator([failure])
+    gen, _ = generator([failure, failure])
     with pytest.raises(NoGroundedClaims):
         gen.generate(make_group(), EVIDENCES, "CASO-001")
 
@@ -151,7 +151,7 @@ def test_a_package_that_keeps_failing_becomes_a_gap_not_a_truncation():
 
 
 def test_a_broken_retry_keeps_the_first_claims_without_draft():
-    gen, _ = generator([single(package=LONG_PACKAGE), "no es json"])
+    gen, _ = generator([single(package=LONG_PACKAGE), "no es json", "no es json"])
     case_file, _, calls = gen.generate(make_group(), EVIDENCES, "CASO-001")
     assert calls == 2 and case_file.borrador is None and len(case_file.afirmaciones) == 2
 
