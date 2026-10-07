@@ -114,7 +114,6 @@ class GemmaTopicClassifier:
                 evidence_ids=[row["id_noticia"]],
                 response_format=TOPIC_SCHEMA,
                 max_tokens=60,
-                temperature=0,
             ).json()
         except InvalidJSON:
             return None

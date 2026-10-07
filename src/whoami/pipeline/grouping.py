@@ -116,7 +116,6 @@ class SameEventJudge:
                 evidence_ids=[first["id_noticia"], second["id_noticia"]],
                 response_format=SAME_EVENT_SCHEMA,
                 max_tokens=30,
-                temperature=0,
             ).json()
         except InvalidJSON:
             return None
