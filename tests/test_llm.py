@@ -365,6 +365,18 @@ def test_complete_json_parses_the_text_or_raises(tmp_path: Path):
         llm.complete(CHAT, [{"role": "user", "content": "otro"}], purpose="b").json()
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        ' {\n  "tema": "economia",\n  "confianza": \n 0.95\n}\n```',
+        '```json\n{"tema": "economia", "confianza": 0.95}\n```',
+    ],
+)
+def test_completion_json_ignores_code_fences_around_the_value(text: str):
+    completion = Completion(text, CHAT, False, 0, 0, 0.0)
+    assert completion.json() == {"tema": "economia", "confianza": 0.95}
+
+
 @pytest.mark.parametrize("model", ["gemma-4-31b-it", "gemini-3.8-flash", "gemini-embedding-2"])
 def test_complete_rejects_unknown_and_non_chat_models(tmp_path: Path, model: str):
     client = FakeClient()
