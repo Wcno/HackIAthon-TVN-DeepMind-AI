@@ -49,3 +49,14 @@ We chose a single cloud provider and no local models to keep the stack simple du
 - https://console.groq.com/docs/structured-outputs
 - https://openrouter.ai/docs/api-reference/limits
 - https://developers.cloudflare.com/workers-ai/platform/pricing/
+
+## Note, 2026-10-07: embedding quota, experiment model and rate limits
+
+- **Embeddings no longer go to Gemini.** The free tier counts `gemini-embedding-2` per text: about 100 texts per minute and 1,000 per day, measured. The 2,941-item corpus alone needs three days of quota.
+  A local model reaches the same retrieval quality on 30 labeled queries (nDCG@10 0.87 local, 0.89 Gemini), so ADR-0003 (proposed) moves embeddings to `embeddinggemma-300m` and supersedes the embedding part of this ADR.
+- **Proposal: `gemma-4-26b-a4b-it` for experiments and offline batch work, `gemini-3.5-flash-lite` for production answers.**
+  Gemma's free tier is 30 RPM, 16K TPM and 14,400 RPD, against 15 RPM and 500 RPD for the flash-lite models, so tuning prompts, labeling and classifying the whole corpus fit in a day only on Gemma.
+  Its 16K tokens per minute is the real throughput limit: prompts must stay short.
+- **Gemma needs a JSON schema.** With `response_format` json_schema it answers in about 1 s; without one it writes a `<thought>` block and took 33 s. It sometimes degenerates into whitespace inside JSON (one call hung 600 s), so every call sets `max_tokens`, a 90 s timeout, and invalid JSON is never cached.
+- **Rate limits are per project and per calendar minute, shared by every process.** A sliding-window limiter at 100 % still peaked at 32/30 RPM and 14.7K/16K TPM on the dashboard. The shared layer now targets 80 % of RPM and 70 % of TPM, and a new process resumes the window from the ledger.
+- **Not used:** `gemma-4-31b-it` (46 s per call) and `gemini-3.8-flash` (20 RPD).
