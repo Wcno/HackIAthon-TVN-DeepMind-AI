@@ -1,4 +1,4 @@
-"""Topic classification with a strict Gemini contract and a simple baseline."""
+"""Hybrid topic classification with Gemini, LLaMA-compatible models, and a baseline."""
 
 from __future__ import annotations
 
@@ -65,15 +65,25 @@ class Classification:
     source: str
 
 
+@dataclass(frozen=True)
+class HybridClassification:
+    """Classification plus the independent result used to cross-check it."""
+
+    result: Classification
+    gemini: Classification
+    local: Classification
+    agreement: bool
+
+
 class ClassificationError(ValueError):
     """Raised when the model response cannot be trusted as a classification."""
 
 
-def _parse_response(content: str, model: str) -> Classification:
+def _parse_response(content: str, model: str, source: str) -> Classification:
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError as error:
-        raise ClassificationError("Gemini returned invalid JSON") from error
+        raise ClassificationError(f"{source} returned invalid JSON") from error
 
     if not isinstance(parsed, dict):
         raise ClassificationError("Classification must be a JSON object")
@@ -93,17 +103,18 @@ def _parse_response(content: str, model: str) -> Classification:
         confidence=float(confidence),
         justification=justification.strip(),
         model=model,
-        source="gemini",
+        source=source,
     )
 
 
-def classify_with_gemini(
+def _classify_with_chat_model(
     client: ChatClient,
     text: str,
     *,
-    model: str = "gemini-3.5-flash-lite",
+    model: str,
+    source: str,
 ) -> Classification:
-    """Classify untrusted source text without allowing it to alter instructions."""
+    """Classify source text through any OpenAI-compatible chat endpoint."""
 
     if not text or not text.strip():
         raise ClassificationError("Text to classify cannot be empty")
@@ -127,8 +138,77 @@ def classify_with_gemini(
     )
     content = response.choices[0].message.content
     if not isinstance(content, str):
-        raise ClassificationError("Gemini returned an empty response")
-    return _parse_response(content, model)
+        raise ClassificationError(f"{source} returned an empty response")
+    return _parse_response(content, model, source)
+
+
+def classify_with_gemini(
+    client: ChatClient,
+    text: str,
+    *,
+    model: str = "gemini-3.5-flash-lite",
+) -> Classification:
+    """Classify untrusted source text with Gemini."""
+
+    return _classify_with_chat_model(
+        client, text, model=model, source="gemini"
+    )
+
+
+def classify_with_llama(
+    client: ChatClient,
+    text: str,
+    *,
+    model: str = "llama-3.1-8b-instruct",
+) -> Classification:
+    """Classify with a LLaMA-compatible OpenAI endpoint."""
+
+    return _classify_with_chat_model(client, text, model=model, source="llama")
+
+
+def classify_hybrid(
+    gemini_client: ChatClient,
+    text: str,
+    *,
+    local_client: ChatClient | None = None,
+    gemini_model: str = "gemini-3.5-flash-lite",
+    local_model: str = "llama-3.1-8b-instruct",
+) -> HybridClassification:
+    """Cross-check Gemini with LLaMA, falling back to the local baseline.
+
+    Gemini remains the primary decision when the models disagree. Agreement
+    raises confidence; disagreement lowers it and remains visible to review.
+    """
+
+    gemini = classify_with_gemini(gemini_client, text, model=gemini_model)
+    local = (
+        classify_with_llama(local_client, text, model=local_model)
+        if local_client is not None
+        else keyword_baseline(text)
+    )
+    agreement = gemini.topic == local.topic
+    if agreement:
+        result = Classification(
+            topic=gemini.topic,
+            confidence=min((gemini.confidence + local.confidence) / 2 + 0.05, 1),
+            justification=(
+                f"Gemini y {local.source} coinciden: {gemini.justification}"
+            ),
+            model=f"{gemini.model}+{local.model}",
+            source="hybrid",
+        )
+    else:
+        result = Classification(
+            topic=gemini.topic,
+            confidence=min(gemini.confidence, 0.6),
+            justification=(
+                f"Gemini y {local.source} discrepan; requiere revisión. "
+                f"Gemini: {gemini.justification}"
+            ),
+            model=f"{gemini.model}+{local.model}",
+            source="hybrid",
+        )
+    return HybridClassification(result, gemini, local, agreement)
 
 
 def keyword_baseline(text: str) -> Classification:

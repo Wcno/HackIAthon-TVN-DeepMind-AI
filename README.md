@@ -45,6 +45,12 @@ clasificación semántica. Los casos sintéticos de desarrollo están en
 python -m pytest -q
 ```
 
+`classify_hybrid` combina Gemini con un modelo tipo LLaMA expuesto por un
+endpoint compatible con OpenAI (`classify_with_llama`). Si ambos coinciden,
+la confianza sube; si discrepan, se conserva la decisión de Gemini con
+confianza limitada y una marca explícita para revisión humana. Sin endpoint
+local, usa el baseline de palabras clave como fallback determinista.
+
 ### Configuración de GitHub y despliegue
 
 - Usar `prod` como rama predeterminada.

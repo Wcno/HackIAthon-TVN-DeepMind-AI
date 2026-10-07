@@ -5,9 +5,11 @@ date: 2026-10-06
 
 # Gemini API free tier for embeddings and generation
 
-We use the Gemini API free tier for both embeddings and strict-JSON generation.
+We use the Gemini API free tier for embeddings and strict-JSON generation.
 It is reached through the OpenAI-compatible endpoint (`https://generativelanguage.googleapis.com/v1beta/openai/`) with the Python `openai` client, so `base_url` stays swappable.
-We chose a single cloud provider and no local models to keep the stack simple during the 48h event; the accepted risk is that Google does not publish free-tier limits.
+Gemini remains the primary provider. Classification can optionally be cross-checked
+with a LLaMA-compatible endpoint; this verifier is not required for the offline demo.
+The accepted risk is that Google does not publish free-tier limits.
 
 ## Models
 
@@ -17,8 +19,9 @@ We chose a single cloud provider and no local models to keep the stack simple du
 
 ## Considered options
 
-- **Local (QVAC/Qwen and `multilingual-e5`)**: rejected because the team prefers not to run local models.
-  Supersedes the `NoSkill` branch plan (D-02); D-05 (no `tools`, strict JSON) still holds.
+- **Local (QVAC/Qwen and `multilingual-e5`)**: not used for the offline demo.
+  A LLaMA-compatible endpoint is allowed only as an optional classification
+  verifier using the same strict JSON contract; it never publishes automatically.
 - **Groq**: strict JSON only on `gpt-oss-20b/120b` and `qwen3.8-27b`, no embeddings, 8K TPM; kept as a generation fallback by changing only `base_url`.
 - **OpenRouter `:free`**: 50 requests/day without credits, not enough for the benchmark.
 - **Cloudflare Workers AI**: viable (`bge-m3`, 10K neurons/day), but adds another platform with no clear gain.

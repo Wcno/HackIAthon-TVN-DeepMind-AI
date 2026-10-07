@@ -5,6 +5,7 @@ import pytest
 from src.ai.classifier import (
     TOPICS,
     ClassificationError,
+    classify_hybrid,
     classify_with_gemini,
     keyword_baseline,
 )
@@ -67,6 +68,52 @@ def test_gemini_result_is_validated_and_prompt_isolated():
     user_message = client.kwargs["messages"][1]["content"]
     assert "<fuente>" in user_message and "</fuente>" in user_message
     assert client.kwargs["temperature"] == 0
+
+
+def test_hybrid_agreement_increases_confidence():
+    response = json.dumps(
+        {
+            "tema": "eventos naturales",
+            "confianza": 0.8,
+            "justificacion": "Menciona un sismo.",
+        }
+    )
+    hybrid = classify_hybrid(
+        FakeClient(response),
+        "Sismo registrado en Panamá",
+        local_client=FakeClient(response),
+    )
+
+    assert hybrid.agreement is True
+    assert hybrid.result.source == "hybrid"
+    assert hybrid.result.confidence == pytest.approx(0.85)
+
+
+def test_hybrid_surfaces_disagreement_for_human_review():
+    gemini = json.dumps(
+        {
+            "tema": "economía",
+            "confianza": 0.95,
+            "justificacion": "Menciona inflación.",
+        }
+    )
+    local = json.dumps(
+        {
+            "tema": "regulación",
+            "confianza": 0.9,
+            "justificacion": "Menciona una ley.",
+        }
+    )
+    hybrid = classify_hybrid(
+        FakeClient(gemini),
+        "Una ley cambia la inflación",
+        local_client=FakeClient(local),
+    )
+
+    assert hybrid.agreement is False
+    assert hybrid.result.topic == "economía"
+    assert hybrid.result.confidence == 0.6
+    assert "requiere revisión" in hybrid.result.justification
 
 
 @pytest.mark.parametrize(
