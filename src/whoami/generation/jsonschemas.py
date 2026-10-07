@@ -67,21 +67,8 @@ def claims_schema(allowed_ids: Sequence[str]) -> Schema:
     return _object({"afirmaciones": _array(_claim_schema(allowed_ids))})
 
 
-def case_file_schema(allowed_ids: Sequence[str]) -> Schema:
-    return _object(
-        {
-            "afirmaciones": _array(_claim_schema(allowed_ids)),
-            "vacios": _array(_STRING),
-            "accion_recomendada": _STRING,
-        }
-    )
-
-
-def package_schema(allowed_ids: Sequence[str] = ()) -> Schema:  # noqa: ARG001
-    """The editorial package; `leyenda` is not asked of the model, code sets it from the text scope.
-
-    `allowed_ids` is accepted so every generation schema has the same call shape.
-    """
+def package_schema() -> Schema:
+    """The editorial package; `leyenda` is not asked of the model, code sets it from the text scope."""
     return _object(
         {
             "titulo": _STRING,
@@ -93,12 +80,6 @@ def package_schema(allowed_ids: Sequence[str] = ()) -> Schema:  # noqa: ARG001
             "copy_digital": _STRING,
         }
     )
-
-
-def single_shot_schema(allowed_ids: Sequence[str]) -> Schema:
-    """Claims, gaps, action and package in one answer."""
-    properties = case_file_schema(allowed_ids)["properties"] | {"borrador": package_schema(allowed_ids)}
-    return _object(properties)
 
 
 def answer_schema(allowed_ids: Sequence[str]) -> Schema:

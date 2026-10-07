@@ -1,10 +1,10 @@
-"""The optional per-claim entailment check, alone and inside the generators."""
+"""The optional per-claim entailment check, alone and inside the generator."""
 
 import pytest
 
 from generation_fakes import FakeLLM, LLMError
-from test_generation_case_files import EVIDENCES, GOOD, OTHER, PACKAGE, make_group, single
-from whoami.generation.case_files import NoGroundedClaims, SingleShotGenerator, TwoStepGenerator
+from test_generation_case_files import EVIDENCES, GOOD, OTHER, PACKAGE, claims, make_group
+from whoami.generation.case_files import NoGroundedClaims, TwoStepGenerator
 from whoami.generation.entailment import ENTAILMENT_TASK, EntailmentChecker
 from whoami.llm.client import CapExceeded
 from whoami.schemas import Citation, Claim
@@ -66,7 +66,7 @@ def test_a_cap_exceeded_is_not_swallowed():
         entailment.check(CLAIM, EVIDENCES)
 
 
-def generating(kind, verdicts):
+def generating(verdicts):
     """A generator whose model answers claims/package calls from a script and entailment calls from `verdicts`."""
     queue = iter(verdicts)
 
@@ -75,38 +75,35 @@ def generating(kind, verdicts):
             return {"veredicto": next(queue), "motivo": "x"}
         if call["purpose"] == "paquete":
             return PACKAGE
-        return single() if call["purpose"] == "ficha" else {"afirmaciones": [GOOD, OTHER]}
+        return claims(GOOD, OTHER)
 
     llm = FakeLLM(respond)
-    return kind(llm, MODEL, entailment=EntailmentChecker(llm, MODEL)), llm
+    return TwoStepGenerator(llm, MODEL, entailment=EntailmentChecker(llm, MODEL)), llm
 
 
-@pytest.mark.parametrize("kind", [SingleShotGenerator, TwoStepGenerator])
-def test_a_claim_judged_no_respaldada_is_dropped_with_a_gap(kind):
-    gen, _ = generating(kind, ["respaldada", "no_respaldada"])
+def test_a_claim_judged_no_respaldada_is_dropped_with_a_gap():
+    gen, _ = generating(["respaldada", "no_respaldada"])
     case_file, report, _ = gen.generate(make_group(), EVIDENCES, "CASO-001")
     assert [c.id_afirmacion for c in case_file.afirmaciones] == ["A-1"]
     assert "A-2" in report.issues
     assert any("A-2" in gap and "afirmación descartada" in gap for gap in case_file.vacios)
 
 
-@pytest.mark.parametrize("kind", [SingleShotGenerator, TwoStepGenerator])
 @pytest.mark.parametrize("verdict", ["parcial", "error"])
-def test_partial_and_errored_claims_are_kept(kind, verdict):
-    gen, _ = generating(kind, ["respaldada", verdict])
+def test_partial_and_errored_claims_are_kept(verdict):
+    gen, _ = generating(["respaldada", verdict])
     case_file, _, _ = gen.generate(make_group(), EVIDENCES, "CASO-001")
     assert [c.id_afirmacion for c in case_file.afirmaciones] == ["A-1", "A-2"]
 
 
-@pytest.mark.parametrize("kind", [SingleShotGenerator, TwoStepGenerator])
-def test_a_case_whose_claims_are_all_dropped_is_not_generated(kind):
-    gen, _ = generating(kind, ["no_respaldada", "no_respaldada"])
+def test_a_case_whose_claims_are_all_dropped_is_not_generated():
+    gen, _ = generating(["no_respaldada", "no_respaldada"])
     with pytest.raises(NoGroundedClaims):
         gen.generate(make_group(), EVIDENCES, "CASO-001")
 
 
-def test_two_step_writes_the_package_from_the_surviving_claims_only():
-    gen, llm = generating(TwoStepGenerator, ["respaldada", "no_respaldada"])
+def test_writes_the_package_from_the_surviving_claims_only():
+    gen, llm = generating(["respaldada", "no_respaldada"])
     gen.generate(make_group(), EVIDENCES, "CASO-001")
     package_call = next(c for c in llm.calls if c["purpose"] == "paquete")
     user = package_call["messages"][1]["content"]
@@ -114,6 +111,6 @@ def test_two_step_writes_the_package_from_the_surviving_claims_only():
 
 
 def test_without_a_checker_no_entailment_call_is_made():
-    llm = FakeLLM([single()])
-    SingleShotGenerator(llm, MODEL).generate(make_group(), EVIDENCES, "CASO-001")
-    assert llm.n_calls == 1
+    llm = FakeLLM([claims(GOOD), PACKAGE])
+    TwoStepGenerator(llm, MODEL).generate(make_group(), EVIDENCES, "CASO-001")
+    assert {call["purpose"] for call in llm.calls} == {"afirmaciones", "paquete"}

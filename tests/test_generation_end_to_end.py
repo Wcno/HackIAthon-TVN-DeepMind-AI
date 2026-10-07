@@ -3,7 +3,7 @@
 import re
 
 from generation_fakes import FakeLLM
-from whoami.generation.case_files import SingleShotGenerator, TwoStepGenerator, build_outputs
+from whoami.generation.case_files import TwoStepGenerator, build_outputs
 from whoami.generation.prompting import CosineGate
 from whoami.generation.retrieval import BM25Index, BM25Retriever, documents_from
 from whoami.schemas import verify
@@ -25,8 +25,6 @@ def echo_case(case_file) -> dict:
             }
             for c in case_file.afirmaciones
         ],
-        "vacios": list(case_file.vacios),
-        "accion_recomendada": case_file.accion_recomendada,
     }
     if case_file.borrador is not None:
         data["borrador"] = {name: getattr(case_file.borrador, name) for name in PACKAGE_FIELDS}
@@ -51,16 +49,16 @@ def demo_model(call: dict):
     if call["purpose"] == "consulta":
         question = re.search(r"<consulta>(.*)</consulta>", call["messages"][1]["content"]).group(1)
         return echo_answer(next(a for a in DEMO.consultas if a.consulta == question))
+    if call["purpose"] == "paquete":
+        stated = set(re.findall(r"<afirmacion [^>]*>(.*)</afirmacion>", call["messages"][1]["content"]))
+        case_file = next(f for f in DEMO.fichas if stated <= {c.texto for c in f.afirmaciones})
+        return echo_case(case_file)["borrador"]
     offered = set(call["evidence_ids"])
     for case_file in DEMO.fichas:
         group = next(g for g in DEMO.grupos if g.id_grupo == case_file.id_grupo)
         if offered == {m.id_noticia for m in group.miembros} | {c.id_evidencia for c in group.contexto}:
-            if call["purpose"] == "ficha":
-                return echo_case(case_file)
-            if call["purpose"] == "afirmaciones":
-                return {"afirmaciones": echo_case(case_file)["afirmaciones"]}
-            return echo_case(case_file)["borrador"]
-    return {"afirmaciones": [], "vacios": [], "accion_recomendada": "x"}
+            return {"afirmaciones": echo_case(case_file)["afirmaciones"]}
+    return {"afirmaciones": []}
 
 
 QUERIES = [(a.id_consulta, a.consulta) for a in DEMO.consultas]
@@ -68,11 +66,11 @@ RETRIEVER = BM25Retriever(BM25Index(documents_from(DEMO.evidencias.values())))
 GATE = CosineGate(RETRIEVER, min_cosine=0.5)  # BM25 scores stand in for cosines
 
 
-def build(kind):
+def build():
     llm = FakeLLM(demo_model)
     output = build_outputs(
         DEMO,
-        kind(llm, MODEL),
+        TwoStepGenerator(llm, MODEL),
         QUERIES,
         retriever=RETRIEVER,
         gate=GATE,
@@ -83,22 +81,15 @@ def build(kind):
     return output, llm
 
 
-def test_single_shot_end_to_end_produces_a_set_that_passes_verify():
-    output, _ = build(SingleShotGenerator)
-    verify(output)
-    assert {f.id_caso for f in output.fichas} == {f.id_caso for f in DEMO.fichas}
-    assert [a.estado for a in output.consultas] == [a.estado for a in DEMO.consultas]
-
-
-def test_two_step_end_to_end_produces_a_set_that_passes_verify():
-    output, llm = build(TwoStepGenerator)
+def test_end_to_end_produces_a_set_that_passes_verify():
+    output, llm = build()
     verify(output)
     assert {f.id_caso for f in output.fichas} == {f.id_caso for f in DEMO.fichas}
     assert "paquete" in {call["purpose"] for call in llm.calls}
 
 
 def test_groups_get_their_case_id_and_groups_without_a_case_get_none():
-    output, _ = build(SingleShotGenerator)
+    output, _ = build()
     cases = {g.id_grupo: g.id_caso for g in output.grupos}
     assert cases["G-001"] == "CASO-001" and cases["G-005"] == "CASO-005"
     assert cases["G-006"] is None and cases["G-007"] is None  # the fake model has nothing grounded for them
@@ -106,7 +97,7 @@ def test_groups_get_their_case_id_and_groups_without_a_case_get_none():
 
 
 def test_unverifiable_demo_claims_are_dropped_with_a_gap():
-    output, _ = build(SingleShotGenerator)
+    output, _ = build()
     case_1 = next(f for f in output.fichas if f.id_caso == "CASO-001")
     demo_1 = next(f for f in DEMO.fichas if f.id_caso == "CASO-001")
     assert len(case_1.afirmaciones) < len(demo_1.afirmaciones)  # "Tres medios..." states a figure no source holds
@@ -114,7 +105,7 @@ def test_unverifiable_demo_claims_are_dropped_with_a_gap():
 
 
 def test_the_inflation_contradiction_is_found_by_rules():
-    output, _ = build(SingleShotGenerator)
+    output, _ = build()
     case_2 = next(f for f in output.fichas if f.id_caso == "CASO-002")
     assert {v.valor for c in case_2.contradicciones for v in c.versiones} >= {"1,1 %", "2,3 %"}
 
@@ -122,7 +113,7 @@ def test_the_inflation_contradiction_is_found_by_rules():
 def test_only_the_top_n_groups_get_a_case():
     llm = FakeLLM(demo_model)
     output = build_outputs(
-        DEMO, SingleShotGenerator(llm, MODEL), [], retriever=RETRIEVER, gate=GATE, llm=llm, model=MODEL, top_n=1
+        DEMO, TwoStepGenerator(llm, MODEL), [], retriever=RETRIEVER, gate=GATE, llm=llm, model=MODEL, top_n=1
     )
     assert len(output.fichas) == 1 and output.consultas == ()
     assert sum(g.id_caso is not None for g in output.grupos) == 1

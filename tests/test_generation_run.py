@@ -53,7 +53,7 @@ def workspace(tmp_path):
 
 
 def config(queries, **overrides):
-    values = dict(generador="single", modelo=MODEL, top=len(DEMO.grupos), recuperador="bm25",
+    values = dict(modelo=MODEL, top=len(DEMO.grupos), recuperador="bm25",
                   consultas=queries, implicacion=False)
     return RunConfig(**values | overrides)
 
@@ -101,9 +101,9 @@ def test_the_summary_counts_cases_claims_packages_answers_and_calls(workspace):
     assert summary.afirmaciones_conservadas > 0 and summary.afirmaciones_descartadas > 0
     assert summary.paquetes == sum(f.borrador is not None for f in EXPECTED_FICHAS)
     assert summary.respuestas == {"respondida": 2, "contradiccion": 1, "abstencion": 1}
-    assert summary.llamadas["ficha"] == {"hit": 0, "miss": sum(c["purpose"] == "ficha" for c in llm.calls)}
+    assert summary.llamadas["afirmaciones"] == {"hit": 0, "miss": sum(c["purpose"] == "afirmaciones" for c in llm.calls)}
     text = summary.render()
-    assert "respondida: 2" in text and "ficha" in text
+    assert "respondida: 2" in text and "afirmaciones" in text
 
 
 def test_insufficient_groups_are_skipped_in_the_top(workspace):
@@ -111,7 +111,7 @@ def test_insufficient_groups_are_skipped_in_the_top(workspace):
     assert {f.id_caso for f in load(data, outputs).fichas} == {"CASO-001", "CASO-002", "CASO-005"}
 
 
-def test_two_step_generator_and_implication_check_run_through_the_command(workspace):
+def test_the_implication_check_runs_through_the_command(workspace):
     def model(call):
         if call["purpose"] == "g4-implicacion":
             return {"veredicto": "respaldada", "motivo": "ok"}
@@ -119,7 +119,7 @@ def test_two_step_generator_and_implication_check_run_through_the_command(worksp
 
     data, outputs, queries = workspace
     llm = FakeLLM(model)
-    run.generar(config(queries, generador="two", implicacion=True), llm, FakeEmbedder(True), data, outputs)
+    run.generar(config(queries, implicacion=True), llm, FakeEmbedder(True), data, outputs)
     purposes = {call["purpose"] for call in llm.calls}
     assert {"afirmaciones", "paquete", "g4-implicacion"} <= purposes
     verify(load(data, outputs))

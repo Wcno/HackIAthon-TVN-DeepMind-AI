@@ -3,14 +3,12 @@ import pytest
 from whoami.contracts import CLAIM_TYPES, HEADLINE_ONLY_LEGEND
 from whoami.generation.jsonschemas import (
     answer_schema,
-    case_file_schema,
     citation_schema,
     claims_schema,
     contradiction_pair_schema,
     entailment_schema,
     package_schema,
     response_format,
-    single_shot_schema,
     to_answer,
     to_claims,
     to_package,
@@ -23,9 +21,7 @@ IDS = ["N-aaa", "WB-PAN-X-2024"]
 def all_schemas() -> dict[str, dict]:
     return {
         "citation": citation_schema(IDS),
-        "case_file": case_file_schema(IDS),
-        "single_shot": single_shot_schema(IDS),
-        "package": package_schema(IDS),
+        "package": package_schema(),
         "claims": claims_schema(IDS),
         "answer": answer_schema(IDS),
         "entailment": entailment_schema(),
@@ -61,23 +57,17 @@ def test_citations_can_only_point_at_the_allowed_ids():
     assert schema["properties"]["id_evidencia"]["enum"] == IDS
 
 
-def test_case_file_schema_demands_at_least_one_citation_per_claim():
-    claim = case_file_schema(IDS)["properties"]["afirmaciones"]["items"]
+def test_claims_schema_demands_at_least_one_citation_per_claim():
+    claim = claims_schema(IDS)["properties"]["afirmaciones"]["items"]
     assert claim["properties"]["citas"]["minItems"] == 1
     assert claim["properties"]["tipo"]["enum"] == list(CLAIM_TYPES)
     assert claim["properties"]["atribuida_a"]["type"] == ["string", "null"]
 
 
 def test_package_schema_has_exactly_three_questions_and_no_legend():
-    properties = package_schema(IDS)["properties"]
+    properties = package_schema()["properties"]
     assert properties["preguntas"]["minItems"] == properties["preguntas"]["maxItems"] == 3
     assert "leyenda" not in properties
-
-
-def test_single_shot_schema_nests_the_package_in_the_case_file():
-    properties = single_shot_schema(IDS)["properties"]
-    assert set(properties) == {"afirmaciones", "vacios", "accion_recomendada", "borrador"}
-    assert properties["borrador"]["properties"].keys() == package_schema(IDS)["properties"].keys()
 
 
 def test_response_format_wraps_a_schema_for_the_openai_compatible_api():

@@ -15,7 +15,6 @@ from whoami.contracts import DATA, EVIDENCE_FILE, GROUPS_FILE, OUTPUTS, PROCESSE
 from whoami.generation.case_files import (
     CaseGenerator,
     NoGroundedClaims,
-    SingleShotGenerator,
     TwoStepGenerator,
     build_outputs,
 )
@@ -30,13 +29,11 @@ from whoami.store import read_jsonl, write
 DEFAULT_QUERIES = DATA / "consultas_demo.jsonl"
 DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 VECTORS_FILE = "evidencias_vectores.npy"
-GENERATORS = {"single": SingleShotGenerator, "two": TwoStepGenerator}
 RETRIEVERS = ("bm25", "emb", "hybrid")
 
 
 @dataclass(frozen=True)
 class RunConfig:
-    generador: str
     modelo: str
     top: int
     recuperador: str
@@ -45,7 +42,6 @@ class RunConfig:
 
 
 def add_arguments(command: argparse.ArgumentParser) -> None:
-    command.add_argument("--generador", choices=GENERATORS, default="two")
     command.add_argument("--modelo", default=DEFAULT_MODEL)
     command.add_argument("--top", type=int, default=10, help="groups to generate a case file for (insufficient ones are skipped)")
     command.add_argument("--recuperador", choices=RETRIEVERS, default="hybrid")
@@ -55,7 +51,7 @@ def add_arguments(command: argparse.ArgumentParser) -> None:
 
 def config_from(args: argparse.Namespace) -> RunConfig:
     return RunConfig(
-        args.generador, args.modelo, args.top, args.recuperador, args.consultas, args.implicacion
+        args.modelo, args.top, args.recuperador, args.consultas, args.implicacion
     )
 
 
@@ -146,7 +142,7 @@ def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Pat
     counting = CountingLLM(llm)
     retrievers = default_retrievers(source.evidencias.values(), embedder, data / VECTORS_FILE)
     entailment = EntailmentChecker(counting, config.modelo) if config.implicacion else None
-    generator = RecordingGenerator(GENERATORS[config.generador](counting, config.modelo, entailment=entailment))
+    generator = RecordingGenerator(TwoStepGenerator(counting, config.modelo, entailment=entailment))
     output = build_outputs(
         source,
         generator,
