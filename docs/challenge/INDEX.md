@@ -15,7 +15,7 @@ Los IDs (`CU-01`, `T01`, `R/I/U/N/E`) y los nombres de archivo de datos son esta
 
 > **Desviaciones del equipo:** lee primero [00-decisiones-del-equipo.md](00-decisiones-del-equipo.md).
 > Prevalece sobre el PDF.
-> Hoy: T10 está en alcance con todo precalculado (D-01); ventana de fechas desde 2025-10-02 (D-02); fuentes abiertas (D-03).
+> Hoy: T10 está en alcance con todo precalculado (D-01); ventana de fechas desde 2025-10-02 (D-02); fuentes abiertas (D-03); noticias de los últimos 30 días (D-04).
 
 ## Resumen en 5 líneas
 

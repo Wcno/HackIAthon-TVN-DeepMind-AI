@@ -1,0 +1,2 @@
+{"name": "posts_p001.json", "url": "https://pancanal.com/wp-json/wp/v2/posts?after=2026-09-06T04:35:54&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1", "sha256": "1fdaa428cea6e7483a37dd9e6ef857c3e6c87977d47ed6a7726a8efa73d2dc5d", "fetched_at": "2026-10-07T04:35:55+00:00"}
+{"name": "categories_p001.json", "url": "https://pancanal.com/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1", "sha256": "78b9e075ec2587a48ac5aaaaf15a2fce6e3531e5536c4beaa0b57ac3b97f75d6", "fetched_at": "2026-10-07T04:35:56+00:00"}

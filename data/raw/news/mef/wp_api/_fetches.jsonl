@@ -1,0 +1,2 @@
+{"name": "posts_p001.json", "url": "https://www.mef.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:35:57&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1", "sha256": "2dd58b4f01c936ba5b96114d770f9a69d0d83ed3c7d50e545f9940d6c45aa5b7", "fetched_at": "2026-10-07T04:35:59+00:00"}
+{"name": "categories_p001.json", "url": "https://www.mef.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1", "sha256": "63d7e9cbd963047f417387e87e22fbc5b653dea01ff1873c24b874e60acdc802", "fetched_at": "2026-10-07T04:36:02+00:00"}

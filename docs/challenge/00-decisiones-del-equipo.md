@@ -45,3 +45,21 @@ Si una sección `01`-`12` contradice este archivo, **prevalece este archivo**.
 - **Qué dice el reto:** el §6 propone TVN RSS, GDELT, Banco Mundial, USGS y SBP.
 - **Aclaración de la organización:** son ejemplos; el equipo puede usar las fuentes públicas que quiera.
 - **Cómo aplicar:** se pueden añadir fuentes, registrando derechos y condiciones de reutilización de cada una.
+
+## D-04 · Noticias de los últimos 30 días
+
+- **Qué dice el reto:** el §6.A pide los 30 días previos a la extracción, ampliables hasta 90.
+  D-02 fija el límite exterior en 2025-10-02.
+- **Decisión:** las noticias se limitan a los 30 días previos a la fecha de extracción, dentro del límite de D-02.
+- **Motivo:** 30 días dan unas 2.800 noticias de TVN, muy por encima del mínimo de 100.
+  Un año completo (unas 30.000) consume la cuota gratuita de Gemini y alarga la verificación de fechas sin mejorar la demo.
+- **Alcance:** solo noticias.
+  Los sismos USGS siguen D-02 y el Banco Mundial conserva 2010-2024.
+
+### Cómo aplicar esta decisión
+
+- La ventana es una constante en `src/whoami/contracts.py` (`NEWS_WINDOW`).
+- `data/raw/` puede guardar más historia; ampliar la ventana solo requiere `whoami build`, sin descargar de nuevo.
+- La fecha de publicación de TVN sale del `lastmod` del sitemap, salvo los artículos antiguos reeditados, que se fechan desde su página.
+  La columna `origen_fecha_publicacion` indica el origen (`feed`, `pagina` o `lastmod`).
+  Evidencia: `docs/research/tvn-fecha-publicacion.md`.

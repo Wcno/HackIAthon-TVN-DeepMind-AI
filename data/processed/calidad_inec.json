@@ -1,0 +1,85 @@
+{
+  "filas": 144,
+  "filas_con_valor": 142,
+  "filas_nulas": 2,
+  "anio_inicial": 2022,
+  "series": {
+    "ipc_indice": {
+      "filas": 32,
+      "desde": "2024-01",
+      "hasta": "2026-08",
+      "nulos": []
+    },
+    "ipc_var_mensual": {
+      "filas": 32,
+      "desde": "2024-01",
+      "hasta": "2026-08",
+      "nulos": []
+    },
+    "ipc_var_interanual": {
+      "filas": 32,
+      "desde": "2024-01",
+      "hasta": "2026-08",
+      "nulos": []
+    },
+    "pib_constante": {
+      "filas": 16,
+      "desde": "2022-T1",
+      "hasta": "2026-T2",
+      "nulos": []
+    },
+    "pib_corriente": {
+      "filas": 16,
+      "desde": "2022-T1",
+      "hasta": "2026-T2",
+      "nulos": []
+    },
+    "pib_constante_var_interanual": {
+      "filas": 16,
+      "desde": "2022-T1",
+      "hasta": "2026-T2",
+      "nulos": [
+        "2023-T3",
+        "2023-T4"
+      ]
+    }
+  },
+  "excluidos_por_motivo": {
+    "mes_sin_publicar": 4,
+    "periodo_duplicado": 2
+  },
+  "excluidos": [
+    {
+      "serie_id": "ipc",
+      "periodo": "2026-09",
+      "motivo": "mes_sin_publicar"
+    },
+    {
+      "serie_id": "ipc",
+      "periodo": "2026-10",
+      "motivo": "mes_sin_publicar"
+    },
+    {
+      "serie_id": "ipc",
+      "periodo": "2026-11",
+      "motivo": "mes_sin_publicar"
+    },
+    {
+      "serie_id": "ipc",
+      "periodo": "2026-12",
+      "motivo": "mes_sin_publicar"
+    },
+    {
+      "serie_id": "pib",
+      "periodo": "2021-T3",
+      "motivo": "periodo_duplicado",
+      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparicion"
+    },
+    {
+      "serie_id": "pib",
+      "periodo": "2021-T4",
+      "motivo": "periodo_duplicado",
+      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparicion"
+    }
+  ]
+}

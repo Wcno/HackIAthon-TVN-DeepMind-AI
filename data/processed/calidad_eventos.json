@@ -1,0 +1,15 @@
+{
+  "ventana": {
+    "desde": "2025-10-02T00:00:00Z",
+    "hasta": "2026-10-07T04:32:34Z"
+  },
+  "eventos_leidos": 88,
+  "incluidos": 88,
+  "excluidos_por_motivo": {},
+  "primer_evento": "2025-10-04T07:31:11Z",
+  "ultimo_evento": "2026-10-04T14:06:10Z",
+  "magnitud": {
+    "minima": 3.2,
+    "maxima": 5.9
+  }
+}

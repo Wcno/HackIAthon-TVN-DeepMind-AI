@@ -19,9 +19,11 @@ The accepted risk is that Google does not publish free-tier limits.
 
 ## Considered options
 
-- **Local (QVAC/Qwen and `multilingual-e5`)**: not used for the offline demo.
-  A LLaMA-compatible endpoint is allowed only as an optional classification
-  verifier using the same strict JSON contract; it never publishes automatically.
+- **Local (QVAC/Qwen and `multilingual-e5`)**: rejected because the team prefers not to run local models, and the app is deployed on free hosting.
+  Free tiers offer about 512 MB of RAM or serverless size limits, which `sentence-transformers` with PyTorch does not fit.
+  An ONNX build (`fastembed` with quantized `multilingual-e5-small`) would fit a small VPS but still not serverless.
+  This also rules out the local MiniLM + FAISS plan in `prod`'s `docs/PLAN.md`.
+  Supersedes the `NoSkill` branch plan (D-02); D-05 (no `tools`, strict JSON) still holds.
 - **Groq**: strict JSON only on `gpt-oss-20b/120b` and `qwen3.8-27b`, no embeddings, 8K TPM; kept as a generation fallback by changing only `base_url`.
 - **OpenRouter `:free`**: 50 requests/day without credits, not enough for the benchmark.
 - **Cloudflare Workers AI**: viable (`bge-m3`, 10K neurons/day), but adds another platform with no clear gain.

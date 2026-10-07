@@ -1,0 +1,2 @@
+{"name": "posts_p001.json", "url": "https://www.amp.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:36:05&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1", "sha256": "d704862335e0dfc91c93edba8c5a71fabceb126d2ff90495e8576e9935d876d9", "fetched_at": "2026-10-07T04:36:06+00:00"}
+{"name": "categories_p001.json", "url": "https://www.amp.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1", "sha256": "3f974d4c4a9e2fc5d2104c6de178326669a71154c435e623dedfc88341524632", "fetched_at": "2026-10-07T04:36:07+00:00"}
