@@ -3,7 +3,9 @@ name = "whoami"
 version = "0.1.0"
 description = "De la señal a la decisión - hackIAthon TVN Media"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+]
 
 [project.scripts]
 whoami = "whoami.cli:main"

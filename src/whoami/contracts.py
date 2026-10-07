@@ -6,7 +6,7 @@
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal, get_args
 
 #: Team decision D-04 (§6.A default): news from the 30 days before the extraction date.
 NEWS_WINDOW: Final = timedelta(days=30)
@@ -50,6 +50,16 @@ NEWS_COLUMNS: Final = (
 )
 
 EXCLUDED_NEWS_COLUMNS: Final = ("id_noticia", "url", "id_fuente", "origen", "motivo", "fecha_publicacion")
+
+#: Pipeline outputs (G3, G4) and the synthetic set the frontend starts from (G2). Same file names in
+#: both places, so the interface switches between them by changing a directory.
+OUTPUTS: Final = DATA.parent / "outputs"
+DEMO: Final = DATA / "demo"
+GROUPS_FILE: Final = "grupos.jsonl"  # processed/: groups with members, score and official context
+EVIDENCE_FILE: Final = "evidencias.jsonl"  # processed/: every citable record
+FICHAS_FILE: Final = "fichas.jsonl"  # outputs/: §7
+QUERIES_FILE: Final = "consultas.jsonl"  # outputs/: precomputed answers (offline, D-01)
+REVIEWS_FILE: Final = "revisiones.jsonl"  # outputs/: human decisions, append-only history
 
 INDICATORS_CSV: Final = PROCESSED / "indicadores.csv"
 INDICATORS_QUALITY_JSON: Final = PROCESSED / "calidad_indicadores.json"
@@ -112,3 +122,80 @@ class PublicationDateOrigin(StrEnum):
 #: §3: whether the output must say it is based only on headline and metadata.
 TEXT_SCOPE_HEADLINE: Final = "titular_metadatos"
 TEXT_SCOPE_DESCRIPTION: Final = "titular_descripcion"
+TEXT_SCOPE_FULL: Final = "texto_completo"
+TextScope = Literal["titular_metadatos", "titular_descripcion", "texto_completo"]
+TEXT_SCOPES: Final = get_args(TextScope)
+
+#: §3: a draft built only on headline and metadata must carry this wording.
+HEADLINE_ONLY_LEGEND: Final = "basado únicamente en titular/metadatos"
+
+#: §4 attention score: P = 30R + 25I + 20U + 15N + 10E, each component normalised to 0-1.
+SCORE_WEIGHTS: Final = {"R": 30, "I": 25, "U": 20, "N": 15, "E": 10}
+
+#: §4 ranges, no overlap: bajo [0,40), medio [40,70), alto [70,100].
+SCORE_RANGES: Final = (("bajo", 0, 40), ("medio", 40, 70), ("alto", 70, 100))
+ScoreRange = Literal["bajo", "medio", "alto"]
+
+#: Bump when weights or component rules change, so a score can be traced to its rules (§4).
+RULES_VERSION: Final = "1.0.0"
+
+#: Evidence id prefixes, one per kind of source. Ids are stable so a citation can be checked later.
+#: noticia: `N-<hash>` (noticias.csv), indicador: `WB-PAN-NY.GDP.MKTP.KD.ZG-2023`,
+#: serie_inec: `INEC-ipc_indice-2024-01`, sismo: `USGS-us6000rerc`.
+EvidenceKind = Literal["noticia", "indicador", "serie_inec", "sismo"]
+EVIDENCE_PREFIXES: Final[dict[EvidenceKind, str]] = {
+    "noticia": "N-",
+    "indicador": "WB-",
+    "serie_inec": "INEC-",
+    "sismo": "USGS-",
+}
+
+#: §3 stage 6: the draft must tell these four apart.
+ClaimType = Literal["hecho", "declaracion", "inferencia", "hipotesis"]
+CLAIM_TYPES: Final = get_args(ClaimType)
+
+#: §3 stage 2 topics as stable slugs. `sin_tema` is ours: no description passed the threshold, so
+#: the topic is not forced. TOPIC_LABELS are the names the interface shows.
+Topic = Literal["economia", "logistica_canal", "turismo", "servicios_publicos", "eventos_naturales", "regulacion"]
+TopicOrNone = Literal[Topic, "sin_tema"]
+TOPICS: Final = get_args(Topic)
+NO_TOPIC: Final = "sin_tema"
+TOPIC_LABELS: Final = {
+    "economia": "Economía",
+    "logistica_canal": "Logística/Canal",
+    "turismo": "Turismo",
+    "servicios_publicos": "Servicios públicos",
+    "eventos_naturales": "Eventos naturales",
+    "regulacion": "Regulación",
+    "sin_tema": "Sin tema",
+}
+
+#: §8 human review states. Approving a draft does not mean publishing it.
+ReviewState = Literal["nuevo", "en_revision", "requiere_evidencia", "aprobado_como_borrador", "descartado"]
+REVIEW_STATES: Final = get_args(ReviewState)
+
+#: Allowed moves between review states. Every case starts in `nuevo`; nothing goes back to it, and a
+#: discarded case has to be reopened before it can be approved.
+REVIEW_TRANSITIONS: Final[dict[ReviewState, tuple[ReviewState, ...]]] = {
+    "nuevo": ("en_revision", "requiere_evidencia", "descartado"),
+    "en_revision": ("requiere_evidencia", "aprobado_como_borrador", "descartado"),
+    "requiere_evidencia": ("en_revision", "descartado"),
+    "aprobado_como_borrador": ("en_revision", "descartado"),
+    "descartado": ("en_revision",),
+}
+
+#: §4 evidence status, independent of the score.
+EvidenceState = Literal["insuficiente", "parcial", "suficiente_para_borrador"]
+EVIDENCE_STATES: Final = get_args(EvidenceState)
+
+Modality = Literal["editorial_tvn"]
+MODALITY: Final = "editorial_tvn"
+
+#: §3 editorial package limits.
+BRIEF_MAX_WORDS: Final = 250
+COPY_MAX_WORDS: Final = 80
+RESEARCH_QUESTIONS: Final = 3
+
+#: Outcome of a query box answer: answered with citations, abstained, or showing both versions.
+AnswerState = Literal["respondida", "abstencion", "contradiccion"]
+ANSWER_STATES: Final = get_args(AnswerState)
