@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from whoami.generation.jsonschemas import answer_schema, response_format, to_answer
-from whoami.generation.prompting import Gate, build_messages, complete_json
+from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import check_citations, normalize_numbers, unsupported_numbers
 from whoami.llm.client import LLMError
@@ -89,13 +89,13 @@ def answer_query(
     id_consulta: str,
     consulta: str,
     retriever: Retriever,
-    gate: Gate,
+    gate: CosineGate,
     evidences: Mapping[str, Evidence],
     llm,
     model: str,
 ) -> Answer:
     hits = [(i, score) for i, score in retriever.search(consulta, TOP_K) if i in evidences]
-    decision = gate.decide(consulta, hits)
+    decision = gate.decide(consulta)
     if not decision.answerable:
         return _abstention(
             id_consulta, consulta, decision.motivo or "las fuentes recuperadas no responden la consulta", decision.faltante

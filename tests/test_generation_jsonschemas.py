@@ -8,7 +8,6 @@ from whoami.generation.jsonschemas import (
     claims_schema,
     contradiction_pair_schema,
     entailment_schema,
-    gate_schema,
     package_schema,
     response_format,
     single_shot_schema,
@@ -30,7 +29,6 @@ def all_schemas() -> dict[str, dict]:
         "claims": claims_schema(IDS),
         "answer": answer_schema(IDS),
         "entailment": entailment_schema(),
-        "gate": gate_schema(),
         "contradiction_pair": contradiction_pair_schema(),
     }
 

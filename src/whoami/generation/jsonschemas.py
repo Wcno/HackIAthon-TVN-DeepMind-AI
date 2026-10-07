@@ -121,11 +121,6 @@ def entailment_schema() -> Schema:
     )
 
 
-def gate_schema() -> Schema:
-    """Can the retrieved sources answer the question?"""
-    return _object({"respondible": _BOOLEAN, "motivo": _STRING, "faltante": _STRING})
-
-
 def contradiction_pair_schema() -> Schema:
     """Do two news items of the same group state incompatible things?"""
     return _object(

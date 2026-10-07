@@ -4,7 +4,7 @@ import re
 
 from generation_fakes import FakeLLM
 from whoami.generation.case_files import SingleShotGenerator, TwoStepGenerator, build_outputs
-from whoami.generation.prompting import RetrievalGate
+from whoami.generation.prompting import CosineGate
 from whoami.generation.retrieval import BM25Index, BM25Retriever, documents_from
 from whoami.schemas import verify
 from whoami.store import load_demo
@@ -65,7 +65,7 @@ def demo_model(call: dict):
 
 QUERIES = [(a.id_consulta, a.consulta) for a in DEMO.consultas]
 RETRIEVER = BM25Retriever(BM25Index(documents_from(DEMO.evidencias.values())))
-GATE = RetrievalGate(min_top_score=0.5, min_hits_above=1)
+GATE = CosineGate(RETRIEVER, min_cosine=0.5)  # BM25 scores stand in for cosines
 
 
 def build(kind):

@@ -1,7 +1,7 @@
 import pytest
 
 from generation_fakes import FakeLLM, LLMError, by_id, indicator, news
-from whoami.generation.prompting import RetrievalGate
+from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import UNVERIFIABLE_REASON, INVALID_ANSWER_REASON, answer_query
 from whoami.generation.retrieval import BM25Index, BM25Retriever, documents_from
 
@@ -13,7 +13,7 @@ EVIDENCES = by_id(
     indicator(),
 )
 RETRIEVER = BM25Retriever(BM25Index(documents_from(EVIDENCES.values())))
-GATE = RetrievalGate(min_top_score=0.5, min_hits_above=1)
+GATE = CosineGate(RETRIEVER, min_cosine=0.5)  # BM25 scores stand in for cosines
 MODEL = "gemma-4-26b-a4b-it"
 
 
@@ -71,7 +71,7 @@ def test_only_the_top_eight_hits_are_requested():
 
 def test_the_gate_abstains_without_calling_the_model():
     llm = FakeLLM([model_answer()])
-    answer = ask(llm, query="¿Cuál será el PIB de Panamá en 2027?", gate=RetrievalGate(min_top_score=50, min_hits_above=1))
+    answer = ask(llm, query="¿Cuál será el PIB de Panamá en 2027?", gate=CosineGate(RETRIEVER, min_cosine=50))
     assert answer.estado == "abstencion"
     assert answer.motivo_abstencion and answer.faltante
     assert llm.n_calls == 0

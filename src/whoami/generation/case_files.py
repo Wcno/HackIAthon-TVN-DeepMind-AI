@@ -32,7 +32,7 @@ from whoami.generation.jsonschemas import (
     to_package,
 )
 from whoami.generation.entailment import EntailmentChecker
-from whoami.generation.prompting import Gate, build_messages, complete_json
+from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.query_box import answer_query
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import VerificationReport, verify_claims
@@ -333,7 +333,7 @@ def build_outputs(
     query_specs: Iterable[tuple[str, str]],
     *,
     retriever: Retriever,
-    gate: Gate,
+    gate: CosineGate,
     llm,
     model: str,
     top_n: int = 5,

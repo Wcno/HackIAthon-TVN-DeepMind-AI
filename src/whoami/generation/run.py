@@ -21,7 +21,7 @@ from whoami.generation.case_files import (
 )
 from whoami.generation.entailment import EntailmentChecker
 from whoami.generation.evidence_index import Embedder, LocalEmbedder, default_retrievers
-from whoami.generation.prompting import BothGate, CosineGate, Gate, LLMGate
+from whoami.generation.prompting import CosineGate
 from whoami.generation.verifier import VerificationReport
 from whoami.llm import default_llm
 from whoami.schemas import CaseFile, Evidence, Group, OutputSet
@@ -32,7 +32,6 @@ DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 VECTORS_FILE = "evidencias_vectores.npy"
 GENERATORS = {"single": SingleShotGenerator, "two": TwoStepGenerator}
 RETRIEVERS = ("bm25", "emb", "hybrid")
-GATES = ("coseno", "llm", "ambas")
 
 
 @dataclass(frozen=True)
@@ -41,7 +40,6 @@ class RunConfig:
     modelo: str
     top: int
     recuperador: str
-    compuerta: str
     consultas: Path
     implicacion: bool
 
@@ -51,14 +49,13 @@ def add_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument("--modelo", default=DEFAULT_MODEL)
     command.add_argument("--top", type=int, default=10, help="groups to generate a case file for (insufficient ones are skipped)")
     command.add_argument("--recuperador", choices=RETRIEVERS, default="hybrid")
-    command.add_argument("--compuerta", choices=GATES, default="coseno")
     command.add_argument("--consultas", type=Path, default=DEFAULT_QUERIES, help="JSONL with id and consulta")
     command.add_argument("--implicacion", action="store_true", help="check every kept claim is supported by its passages")
 
 
 def config_from(args: argparse.Namespace) -> RunConfig:
     return RunConfig(
-        args.generador, args.modelo, args.top, args.recuperador, args.compuerta, args.consultas, args.implicacion
+        args.generador, args.modelo, args.top, args.recuperador, args.consultas, args.implicacion
     )
 
 
@@ -143,14 +140,6 @@ def load_input(data: Path, outputs: Path) -> OutputSet:
     )
 
 
-def _gate(config: RunConfig, retrievers: dict, llm, evidences: dict[str, Evidence]) -> Gate:
-    cosine = CosineGate(retrievers["emb"])
-    if config.compuerta == "coseno":
-        return cosine
-    llm_gate = LLMGate(llm, config.modelo, evidences)
-    return llm_gate if config.compuerta == "llm" else BothGate(cosine, llm_gate)
-
-
 def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Path) -> Summary:
     """Builds the case files and answers, validates them and writes them to `data` and `outputs`."""
     source = load_input(data, outputs)
@@ -163,7 +152,7 @@ def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Pat
         generator,
         load_queries(config.consultas),
         retriever=retrievers[config.recuperador],
-        gate=_gate(config, retrievers, counting, source.evidencias),
+        gate=CosineGate(retrievers["emb"]),
         llm=counting,
         model=config.modelo,
         top_n=config.top,

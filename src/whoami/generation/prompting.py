@@ -1,23 +1,21 @@
 """Instruction/source separation (T07) and the abstention gate (T06).
 
 Sources and the user query go in the user message inside tags, with angle brackets neutralized, while the rules
-live in the system message. The gate decides whether the retrieved sources can answer at all, before any
+live in the system message. The gate decides whether the evidence can answer the query at all, before any
 generation is spent.
 """
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
-from whoami.generation.jsonschemas import gate_schema, response_format
 from whoami.generation.retrieval import Retriever
 from whoami.generation.untrusted import neutralize, was_altered
-from whoami.llm.client import InvalidJSON, LLMError
+from whoami.llm.client import InvalidJSON
 from whoami.schemas import Claim, Evidence
 
 #: A secret placed in the system prompt that must never appear in an output: a leak proves the prompt was exposed.
 CANARY = "CANARIO-7Q2"
-GATE_MAX_TOKENS = 300
 
 SYSTEM_RULES = f"""Eres un asistente de verificación periodística para un equipo editorial.
 Reglas:
@@ -120,9 +118,6 @@ def build_messages(
 # Abstention gate
 # ---------------------------------------------------------------------------------------------------------
 
-ScoredHit = tuple[str, float]
-
-
 @dataclass(frozen=True)
 class GateDecision:
     answerable: bool
@@ -132,24 +127,6 @@ class GateDecision:
 
 def _refusal(query: str, motivo: str) -> GateDecision:
     return GateDecision(False, motivo, f"Fuentes que respondan directamente: {query}")
-
-
-class Gate(Protocol):
-    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision: ...
-
-
-@dataclass(frozen=True)
-class RetrievalGate:
-    """Answerable when the best hit scores at least `min_top_score` and `min_hits_above` hits do."""
-
-    min_top_score: float
-    min_hits_above: int
-
-    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision:
-        above = sum(score >= self.min_top_score for _, score in hits)
-        if above >= max(self.min_hits_above, 1):
-            return GateDecision(True)
-        return _refusal(query, "las fuentes recuperadas no son lo bastante relevantes para la consulta")
 
 
 #: Dev set: every unanswerable query scored below this against every evidence, every answerable one at or above.
@@ -164,59 +141,8 @@ class CosineGate:
     retriever: Retriever
     min_cosine: float = MIN_COSINE
 
-    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision:  # noqa: ARG002
+    def decide(self, query: str) -> GateDecision:
         best = self.retriever.search(query, 1)
         if best and best[0][1] >= self.min_cosine:
             return GateDecision(True)
         return _refusal(query, "ninguna fuente se parece lo bastante a la consulta")
-
-
-class LLMGate:
-    """Asks the model whether the top sources contain the answer. Any unusable answer counts as a refusal."""
-
-    TASK = (
-        "Decide si las fuentes bastan para responder la consulta. "
-        "respondible es true solo si alguna fuente contiene la respuesta directa; "
-        "si no, explica el motivo y qué información falta."
-    )
-
-    def __init__(self, llm, model: str, evidences: Mapping[str, Evidence], top_k: int = 5) -> None:
-        self._llm = llm
-        self._model = model
-        self._evidences = evidences
-        self._top_k = top_k
-
-    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision:
-        sources = [self._evidences[i] for i, _ in hits[: self._top_k] if i in self._evidences]
-        if not sources:
-            return _refusal(query, "no se recuperó ninguna fuente")
-        try:
-            data = complete_json(
-                self._llm,
-                self._model,
-                build_messages(self.TASK, sources, user_query=query),
-                purpose="compuerta",
-                evidence_ids=[e.id_evidencia for e in sources],
-                response_format=response_format("compuerta", gate_schema()),
-                max_tokens=GATE_MAX_TOKENS,
-            )
-            answerable = data["respondible"] is True
-            motivo, faltante = data["motivo"], data["faltante"]
-        except (LLMError, ValueError, KeyError, TypeError, AttributeError):
-            return _refusal(query, "el modelo no pudo evaluar si las fuentes alcanzan")
-        if answerable:
-            return GateDecision(True)
-        fallback = _refusal(query, "el modelo considera que las fuentes no responden la consulta")
-        return GateDecision(False, motivo.strip() or fallback.motivo, faltante.strip() or fallback.faltante)
-
-
-@dataclass(frozen=True)
-class BothGate:
-    """Answerable only if both gates say so. The second is not consulted when the first refuses."""
-
-    first: Gate
-    second: Gate
-
-    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision:
-        decision = self.first.decide(query, hits)
-        return self.second.decide(query, hits) if decision.answerable else decision

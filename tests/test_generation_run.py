@@ -53,7 +53,7 @@ def workspace(tmp_path):
 
 
 def config(queries, **overrides):
-    values = dict(generador="single", modelo=MODEL, top=len(DEMO.grupos), recuperador="bm25", compuerta="coseno",
+    values = dict(generador="single", modelo=MODEL, top=len(DEMO.grupos), recuperador="bm25",
                   consultas=queries, implicacion=False)
     return RunConfig(**values | overrides)
 
