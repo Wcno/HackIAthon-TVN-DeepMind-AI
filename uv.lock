@@ -1507,10 +1507,14 @@ name = "whoami"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "huggingface-hub" },
     { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "scikit-learn" },
+    { name = "tokenizers" },
 ]
 
 [package.dev-dependencies]
@@ -1526,10 +1530,14 @@ experiments = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", specifier = ">=1.0" },
     { name = "numpy", specifier = ">=2.5.3" },
+    { name = "onnxruntime", specifier = ">=1.20" },
     { name = "openai", specifier = ">=3.26.0" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
+    { name = "scikit-learn", specifier = ">=1.9.1" },
+    { name = "tokenizers", specifier = ">=0.21" },
 ]
 
 [package.metadata.requires-dev]
