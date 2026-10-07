@@ -325,7 +325,7 @@ def test_complete_returns_the_text_and_records_a_miss(tmp_path: Path):
 
 
 def test_complete_forwards_optional_arguments_only_when_given(tmp_path: Path):
-    client = FakeClient(chat_response(), chat_response())
+    client = FakeClient(chat_response(), chat_response("{}"))
     llm = make_llm(tmp_path, client)
     llm.complete(CHAT, USER_MESSAGE, purpose="a")
     llm.complete(CHAT, USER_MESSAGE, purpose="b", response_format={"type": "json_object"}, max_tokens=50)
