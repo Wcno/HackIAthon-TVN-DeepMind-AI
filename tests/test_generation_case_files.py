@@ -237,3 +237,33 @@ def test_two_step_headline_only_package_carries_the_legend():
     gen, _ = generator([{"afirmaciones": [GOOD]}, PACKAGE], kind=TwoStepGenerator)
     case_file, _, _ = gen.generate(make_group(alcance="titular_metadatos"), EVIDENCES, "CASO-001")
     assert case_file.borrador.leyenda == HEADLINE_ONLY_LEGEND
+
+
+def test_a_cap_reached_during_the_package_retry_is_not_swallowed():
+    import pytest
+    from whoami.generation.case_files import SingleShotGenerator
+    from whoami.llm.client import CapExceeded
+    from whoami.store import load_demo
+
+    output = load_demo()
+    group = next(g for g in output.grupos if g.id_grupo == "G-001")
+    over_limit = {"afirmaciones": [{"texto": "La Autoridad del Canal de Panamá informó que limitará a 32 los tránsitos diarios", "tipo": "hecho", "atribuida_a": None,
+                   "citas": [{"id_evidencia": "N-2cf673d2b74a", "campo": "descripcion", "pasaje": "limitará a 32 los tránsitos diarios"}]}],
+                  "vacios": [], "accion_recomendada": "Verificar.",
+                  "borrador": {"titulo": "t", "brief": "palabra " * 300, "enfoque_interes_publico": "e", "preguntas": ["a", "b", "c"],
+                               "fuentes_y_verificaciones": [], "guion": "g", "copy_digital": "c"}}
+
+    class CapOnSecondCall:
+        def __init__(self):
+            self.calls = 0
+
+        def complete(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls > 1:
+                raise CapExceeded("tope")
+            import json
+            from types import SimpleNamespace
+            return SimpleNamespace(json=lambda: over_limit, cached=False, text=json.dumps(over_limit))
+
+    with pytest.raises(CapExceeded):
+        SingleShotGenerator(CapOnSecondCall(), "m").generate(group, output.evidencias, "CASO-001")

@@ -234,6 +234,8 @@ class SingleShotGenerator(_Generator):
             try:
                 retry = self._ask(sources, _retry_task(task, answer.package_error), scope, wants_package)
                 retry_report = self._check(sources, retry.claims)
+            except CapExceeded:
+                raise
             except (LLMError, ValueError):
                 retry = None
             if retry is not None and retry.package_error is None and retry_report.valid_claims:
