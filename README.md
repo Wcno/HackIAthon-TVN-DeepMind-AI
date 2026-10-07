@@ -2,6 +2,22 @@
 
 Este repositorio es para la hackathon.
 
+## Run the G5 backend
+
+```powershell
+uv sync --locked --link-mode copy
+uv run --locked uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+Open http://127.0.0.1:8000/inbox. The initial workflow uses synthetic news and
+precomputed queries, without a Gemini key. Human decisions persist in SQLite
+outside the checkout. See [the backend contract](docs/backend.md) for G4/G6
+integration, runtime settings, available screens and validation.
+
+```powershell
+uv run --locked pytest -q
+```
+
 ## Flujo de trabajo del equipo
 
 La rama de integración y producción es `prod`. Cada cambio se desarrolla en una rama corta y se revisa una sola vez mediante un pull request hacia `prod`. No usamos una rama `dev` en este flujo.
