@@ -135,7 +135,7 @@ def test_cli_defaults_and_options(workspace, monkeypatch, capsys):
     data, outputs, queries = workspace
     llm = FakeLLM(demo_model)
     monkeypatch.setattr(run, "default_llm", lambda: llm)
-    monkeypatch.setattr(run, "OnnxEmbedder", lambda: FakeEmbedder(True))
+    monkeypatch.setattr(run, "LocalEmbedder", lambda: FakeEmbedder(True))
     monkeypatch.setattr(run, "PROCESSED", data)
     monkeypatch.setattr(run, "OUTPUTS", outputs)
     monkeypatch.setattr(sys, "argv", ["whoami", "generar", "--consultas", str(queries), "--recuperador", "bm25"])

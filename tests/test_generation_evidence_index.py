@@ -7,7 +7,7 @@ import pytest
 
 from generation_fakes import news
 from whoami.generation.evidence_index import (
-    OnnxEmbedder,
+    LocalEmbedder,
     build_index,
     default_retrievers,
     evidence_text,
@@ -139,7 +139,7 @@ def test_default_retrievers_offers_bm25_embeddings_and_hybrid(tmp_path):
 
 @pytest.mark.skipif(not model_dir().exists(), reason="local embedding model not downloaded")
 def test_onnx_embedder_ranks_the_related_sentence_first_with_unit_vectors():
-    embedder = OnnxEmbedder()
+    embedder = LocalEmbedder()
     query = embedder.embed_queries(["¿Cuál es la tasa de desempleo de Panamá?"])[0]
     documents = embedder.embed_documents(
         ["Desempleo de Panamá en 2024: 7,4 % anual (Banco Mundial)", "Sismo de magnitud 5,6 en Burica (USGS)"]

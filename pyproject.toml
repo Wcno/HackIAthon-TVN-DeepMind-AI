@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "De la señal a la decisión - hackIAthon TVN Media"
 requires-python = ">=3.12"
 dependencies = [
+    "huggingface-hub>=1.0",
     "numpy>=2.5.3",
     "onnxruntime>=1.30.0",
     "openai>=3.26.0",
     "pydantic>=2.9",
     "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
     "tokenizers>=0.23.2",
 ]
 

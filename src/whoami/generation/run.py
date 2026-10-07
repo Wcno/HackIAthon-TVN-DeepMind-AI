@@ -20,7 +20,7 @@ from whoami.generation.case_files import (
     build_outputs,
 )
 from whoami.generation.entailment import EntailmentChecker
-from whoami.generation.evidence_index import Embedder, OnnxEmbedder, default_retrievers
+from whoami.generation.evidence_index import Embedder, LocalEmbedder, default_retrievers
 from whoami.generation.prompting import BothGate, CosineGate, Gate, LLMGate
 from whoami.generation.verifier import VerificationReport
 from whoami.llm import default_llm
@@ -182,6 +182,6 @@ def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Pat
 
 
 def main(args: argparse.Namespace) -> int:
-    summary = generar(config_from(args), default_llm(), OnnxEmbedder(), PROCESSED, OUTPUTS)
+    summary = generar(config_from(args), default_llm(), LocalEmbedder(), PROCESSED, OUTPUTS)
     print(summary.render())
     return 0

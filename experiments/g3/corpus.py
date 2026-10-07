@@ -1,0 +1,18 @@
+"""Corpus loading and the text recipe shared by every experiment."""
+import csv
+from pathlib import Path
+
+REPO = Path("/home/jwhoami/Development/projects/hackathons/hackiaton-whoamisfc")
+NEWS = REPO / "data/processed/noticias.csv"
+TEXT_RECIPE = "titulo + '. ' + descripcion (si hay descripción); si no, titulo"
+
+
+def rows():
+    with NEWS.open(encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def text(row) -> str:
+    title = row["titulo"].strip()
+    desc = row["descripcion"].strip()
+    return f"{title}. {desc}" if desc else title

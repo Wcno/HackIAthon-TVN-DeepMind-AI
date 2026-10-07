@@ -7,7 +7,6 @@ replaced by another with the same two methods.
 """
 
 import json
-import os
 import re
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -16,6 +15,8 @@ from typing import Protocol
 import numpy as np
 
 from whoami.contracts import PROCESSED
+from whoami.embeddings import Embedder as LocalEmbedder
+from whoami.embeddings import model_dir
 from whoami.generation.retrieval import (
     BM25Index,
     BM25Retriever,
@@ -41,11 +42,6 @@ MONTHS = (
 )
 QUARTERS = ("primer", "segundo", "tercer", "cuarto")
 
-DEFAULT_MODEL_DIR = Path.home() / ".cache/whoami/models/local/embeddinggemma-300m-q4"
-QUERY_PREFIX = "task: search result | query: "
-DOCUMENT_PREFIX = "title: none | text: "
-MAX_TOKENS = 512
-BATCH_SIZE = 32
 
 VECTORS_CACHE = PROCESSED / "evidencias_vectores.npy"
 
@@ -89,42 +85,6 @@ class Embedder(Protocol):
     def embed_documents(self, texts: Sequence[str]) -> np.ndarray: ...
 
 
-def model_dir() -> Path:
-    return Path(os.environ.get("WHOAMI_EMBEDDING_MODEL_DIR") or DEFAULT_MODEL_DIR)
-
-
-class OnnxEmbedder:
-    """EmbeddingGemma (q4) on CPU. Output is the model's `sentence_embedding`, L2-normalized."""
-
-    def __init__(self, directory: Path | None = None) -> None:
-        import onnxruntime
-        from tokenizers import Tokenizer
-
-        directory = directory or model_dir()
-        self._session = onnxruntime.InferenceSession(str(directory / "onnx/model.onnx"), providers=["CPUExecutionProvider"])
-        self._tokenizer = Tokenizer.from_file(str(directory / "tokenizer.json"))
-        self._tokenizer.enable_padding()
-        self._tokenizer.enable_truncation(MAX_TOKENS)
-
-    def _embed(self, texts: Sequence[str]) -> np.ndarray:
-        batches = []
-        for start in range(0, len(texts), BATCH_SIZE):
-            encoded = self._tokenizer.encode_batch(list(texts[start : start + BATCH_SIZE]))
-            inputs = {
-                "input_ids": np.array([e.ids for e in encoded], dtype=np.int64),
-                "attention_mask": np.array([e.attention_mask for e in encoded], dtype=np.int64),
-            }
-            batches.append(self._session.run(["sentence_embedding"], inputs)[0])
-        vectors = np.concatenate(batches)
-        return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
-
-    def embed_queries(self, texts: Sequence[str]) -> np.ndarray:
-        return self._embed([QUERY_PREFIX + text for text in texts])
-
-    def embed_documents(self, texts: Sequence[str]) -> np.ndarray:
-        return self._embed([DOCUMENT_PREFIX + text for text in texts])
-
-
 def build_index(
     evidences: Iterable[Evidence], embed_documents: EmbedTexts, cache_path: Path
 ) -> tuple[list[str], np.ndarray]:
@@ -147,7 +107,7 @@ def default_retrievers(
 ) -> dict[str, Retriever]:
     """`bm25`, `emb` and `hybrid` (their reciprocal rank fusion) over the same evidences."""
     evidences = list(evidences)
-    embedder = embedder or OnnxEmbedder()
+    embedder = embedder or LocalEmbedder()
     ids, vectors = build_index(evidences, embedder.embed_documents, cache_path)
     bm25 = BM25Retriever(BM25Index(documents_from(evidences)))
     emb = EmbeddingRetriever(EmbeddingIndex(ids, vectors, lambda query: embedder.embed_queries([query])[0]))
