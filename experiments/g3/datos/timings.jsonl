@@ -1,0 +1,11 @@
+{"model": "minilm", "mode": "corpus", "load_s": 0.95, "embed_s": 19.74, "dim": 384, "n": 2941, "peak_rss_mb": 929}
+{"model": "minilm", "mode": "query", "load_s": 0.92, "q1_ms": 5.2, "q2_ms": 4.5, "peak_rss_mb": 664}
+{"model": "mpnet", "mode": "corpus", "load_s": 1.41, "embed_s": 59.79, "dim": 768, "n": 2941, "peak_rss_mb": 1961}
+{"model": "mpnet", "mode": "query", "load_s": 1.25, "q1_ms": 11.4, "q2_ms": 11.1, "peak_rss_mb": 1891}
+{"model": "potion_onnx", "mode": "corpus", "load_s": 1.39, "embed_s": 0.15, "dim": 256, "n": 2941, "peak_rss_mb": 1171}
+{"model": "potion_onnx", "mode": "query", "load_s": 1.35, "q1_ms": 1.5, "q2_ms": 0.2, "peak_rss_mb": 1161}
+{"model": "potion_m2v", "mode": "corpus", "load_s": 1.42, "embed_s": 0.04, "dim": 256, "n": 2941, "peak_rss_mb": 1600}
+{"model": "potion_m2v", "mode": "query", "load_s": 1.44, "q1_ms": 2.1, "q2_ms": 0.2, "peak_rss_mb": 1600}
+{"model": "jina_v2_es", "mode": "corpus", "load_s": 0.96, "embed_s": 79.08, "dim": 768, "n": 2941, "peak_rss_mb": 1287}
+{"model": "jina_v2_es", "mode": "query", "load_s": 0.87, "q1_ms": 13.2, "q2_ms": 11.1, "peak_rss_mb": 899}
+{"model": "e5_small", "mode": "corpus", "load_s": 1.01, "embed_s": 19.52, "dim": 384, "n": 2941, "peak_rss_mb": 1098}
