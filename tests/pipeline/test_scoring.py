@@ -244,3 +244,13 @@ def test_one_fresh_member_keeps_the_group_novel():
 
     assert score.componentes.N == 1.0
     assert score.componentes.U == 1.0
+
+
+def test_relevance_names_the_method_that_assigned_the_topic():
+    _, with_topic = relevance("economia", [row("El MEF presenta el presupuesto")], "llm")
+    _, without_topic = relevance("sin_tema", [row("Gran concierto en Panamá")], "embeddings")
+    _, unknown = relevance("economia", [row("El MEF presenta el presupuesto")], "palabras_clave_v1")
+
+    assert "Economía, por modelo de lenguaje" in with_topic
+    assert "No tiene tema editorial (por embeddings)" in without_topic
+    assert "por " not in unknown.split(";")[0]

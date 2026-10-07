@@ -1,7 +1,7 @@
 """Pipeline core: news rows and vectors in, a validated `OutputSet` out (groups, evidence, no case files yet).
 
 Classification and grouping are injected, so the experiments can replace them without touching the rest:
-`classify(texts) -> [(topic, confidence, method)]` and `group(vectors, dates) -> [[row index, ...], ...]`.
+`classify(rows, vectors) -> [(topic, confidence, method)]` and `group(vectors, dates) -> [[row index, ...], ...]`.
 """
 
 import hashlib
@@ -25,7 +25,7 @@ from whoami.pipeline.text import rows_text
 from whoami.pipeline.topics_keywords import classify_keywords
 from whoami.schemas import Evidence, Group, Member, OutputSet, parse_utc, sort_inbox
 
-Classifier = Callable[[list[str]], list[tuple[str, float, str]]]
+Classifier = Callable[[Sequence[Mapping[str, str]], np.ndarray], list[tuple[str, float, str]]]
 Grouper = Callable[[np.ndarray, Sequence[datetime]], list[list[int]]]
 
 SIMILARITY_THRESHOLD = 0.85  # cosine; the experiments will tune it
@@ -70,6 +70,10 @@ def group_by_similarity(
     return sorted(members.values())
 
 
+def classify_by_keywords(rows: Sequence[Mapping[str, str]], vectors: np.ndarray) -> list[tuple[str, float, str]]:
+    return classify_keywords([rows_text([row]) for row in rows])
+
+
 def _group_id(member_ids: Sequence[str]) -> str:
     return "G-" + hashlib.sha1(",".join(sorted(member_ids)).encode()).hexdigest()[:10]
 
@@ -82,6 +86,12 @@ def _vote(topics: Sequence[tuple[str, float, str]]) -> str:
         votes[topic] += 1
         confidence[topic] += topic_confidence
     return max(votes, key=lambda topic: (votes[topic], confidence[topic]))
+
+
+def _topic_method(topics: Sequence[tuple[str, float, str]], topic: str) -> str:
+    """How the winning topic was assigned: `llm` when any member that voted for it came from the LLM."""
+    methods = {method for voted, _, method in topics if voted == topic}
+    return "llm" if "llm" in methods else min(methods)
 
 
 def _member(row: Mapping[str, str]) -> Member:
@@ -119,7 +129,7 @@ def build(
     official = load_official_evidence() if official is None else official
     unit = _unit(np.asarray(vectors, dtype=float))
     dates = [parse_utc(row["fecha_publicacion"]) for row in rows]
-    topics = classify([rows_text([row]) for row in rows])
+    topics = classify(rows, unit)
 
     drafts = []
     for indices in group(unit, dates):
@@ -136,7 +146,8 @@ def build(
     groups = []
     for position, (ordered, members, _, title) in enumerate(drafts):
         group_rows = [rows[i] for i in ordered]
-        topic = _vote([topics[i] for i in ordered])
+        group_topics = [topics[i] for i in ordered]
+        topic = _vote(group_topics)
         context, no_context_reason = link_context(rows_text(group_rows), earliest[position], topic, official)
         earlier = [other for other in range(len(drafts)) if earliest[other] < earliest[position]]
         max_similarity = max((float(centroid_similarity[position, other]) for other in earlier), default=0.0)
@@ -146,7 +157,7 @@ def build(
                 titulo=title,
                 tema=topic,
                 miembros=tuple(members),
-                puntaje=score_group(group_rows, members, topic, bool(context), max_similarity, fecha_corte),
+                puntaje=score_group(group_rows, members, topic, bool(context), max_similarity, fecha_corte, _topic_method(group_topics, topic)),
                 estado_evidencia=evidence_state(group_rows, len({m.procedencia for m in members}), bool(context)),
                 contexto=context,
                 sin_contexto_motivo=no_context_reason,
@@ -195,7 +206,7 @@ def run(
     vectors_path: Path | None = None,
     data: Path = PROCESSED,
     outputs: Path = OUTPUTS,
-    classify: Classifier = classify_keywords,
+    classify: Classifier = classify_by_keywords,
     group: Grouper = group_by_similarity,
 ) -> OutputSet:
     """Reads the processed data, builds the groups and writes them where `store.load` reads them."""

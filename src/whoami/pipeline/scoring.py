@@ -95,7 +95,13 @@ def _mentions_panama(row: Mapping[str, str]) -> bool:
 # ------------------------------------------------------------------------------------------------ R
 
 
-def relevance(topic: str, rows: Sequence[Mapping[str, str]]) -> tuple[float, str]:
+#: How the topic was assigned, as the justification says it; any other method name adds nothing to the text.
+TOPIC_METHOD_WORDS = {"embeddings": "embeddings", "llm": "modelo de lenguaje"}
+
+
+def relevance(
+    topic: str, rows: Sequence[Mapping[str, str]], topic_method: str | None = None
+) -> tuple[float, str]:
     has_topic = topic != "sin_tema"
     if any(_mentions_panama(row) for row in rows):
         panama, panama_why = 1.0, "el texto menciona Panamá o una de sus instituciones"
@@ -106,7 +112,11 @@ def relevance(topic: str, rows: Sequence[Mapping[str, str]]) -> tuple[float, str
     else:
         panama, panama_why = PANAMA_UNKNOWN, "no se puede confirmar ni descartar el vínculo con Panamá"
     value = TOPIC_WEIGHT * has_topic + PANAMA_WEIGHT * panama
-    topic_why = f"tiene tema ({TOPIC_LABELS[topic]})" if has_topic else "no tiene tema editorial"
+    by = f"por {TOPIC_METHOD_WORDS[topic_method]}" if topic_method in TOPIC_METHOD_WORDS else None
+    if has_topic:
+        topic_why = f"tiene tema ({TOPIC_LABELS[topic]}{f', {by}' if by else ''})"
+    else:
+        topic_why = f"no tiene tema editorial{f' ({by})' if by else ''}"
     return round(value, 4), _sentence(f"{topic_why}; {panama_why}")
 
 
@@ -202,6 +212,7 @@ def score_group(
     has_context: bool,
     max_similarity: float,
     fecha_corte: datetime,
+    topic_method: str | None = None,
 ) -> Score:
     """`rows` and `members` describe the same news items; `max_similarity` is computed from embeddings elsewhere."""
     text = rows_text(rows)
@@ -212,7 +223,7 @@ def score_group(
     has_text = any(row.get("descripcion") for row in rows)
 
     parts = {
-        "R": relevance(topic, rows),
+        "R": relevance(topic, rows, topic_method),
         "I": impact(topic, text, has_context),
         "U": urgency(newest_original, text, fecha_corte),
         "N": novelty(max_similarity, recirculated),

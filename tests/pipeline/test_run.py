@@ -7,8 +7,7 @@ import pytest
 
 from whoami import store
 from whoami.pipeline.evidence import inec_evidence
-from whoami.pipeline.run import PipelineInputError, build, group_by_similarity, load_vectors
-from whoami.pipeline.topics_keywords import classify_keywords
+from whoami.pipeline.run import PipelineInputError, build, classify_by_keywords, group_by_similarity, load_vectors
 from whoami.schemas import verify
 
 CUTOFF = datetime(2026, 10, 7, 12, tzinfo=UTC)
@@ -85,7 +84,7 @@ OFFICIAL = {
 
 
 def build_fixture():
-    return build(ROWS, VECTORS, classify_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
+    return build(ROWS, VECTORS, classify_by_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
 
 
 def group_with(output, news_id):
@@ -155,13 +154,17 @@ def test_the_group_title_is_the_member_closest_to_the_centroid():
     vectors[0] = [0.9, 0.3, 0.0, 0.0]
     vectors[2] = [0.9, 0.0, 0.3, 0.0]
 
-    output = build(ROWS, vectors, classify_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS, vectors, classify_by_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
 
     assert group_with(output, "N-a1").titulo == ROWS[1]["titulo"]
 
 
+def voting_with_methods(*votes):
+    return lambda rows, vectors: list(votes)
+
+
 def voting(*votes):
-    return lambda texts: [(topic, confidence, "x") for topic, confidence in votes]
+    return lambda rows, vectors: [(topic, confidence, "x") for topic, confidence in votes]
 
 
 def test_the_topic_is_the_majority_vote_of_the_members():
@@ -170,6 +173,22 @@ def test_the_topic_is_the_majority_vote_of_the_members():
     output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
 
     assert group_with(output, "N-a1").tema == "economia"
+
+
+def test_the_relevance_justification_says_how_the_topic_was_assigned():
+    classify = voting_with_methods(("economia", 0.9, "embeddings"), ("economia", 0.6, "llm"), ("turismo", 0.9, "llm"))
+
+    output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+
+    assert "modelo de lenguaje" in group_with(output, "N-a1").puntaje.justificaciones["R"]
+
+
+def test_a_topic_from_embeddings_alone_says_so():
+    classify = voting_with_methods(*[("economia", 0.9, "embeddings")] * 3)
+
+    output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+
+    assert "embeddings" in group_with(output, "N-a1").puntaje.justificaciones["R"]
 
 
 def test_a_tied_vote_goes_to_the_highest_summed_confidence():
@@ -195,9 +214,10 @@ def test_the_inbox_is_sorted_by_score():
 def test_the_groups_and_classifier_are_injected():
     seen = {}
 
-    def classify(texts):
-        seen["texts"] = texts
-        return [("sin_tema", 0.0, "x")] * len(texts)
+    def classify(rows, vectors):
+        seen["rows"] = rows
+        seen["vectors"] = vectors
+        return [("sin_tema", 0.0, "x")] * len(rows)
 
     def one_group(vectors, dates):
         seen["dates"] = dates
@@ -206,7 +226,8 @@ def test_the_groups_and_classifier_are_injected():
     output = build(ROWS[:3], VECTORS[:3], classify, one_group, CUTOFF, official=OFFICIAL)
 
     assert len(output.grupos) == 1
-    assert len(seen["texts"]) == 3
+    assert [r["id_noticia"] for r in seen["rows"]] == ["N-a1", "N-a2", "N-a3"]
+    assert seen["vectors"].shape == (3, 4)
     assert all(d.tzinfo is not None for d in seen["dates"])
 
 
@@ -217,7 +238,7 @@ def test_novelty_compares_each_group_only_with_earlier_ones():
         news("N-2", "Segunda noticia", "TVN", at(10)),
     ]
 
-    output = build(rows, vectors, classify_keywords, lambda v, d: [[0], [1]], CUTOFF, official={})
+    output = build(rows, vectors, classify_by_keywords, lambda v, d: [[0], [1]], CUTOFF, official={})
 
     first, second = group_with(output, "N-1"), group_with(output, "N-2")
     assert first.puntaje.componentes.N == 1.0
