@@ -8,7 +8,7 @@ import hashlib
 import json
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +18,7 @@ from whoami.contracts import MANIFEST_JSON, OUTPUTS, PROCESSED
 from whoami.embeddings import MODEL_NAME
 from whoami.pipeline.context import link_context
 from whoami.pipeline.evidence import load_news_rows, load_official_evidence, news_evidence
-from whoami.pipeline.grouping import GROUP_WINDOW, group_agglomerative, unit_vectors
+from whoami.pipeline.grouping import group_agglomerative, unit_vectors
 from whoami.pipeline.provenance import merge_provenances, provenance
 from whoami.pipeline.recirculation import apply_recirculations, group_recirculations, metadata_recirculation
 from whoami.pipeline.scoring import evidence_state, score_group
@@ -30,40 +30,11 @@ Classifier = Callable[[Sequence[Mapping[str, str]], np.ndarray], list[tuple[str,
 Grouper = Callable[[np.ndarray, Sequence[datetime]], list[list[int]]]
 Configure = Callable[[Sequence[Mapping[str, str]], np.ndarray], tuple[Classifier, Grouper]]
 
-SIMILARITY_THRESHOLD = 0.85  # cosine; only `group_by_similarity`, kept to compare against the default grouper
 EMBEDDINGS_DIR = PROCESSED / "embeddings"
 
 
 class PipelineInputError(Exception):
     """An input of the pipeline is missing or does not match the news; the message says what to fix."""
-
-
-def group_by_similarity(
-    vectors: np.ndarray,
-    dates: Sequence[datetime],
-    threshold: float = SIMILARITY_THRESHOLD,
-    window: timedelta = GROUP_WINDOW,
-) -> list[list[int]]:
-    """Single-link: pairs above the threshold and inside the window are joined, most similar first."""
-    unit = unit_vectors(np.asarray(vectors, dtype=float))
-    similarity = unit @ unit.T
-    hours = np.array([date.timestamp() / 3600 for date in dates])
-    close = np.abs(hours[:, None] - hours[None, :]) <= window.total_seconds() / 3600
-    first, second = np.nonzero(np.triu((similarity >= threshold) & close, k=1))
-    parent = list(range(len(dates)))
-
-    def find(index: int) -> int:
-        while parent[index] != index:
-            parent[index] = parent[parent[index]]
-            index = parent[index]
-        return index
-
-    for pair in np.argsort(-similarity[first, second], kind="stable"):
-        parent[find(first[pair])] = find(second[pair])
-    members: dict[int, list[int]] = defaultdict(list)
-    for index in range(len(dates)):
-        members[find(index)].append(index)
-    return sorted(members.values())
 
 
 def classify_by_keywords(rows: Sequence[Mapping[str, str]], vectors: np.ndarray) -> list[tuple[str, float, str]]:

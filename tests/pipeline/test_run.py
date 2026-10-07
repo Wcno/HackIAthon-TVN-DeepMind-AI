@@ -7,7 +7,8 @@ import pytest
 
 from whoami import store
 from whoami.pipeline.evidence import inec_evidence
-from whoami.pipeline.run import PipelineInputError, build, classify_by_keywords, group_by_similarity, load_vectors
+from whoami.pipeline.grouping import group_agglomerative
+from whoami.pipeline.run import PipelineInputError, build, classify_by_keywords, load_vectors
 from whoami.schemas import verify
 
 CUTOFF = datetime(2026, 10, 7, 12, tzinfo=UTC)
@@ -84,7 +85,7 @@ OFFICIAL = {
 
 
 def build_fixture():
-    return build(ROWS, VECTORS, classify_by_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
+    return build(ROWS, VECTORS, classify_by_keywords, group_agglomerative, CUTOFF, official=OFFICIAL)
 
 
 def group_with(output, news_id):
@@ -154,7 +155,7 @@ def test_the_group_title_is_the_member_closest_to_the_centroid():
     vectors[0] = [0.9, 0.3, 0.0, 0.0]
     vectors[2] = [0.9, 0.0, 0.3, 0.0]
 
-    output = build(ROWS, vectors, classify_by_keywords, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS, vectors, classify_by_keywords, group_agglomerative, CUTOFF, official=OFFICIAL)
 
     assert group_with(output, "N-a1").titulo == ROWS[1]["titulo"]
 
@@ -170,7 +171,7 @@ def voting(*votes):
 def test_the_topic_is_the_majority_vote_of_the_members():
     classify = voting(("economia", 0.3), ("economia", 0.3), ("turismo", 0.9))
 
-    output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS[:3], VECTORS[:3], classify, group_agglomerative, CUTOFF, official=OFFICIAL)
 
     assert group_with(output, "N-a1").tema == "economia"
 
@@ -178,7 +179,7 @@ def test_the_topic_is_the_majority_vote_of_the_members():
 def test_the_relevance_justification_says_how_the_topic_was_assigned():
     classify = voting_with_methods(("economia", 0.9, "embeddings"), ("economia", 0.6, "llm"), ("turismo", 0.9, "llm"))
 
-    output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS[:3], VECTORS[:3], classify, group_agglomerative, CUTOFF, official=OFFICIAL)
 
     assert "modelo de lenguaje" in group_with(output, "N-a1").puntaje.justificaciones["R"]
 
@@ -186,7 +187,7 @@ def test_the_relevance_justification_says_how_the_topic_was_assigned():
 def test_a_topic_from_embeddings_alone_says_so():
     classify = voting_with_methods(*[("economia", 0.9, "embeddings")] * 3)
 
-    output = build(ROWS[:3], VECTORS[:3], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS[:3], VECTORS[:3], classify, group_agglomerative, CUTOFF, official=OFFICIAL)
 
     assert "embeddings" in group_with(output, "N-a1").puntaje.justificaciones["R"]
 
@@ -194,7 +195,7 @@ def test_a_topic_from_embeddings_alone_says_so():
 def test_a_tied_vote_goes_to_the_highest_summed_confidence():
     classify = voting(("economia", 0.2), ("turismo", 0.9))
 
-    output = build(ROWS[:2], VECTORS[:2], classify, group_by_similarity, CUTOFF, official=OFFICIAL)
+    output = build(ROWS[:2], VECTORS[:2], classify, group_agglomerative, CUTOFF, official=OFFICIAL)
 
     assert group_with(output, "N-a1").tema == "turismo"
 
@@ -243,44 +244,6 @@ def test_novelty_compares_each_group_only_with_earlier_ones():
     first, second = group_with(output, "N-1"), group_with(output, "N-2")
     assert first.puntaje.componentes.N == 1.0
     assert second.puntaje.componentes.N < 0.1
-
-
-# ----------------------------------------------------------------------------------------------- grouping
-
-
-def test_similar_vectors_within_the_window_form_one_group():
-    vectors = np.array([[1.0, 0.0], [0.99, 0.05], [0.0, 1.0]])
-    dates = [at(10), at(5), at(4)]
-
-    assert group_by_similarity(vectors, dates) == [[0, 1], [2]]
-
-
-def test_similar_vectors_more_than_72_hours_apart_stay_apart():
-    vectors = np.array([[1.0, 0.0], [1.0, 0.0]])
-
-    assert group_by_similarity(vectors, [at(100), at(10)]) == [[0], [1]]
-    assert group_by_similarity(vectors, [at(76), at(3)]) == [[0], [1]]
-    assert group_by_similarity(vectors, [at(75), at(4)]) == [[0, 1]]
-
-
-def test_the_similarity_threshold_is_cosine_0_85():
-    near = np.array([[1.0, 0.0], [np.cos(np.arccos(0.86)), np.sin(np.arccos(0.86))]])
-    far = np.array([[1.0, 0.0], [np.cos(np.arccos(0.84)), np.sin(np.arccos(0.84))]])
-
-    assert group_by_similarity(near, [at(2), at(1)]) == [[0, 1]]
-    assert group_by_similarity(far, [at(2), at(1)]) == [[0], [1]]
-
-
-def test_vector_length_does_not_matter():
-    vectors = np.array([[10.0, 0.0], [0.1, 0.0]])
-
-    assert group_by_similarity(vectors, [at(2), at(1)]) == [[0, 1]]
-
-
-def test_grouping_is_single_link():
-    a, b, c = (np.array([np.cos(t), np.sin(t)]) for t in (0.0, 0.4, 0.8))  # a-b and b-c ~0.92, a-c ~0.70
-
-    assert group_by_similarity(np.array([a, b, c]), [at(3), at(2), at(1)]) == [[0, 1, 2]]
 
 
 # ----------------------------------------------------------------------------------------------- vectors
