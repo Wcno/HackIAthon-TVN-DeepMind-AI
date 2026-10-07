@@ -5,7 +5,7 @@ from pathlib import Path
 
 from whoami.backend.gemini import GenerationUnavailable
 from whoami.backend.repository import EditorialRepository
-from whoami.contracts import DATA, TOPIC_LABELS
+from whoami.contracts import TOPIC_LABELS
 
 
 class EditorialService:
@@ -43,6 +43,6 @@ def quality_report(directory: Path) -> dict:
     for filename in ("calidad_noticias.json", "calidad_indicadores.json", "calidad_inec.json", "calidad_eventos.json"):
         path = directory / filename
         reports[filename] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"available": False}
-    manifest = DATA / "manifest.json"
+    manifest = directory.parent / "manifest.json"
     reports["manifest"] = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {"available": False}
     return reports

@@ -20,6 +20,7 @@ class Settings:
     demo: bool = True
     offline: bool = True
     gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     gemini_api_key: str = field(default="", repr=False)
     generation_timeout: float = 20.0
     generation_attempts: int = 3
@@ -38,5 +39,6 @@ class Settings:
             demo=demo,
             offline=os.environ.get("WHOAMI_OFFLINE", "1") == "1",
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
+            gemini_base_url=os.environ.get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
             gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
         )

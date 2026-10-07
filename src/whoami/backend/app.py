@@ -9,7 +9,8 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -69,28 +70,33 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     app = FastAPI(title="TVN DataMind AI", lifespan=lifespan)
 
-    def render(request: Request, screen: str, title: str, **context):
+    def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
             "screen": screen, "title": title, "demo": settings.demo,
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
             "review_states": REVIEW_STATES, **context,
-        })
+        }, status_code=status_code)
 
     @app.exception_handler(MissingRecord)
     async def missing_record(request: Request, error: MissingRecord):
-        return JSONResponse({"detail": str(error)}, status_code=404)
+        return render(request, "error", "Registro no disponible", status_code=404, message=str(error))
 
     @app.exception_handler(ReviewConflict)
     async def review_conflict(request: Request, error: ReviewConflict):
-        return JSONResponse({"detail": str(error)}, status_code=409)
+        return render(request, "error", "La ficha cambió", status_code=409, message=str(error))
 
     @app.exception_handler(InvalidReview)
     async def invalid_review(request: Request, error: InvalidReview):
-        return JSONResponse({"detail": str(error)}, status_code=422)
+        return render(request, "error", "Decisión no válida", status_code=422, message=str(error))
 
     @app.exception_handler(GenerationUnavailable)
     async def unavailable(request: Request, error: GenerationUnavailable):
-        return JSONResponse({"detail": str(error)}, status_code=503)
+        return render(request, "error", "Consulta no disponible", status_code=503, message=str(error))
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, error: RequestValidationError):
+        return render(request, "error", "Revisa los campos", status_code=422,
+                      message="La solicitud contiene campos ausentes o no válidos. Revisa la decisión y el responsable.")
 
     @app.get("/", include_in_schema=False)
     def home():

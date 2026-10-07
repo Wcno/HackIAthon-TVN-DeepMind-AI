@@ -1,0 +1,16 @@
+{% set news = reports['calidad_noticias.json'] %}
+<section><h2>Noticias</h2>
+{% if news.available is defined and not news.available %}<p>Reporte no disponible.</p>{% else %}
+<p>{{ news.registros_leidos }} registros leídos · {{ news.incluidas }} noticias incluidas.</p>
+{% if news.ventana %}<p>Ventana: {{ news.ventana.desde|panama_time }} a {{ news.ventana.hasta|panama_time }} (Panamá).</p>{% endif %}
+<h3>Exclusiones</h3>{% for reason, count in news.excluidas_por_motivo.items() %}<p>{{ reason }}: {{ count }}</p>{% else %}<p>No se registraron exclusiones.</p>{% endfor %}
+<h3>Cobertura por fuente</h3>{% for source, coverage in news.cobertura_por_fuente.items() %}<p>{{ source }}: {{ coverage.incluidas }} incluidas · {{ coverage.dias_con_noticias }} días con noticias · {{ coverage.dias_sin_noticias|length }} días sin noticias.</p>{% endfor %}
+{% endif %}</section>
+{% set indicators = reports['calidad_indicadores.json'] %}
+<section><h2>Banco Mundial: series históricas</h2>{% if indicators.available is defined and not indicators.available %}<p>Reporte no disponible.</p>{% else %}<p>{{ indicators.filas_esperadas }} filas esperadas · {{ indicators.filas_con_valor }} con valor · {{ indicators.filas_nulas_en_fuente }} nulas en origen · {{ indicators.filas_faltantes_agregadas }} faltantes.</p><p>Período {{ indicators.anios.desde }}–{{ indicators.anios.hasta }}; no son datos actuales.</p>{% endif %}</section>
+{% set inec = reports['calidad_inec.json'] %}
+<section><h2>INEC</h2>{% if inec.available is defined and not inec.available %}<p>Reporte no disponible.</p>{% else %}<p>{{ inec.filas }} filas · {{ inec.filas_con_valor }} con valor · {{ inec.filas_nulas }} nulas.</p>{% for name, series in inec.series.items() %}<p>{{ name }}: {{ series.desde }} a {{ series.hasta }} · {{ series.filas }} filas · {{ series.nulos|length }} nulas.</p>{% endfor %}{% endif %}</section>
+{% set events = reports['calidad_eventos.json'] %}
+<section><h2>Sismos USGS</h2>{% if events.available is defined and not events.available %}<p>Reporte no disponible.</p>{% else %}<p>{{ events.eventos_leidos }} eventos leídos · {{ events.incluidos }} incluidos.</p>{% for reason, count in events.excluidos_por_motivo.items() %}<p>{{ reason }}: {{ count }}</p>{% endfor %}{% endif %}</section>
+{% set manifest = reports['manifest'] %}
+<section><h2>Snapshot</h2>{% if manifest.available is defined and not manifest.available %}<p>Manifest no disponible.</p>{% else %}<p>Versión {{ manifest.version }} · Corte {{ manifest.fecha_corte_UTC|panama_time }} (Panamá).</p><p>{{ manifest.sha256|length }} archivos con SHA-256 registrado. Registrar hashes no equivale a verificar su integridad.</p>{% endif %}</section>

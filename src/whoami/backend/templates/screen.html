@@ -5,9 +5,11 @@
 <main id="screen">
 {% if demo %}<p role="status">Demostración: las noticias son sintéticas; no describen hechos reales.</p>{% endif %}
 <h1>{{ title }}</h1>
-{% if screen == 'quality' %}
+{% if screen == 'error' %}
+  <p role="alert">{{ message }}</p><p><a href="/inbox">Volver a la agenda</a></p>
+{% elif screen == 'quality' %}
   <p>Informes del corpus de entrada. La agenda de demostración se presenta por separado.</p>
-  {% for name, report in reports.items() %}<section><h2>{{ name }}</h2><dl>{% for key, value in report.items() %}<dt>{{ key }}</dt><dd>{{ value }}</dd>{% endfor %}</dl></section>{% endfor %}
+  {% include 'quality.html' %}
 {% elif screen == 'inbox' %}
   <form method="get"><label>Tema <select name="topic"><option value="">Todos</option>{% for slug, label in topics.items() %}<option value="{{ slug }}">{{ label }}</option>{% endfor %}</select></label><button>Filtrar</button></form>
   {% for group in groups %}<article><h2><a href="/groups/{{ group.id_grupo|urlencode }}">{{ group.titulo }}</a></h2>
@@ -27,10 +29,11 @@
 {% elif screen == 'case' %}
   <p>Estado de evidencia: {{ case.estado_evidencia }} · {{ case.alcance_texto }}</p><p>{{ case.accion_recomendada }}</p>
   <a href="/cases/{{ case.id_caso|urlencode }}/draft">Paquete editorial</a> · <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
-  {% for claim in case.afirmaciones %}<article><h2>{{ claim.tipo }}</h2><p>{{ claim.texto }}</p>{% if claim.atribuida_a %}<p>Atribuida a: {{ claim.atribuida_a }}</p>{% endif %}{% for citation in claim.citas %}<blockquote>{{ citation.pasaje }} <a href="/evidence/{{ citation.id_evidencia|urlencode }}">Ver evidencia</a></blockquote>{% endfor %}</article>{% endfor %}
+  {% include 'claims.html' %}
   <h2>Verificaciones pendientes</h2>{% for gap in case.vacios %}<p>{{ gap }}</p>{% else %}<p>No se registraron vacíos.</p>{% endfor %}
   {% for contradiction in case.contradicciones %}<section><h2>{{ contradiction.descripcion }}</h2>{% for version in contradiction.versiones %}<p>{{ version.valor }} · {{ version.alcance }} · <a href="/evidence/{{ version.id_evidencia|urlencode }}">Evidencia</a></p>{% endfor %}<p>Requiere verificación.</p></section>{% endfor %}
 {% elif screen == 'draft' %}
+  <h2>Afirmaciones y evidencia</h2>{% include 'claims.html' %}
   {% if case.borrador %}{% set package = case.borrador %}<h2>{{ package.titulo }}</h2>{% if package.leyenda %}<p>{{ package.leyenda }}</p>{% endif %}<p>{{ package.enfoque_interes_publico }}</p><h2>Brief</h2><p>{{ package.brief }}</p><h2>Preguntas</h2><ol>{% for question in package.preguntas %}<li>{{ question }}</li>{% endfor %}</ol><h2>Guion</h2><p>{{ package.guion }}</p><h2>Copy digital</h2><p>{{ package.copy_digital }}</p><h2>Fuentes y verificaciones pendientes</h2>{% for item in package.fuentes_y_verificaciones %}<p>{{ item }}</p>{% endfor %}{% else %}<p>No hay borrador: se necesita más evidencia.</p>{% endif %}
   <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
 {% elif screen == 'review' %}

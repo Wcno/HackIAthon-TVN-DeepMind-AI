@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import httpx
+from openai import APIConnectionError, APIStatusError, AsyncOpenAI
 
 from whoami.backend.repository import EditorialRepository, content_hash
 from whoami.backend.settings import Settings
@@ -28,20 +29,24 @@ class GeminiClient:
     def __init__(self, repository: EditorialRepository, settings: Settings, *, transport=None):
         self.repository = repository
         self.settings = settings
-        self.client = httpx.AsyncClient(
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-            transport=transport,
+        self.client = AsyncOpenAI(
+            api_key=settings.gemini_api_key or "offline-unconfigured",
+            base_url=settings.gemini_base_url,
+            max_retries=0,
+            timeout=settings.generation_timeout,
+            http_client=httpx.AsyncClient(transport=transport),
         )
         self.lock = asyncio.Lock()
 
     async def close(self) -> None:
-        await self.client.aclose()
+        await self.client.close()
 
     async def generate(self, messages: list[dict[str, str]], evidence: Mapping[str, dict], *,
                        validate: Callable[[dict], None], prompt_version: str = "1", temperature: float = 0.0) -> GenerationResult:
         request = {"model": self.settings.gemini_model, "messages": messages, "temperature": temperature,
                    "response_format": {"type": "json_object"}}
-        key = content_hash({"request": request, "prompt_version": prompt_version, "evidence": dict(evidence)})
+        key = content_hash({"request": request, "base_url": self.settings.gemini_base_url,
+                            "prompt_version": prompt_version, "evidence": dict(evidence)})
         try:
             async with asyncio.timeout(self.settings.generation_timeout):
                 async with self.lock:
@@ -60,24 +65,20 @@ class GeminiClient:
     async def _request(self, request: dict, key: str, validate: Callable[[dict], None]) -> GenerationResult:
         for attempt in range(1, self.settings.generation_attempts + 1):
             try:
-                response = await self.client.post(
-                    "chat/completions", json=request,
-                    headers={"Authorization": f"Bearer {self.settings.gemini_api_key}"},
-                    timeout=self.settings.generation_timeout,
-                )
-            except httpx.RequestError:
+                response = await self.client.chat.completions.create(**request)
+            except APIConnectionError:
                 raise GenerationUnavailable("The generation provider could not be reached.") from None
-            if response.status_code in (429, 503) and attempt < self.settings.generation_attempts:
-                await asyncio.sleep(self._retry_delay(response, attempt))
-                continue
-            if response.is_error:
-                raise GenerationUnavailable(f"The generation provider returned HTTP {response.status_code}.")
+            except APIStatusError as error:
+                if error.status_code in (429, 503) and attempt < self.settings.generation_attempts:
+                    await asyncio.sleep(self._retry_delay(error.response, attempt))
+                    continue
+                raise GenerationUnavailable(f"The generation provider returned HTTP {error.status_code}.") from None
             try:
-                content = json.loads(response.json()["choices"][0]["message"]["content"])
+                content = json.loads(response.choices[0].message.content)
                 if not isinstance(content, dict):
                     raise ValueError("Expected a JSON object")
                 validate(content)
-            except (ValueError, KeyError, IndexError, TypeError):
+            except (ValueError, KeyError, IndexError, TypeError, AttributeError):
                 raise GenerationUnavailable("The provider returned an invalid structured response.") from None
             self.repository.cache_put(key, content)
             return GenerationResult(content, False, attempt)

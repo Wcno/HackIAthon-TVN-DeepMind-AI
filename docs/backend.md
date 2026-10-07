@@ -42,8 +42,10 @@ The HTMX attributes become active when G6 vendors its JS per ADR 0002.
 Review forms use English parameters: `state` (Spanish contract value), `actor`,
 `note` and `expected_version` (the version rendered in the hidden field).
 Stale decisions return 409; invalid transitions return 422; missing records
-return 404. API errors currently carry a JSON `detail` for the frontend to
-display. Opening discarded/approved content again requires a reason. Evidence
+return 404. Errors return HTML, including a partial for HTMX requests.
+G6 should configure HTMX to display error responses (409/422/503) in its target,
+as HTMX does not swap error responses by default. Plain forms show the error
+page directly. Opening discarded/approved content again requires a reason. Evidence
 marked insufficient, or a missing draft, prevents approval. No route publishes
 content. Dates in views are converted to `America/Panama`.
 
@@ -59,6 +61,8 @@ configuration.
 At startup, validated G2 pipeline files seed the database. Restarting with the
 same seed preserves human decisions and versions. New content (including its
 group and cited evidence) increases the case version and revokes approval.
+Removed cases are archived, excluded from active views and cannot be reviewed;
+their history is retained and approval is revoked. Restoring them requires review.
 Review updates use a single transaction with optimistic version checks; they
 never rewrite G3/G4 JSONL outputs. The SQLite review ledger owns live state.
 Seed history is ordered by UTC date. Subsequent case versions supersede seed
@@ -78,7 +82,9 @@ before pushing G5.
 returns validated JSON. Its persistent cache key includes the full messages,
 model, parameters, prompt version, evidence IDs and contents. Cache hits work
 offline; misses fail honestly. Invalid outputs never enter the cache.
-The HTTP client retries only 429 and 503, honors `Retry-After`, caps attempts
+The `openai.AsyncOpenAI` client uses `GEMINI_BASE_URL` so the compatible endpoint
+can be changed without editing code. SDK retries are disabled; this module owns
+the retry budget. It retries only 429 and 503, honors `Retry-After`, caps attempts
 and applies a total generation deadline. Errors omit response bodies and keys.
 
 G4 can pass an async `query_provider(query, gemini_client, repository)` into
@@ -90,6 +96,7 @@ but no G4 provider, it reports unavailable generation. No live model results
 are claimed by the transport tests.
 
 Provider request shape follows the [Gemini OpenAI-compatible API](https://ai.google.dev/gemini-api/docs/openai).
+SDK configuration follows the [official OpenAI Python documentation](https://developers.openai.com/api/reference/python).
 Views use [FastAPI templates](https://fastapi.tiangolo.com/advanced/templates/)
 and [lifespan](https://fastapi.tiangolo.com/advanced/events/).
 

@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from whoami.backend.app import create_app
-from whoami.backend.pipeline import load_pipeline
-from whoami.backend.repository import EditorialRepository, InvalidReview
+from whoami.backend.pipeline import PipelineBundle, load_pipeline
+from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord
 from whoami.backend.settings import Settings
 
 
@@ -139,3 +139,40 @@ def test_g4_provider_seam_validates_citations_and_never_runs_offline(settings):
 
     with TestClient(create_app(replace(settings, offline=False), query_provider=broken_provider)) as client:
         assert client.get("/queries", params={"q": "New query"}).status_code == 503
+
+
+def test_removed_cases_are_archived_and_cannot_remain_approved(settings):
+    bundle = load_pipeline(settings.data_directory, settings.output_directory)
+    repository = EditorialRepository(settings.database)
+    repository.import_bundle(bundle)
+    repository.import_bundle(PipelineBundle((), (), (), (), ()))
+    with pytest.raises(MissingRecord):
+        repository.case("CASO-005")
+    with pytest.raises(MissingRecord):
+        repository.review("CASO-005", state="en_revision", actor="Reviewer", note="Reopen", expected_version=2)
+    with repository.connection() as connection:
+        assert connection.execute("SELECT count(*) FROM reviews WHERE case_id = 'CASO-005'").fetchone()[0] == 2
+        assert repository._current_review(connection, "CASO-005")["state"] == "requiere_evidencia"
+    repository.import_bundle(bundle)
+    assert repository.case("CASO-005")["estado_revision"] == "en_revision"
+
+
+def test_htmx_errors_and_draft_claims_preserve_screen_contract(settings):
+    with TestClient(create_app(settings)) as client:
+        for path in ("/cases/missing", "/queries?q=new-query"):
+            response = client.get(path, headers={"HX-Request": "true"})
+            assert response.status_code in (404, 503)
+            assert "text/html" in response.headers["content-type"]
+            assert 'role="alert"' in response.text
+            assert "<html" not in response.text
+        response = client.post("/cases/CASO-001/review", data={
+            "state": "en_revision", "actor": "Reviewer", "expected_version": 999,
+        }, headers={"HX-Request": "true"})
+        assert response.status_code == 409
+        assert 'role="alert"' in response.text and "<html" not in response.text
+        case = client.app.state.repository.case("CASO-001")
+        draft = client.get("/cases/CASO-001/draft").text
+        for claim in case["afirmaciones"]:
+            assert claim["tipo"] in draft
+            for citation in claim["citas"]:
+                assert "/evidence/" + citation["id_evidencia"] in draft

@@ -56,7 +56,8 @@ class EditorialRepository:
                 );
                 CREATE TABLE IF NOT EXISTS cases (
                     id TEXT PRIMARY KEY, body TEXT NOT NULL, content_hash TEXT NOT NULL,
-                    version INTEGER NOT NULL CHECK (version > 0)
+                    version INTEGER NOT NULL CHECK (version > 0),
+                    active INTEGER NOT NULL DEFAULT 1
                 );
                 CREATE TABLE IF NOT EXISTS reviews (
                     id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
@@ -68,6 +69,8 @@ class EditorialRepository:
                     key TEXT PRIMARY KEY, body TEXT NOT NULL, created_at TEXT NOT NULL
                 );
             """)
+            if "active" not in {row["name"] for row in connection.execute("PRAGMA table_info(cases)")}:
+                connection.execute("ALTER TABLE cases ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
 
     @contextmanager
     def connection(self):
@@ -85,6 +88,15 @@ class EditorialRepository:
         evidence = {item["id_evidencia"]: item for item in bundle.evidence}
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            incoming_cases = {case["id_caso"] for case in bundle.cases}
+            for previous in connection.execute("SELECT * FROM cases WHERE active = 1").fetchall():
+                if previous["id"] not in incoming_cases:
+                    version = previous["version"] + 1
+                    connection.execute("UPDATE cases SET active = 0, version = ? WHERE id = ?", (version, previous["id"]))
+                    self._insert_review(connection, {
+                        "id_caso": previous["id"], "estado": "requiere_evidencia", "responsable": None,
+                        "fecha": datetime.now(UTC).isoformat(), "nota": "Case withdrawn from the active pipeline; approval revoked.",
+                    }, version)
             for kind, rows, id_field in (
                 ("group", bundle.groups, "id_grupo"),
                 ("evidence", bundle.evidence, "id_evidencia"),
@@ -98,19 +110,22 @@ class EditorialRepository:
                 body = {key: value for key, value in case.items() if key != "estado_revision"}
                 group = groups[case["id_grupo"]]
                 dependency = {key: value for key, value in group.items() if key != "estado_revision"}
+                source_ids = set(case["ids_fuente"])
+                source_ids.update(member["id_noticia"] for member in group["miembros"])
+                source_ids.update(context["id_evidencia"] for context in group["contexto"])
                 digest = content_hash({"case": body, "group": dependency,
-                                       "evidence": {key: evidence[key] for key in case["ids_fuente"]}})
+                                       "evidence": {key: evidence[key] for key in source_ids}})
                 existing = connection.execute("SELECT * FROM cases WHERE id = ?", (case["id_caso"],)).fetchone()
                 if existing is None:
-                    connection.execute("INSERT INTO cases VALUES (?, ?, ?, 1)",
+                    connection.execute("INSERT INTO cases(id, body, content_hash, version) VALUES (?, ?, ?, 1)",
                                        (case["id_caso"], canonical_json(body), digest))
                     seed = sorted((review for review in bundle.reviews if review["id_caso"] == case["id_caso"]),
                                   key=lambda review: datetime.fromisoformat(review["fecha"]))
                     for review in seed:
                         self._insert_review(connection, review, 1)
-                elif existing["content_hash"] != digest:
+                elif existing["content_hash"] != digest or not existing["active"]:
                     version = existing["version"] + 1
-                    connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ? WHERE id = ?",
+                    connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ?, active = 1 WHERE id = ?",
                                        (canonical_json(body), digest, version, case["id_caso"]))
                     self._insert_review(connection, {
                         "id_caso": case["id_caso"], "estado": "en_revision", "responsable": None,
@@ -142,7 +157,7 @@ class EditorialRepository:
 
     def case(self, case_id: str) -> dict:
         with self.connection() as connection:
-            row = connection.execute("SELECT * FROM cases WHERE id = ?", (case_id,)).fetchone()
+            row = connection.execute("SELECT * FROM cases WHERE id = ? AND active = 1", (case_id,)).fetchone()
             if row is None:
                 raise MissingRecord(f"Unknown case: {case_id}")
             review = self._current_review(connection, case_id)
@@ -160,7 +175,7 @@ class EditorialRepository:
             raise InvalidReview("A valid state and a human reviewer are required.")
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute("SELECT * FROM cases WHERE id = ?", (case_id,)).fetchone()
+            row = connection.execute("SELECT * FROM cases WHERE id = ? AND active = 1", (case_id,)).fetchone()
             if row is None:
                 raise MissingRecord(f"Unknown case: {case_id}")
             if row["version"] != expected_version:
