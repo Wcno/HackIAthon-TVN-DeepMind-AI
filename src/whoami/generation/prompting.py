@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from whoami.generation.jsonschemas import gate_schema, response_format
+from whoami.generation.retrieval import Retriever
 from whoami.generation.untrusted import neutralize, was_altered
 from whoami.llm.client import LLMError
 from whoami.schemas import Claim, Evidence
@@ -134,6 +135,25 @@ class RetrievalGate:
         if above >= max(self.min_hits_above, 1):
             return GateDecision(True)
         return _refusal(query, "las fuentes recuperadas no son lo bastante relevantes para la consulta")
+
+
+#: Dev set: every unanswerable query scored below this against every evidence, every answerable one at or above.
+MIN_COSINE = 0.62
+
+
+@dataclass(frozen=True)
+class CosineGate:
+    """Answerable when the best embedding cosine of the query over all evidences is at least `min_cosine`.
+    Uses its own retriever, so it does not depend on the one that feeds the answer."""
+
+    retriever: Retriever
+    min_cosine: float = MIN_COSINE
+
+    def decide(self, query: str, hits: Sequence[ScoredHit]) -> GateDecision:  # noqa: ARG002
+        best = self.retriever.search(query, 1)
+        if best and best[0][1] >= self.min_cosine:
+            return GateDecision(True)
+        return _refusal(query, "ninguna fuente se parece lo bastante a la consulta")
 
 
 class LLMGate:
