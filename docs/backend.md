@@ -71,10 +71,11 @@ decision timestamp is preserved.
 
 Fiches and generation cache survive a process restart. Exporting SQLite
 decisions back to a delivery `fichas.jsonl` is an integration concern for the
-delivery lane; the source JSONL remains input data. G2 still has requested
-schema changes; `backend/pipeline.py` is the only file that adapts its loader
-and serialization names. Reconcile it with the developer's final contract
-before pushing G5.
+delivery lane; the source JSONL remains input data. `backend/pipeline.py` adapts
+the final Pydantic contract merged by G2's developer in PR #32. Cases reference
+their group for score, title, topic and evidence state; context figures are read
+from evidence. Review transitions and typed state vocabulary come from G2's
+shared `contracts.py`, rather than a second copy in the backend.
 
 ## G4 generation seam
 

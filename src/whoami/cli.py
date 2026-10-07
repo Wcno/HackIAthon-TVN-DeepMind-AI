@@ -45,8 +45,8 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command == "demo":
-        paquete = demo.generar()
-        print(f"data/demo: {len(paquete.grupos)} grupos, {len(paquete.fichas)} fichas, {len(paquete.consultas)} consultas")
+        output = demo.generate()
+        print(f"data/demo: {len(output.grupos)} grupos, {len(output.fichas)} fichas, {len(output.consultas)} consultas")
         return 0
 
     only = set(args.only.split(",")) if getattr(args, "only", None) else None

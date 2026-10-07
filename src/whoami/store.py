@@ -1,10 +1,11 @@
-"""Reads and writes the pipeline outputs as JSON Lines (one record per line, UTF-8)."""
+"""Reads and writes the pipeline outputs as JSON Lines (one record per line, UTF-8).
+
+`load` and `write` validate the whole output set, so a malformed record or a broken rule between records is
+rejected at the boundary and not discovered by the interface.
+"""
 
 import json
-import types
-from dataclasses import MISSING, asdict, dataclass, fields, is_dataclass
 from pathlib import Path
-from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from whoami.contracts import (
     DEMO,
@@ -16,164 +17,102 @@ from whoami.contracts import (
     QUERIES_FILE,
     REVIEWS_FILE,
 )
-from whoami.schemas import Evidencia, Ficha, Grupo, RegistroRevision, Respuesta, errores_de_citas
+from whoami.schemas import CaseFile, Group, OutputSet, ReviewState, verify
+
+#: Fields of a `fichas.jsonl` record that are copies, added when exporting and ignored when loading.
+_EXPORT_ONLY = (
+    "ids_fuente",
+    "citas",
+    "puntaje",
+    "componentes",
+    "puntaje_detalle",
+    "estado_evidencia",
+    "estado_revision",
+    "titulo",
+    "tema",
+)
 
 
-def a_dict(valor: Any) -> Any:
-    return asdict(valor)
+def read_jsonl(path: Path) -> list[dict]:
+    with path.open(encoding="utf-8") as file:
+        return [json.loads(line) for line in file if line.strip()]
 
 
-def de_dict(tipo: Any, datos: Any) -> Any:
-    """Rebuilds a schema from `a_dict` output, running every construction-time invariant again."""
-    origen = get_origin(tipo)
-    if origen in (Union, types.UnionType):
-        if datos is None:
-            return None
-        interior = [arg for arg in get_args(tipo) if arg is not type(None)]
-        return de_dict(interior[0], datos)
-    if origen is tuple:
-        return tuple(de_dict(get_args(tipo)[0], item) for item in datos)
-    if origen is dict:
-        return dict(datos)
-    if isinstance(tipo, type) and is_dataclass(tipo):
-        hints = get_type_hints(tipo)
-        campos = fields(tipo)
-        desconocidos = set(datos) - {f.name for f in campos}
-        faltan = [f.name for f in campos if f.name not in datos and f.default is MISSING and f.default_factory is MISSING]
-        if desconocidos or faltan:
-            raise ValueError(f"{tipo.__name__}: campos desconocidos {sorted(desconocidos)}, campos que faltan {faltan}")
-        return tipo(**{f.name: de_dict(hints[f.name], datos[f.name]) for f in campos if f.name in datos})
-    return datos
+def write_jsonl(path: Path, records: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as file:
+        for record in records:
+            file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def a_registro_ficha(ficha: Ficha) -> dict:
+def case_file_to_record(case_file: CaseFile, group: Group, review_state: ReviewState) -> dict:
     """§7 `fichas.jsonl` record: the minimum fields first, in the order the challenge lists them.
 
-    `puntaje` is the number and `componentes` the five values; the rest of the score travels in
-    `puntaje_detalle` and the flat `citas` list repeats the citations of the claims.
+    Score, evidence state and review state are copied here from their single source (the group and the review
+    history). `puntaje` is the number and `componentes` the five values; the rest of the score travels in
+    `puntaje_detalle`, and the flat `citas` list repeats the citations of the claims without duplicates.
     """
-    datos = a_dict(ficha)
-    citas: list[dict] = []
-    for afirmacion in datos["afirmaciones"]:
-        for cita in afirmacion["citas"]:
-            if cita not in citas:
-                citas.append(cita)
-    puntaje = datos.pop("puntaje")
-    registro = {
-        "id_caso": datos.pop("id_caso"),
-        "modalidad": datos.pop("modalidad"),
-        "ids_fuente": datos.pop("ids_fuente"),
-        "afirmaciones": datos.pop("afirmaciones"),
-        "citas": citas,
-        "puntaje": puntaje["valor"],
-        "componentes": puntaje["componentes"],
-        "estado_evidencia": datos.pop("estado_evidencia"),
-        "borrador": datos.pop("borrador"),
-        "estado_revision": datos.pop("estado_revision"),
+    data = case_file.model_dump(mode="json")
+    score = group.puntaje.model_dump(mode="json")
+    citations: list[dict] = []
+    for claim in data["afirmaciones"]:
+        for citation in claim["citas"]:
+            if citation not in citations:
+                citations.append(citation)
+    record = {
+        "id_caso": data.pop("id_caso"),
+        "modalidad": data.pop("modalidad"),
+        "ids_fuente": case_file.cited_ids,
+        "afirmaciones": data.pop("afirmaciones"),
+        "citas": citations,
+        "puntaje": score["valor"],
+        "componentes": score["componentes"],
+        "estado_evidencia": group.estado_evidencia,
+        "borrador": data.pop("borrador"),
+        "estado_revision": review_state,
+        "puntaje_detalle": {key: score[key] for key in ("rango", "version_reglas", "justificaciones")},
+        "titulo": group.titulo,
+        "tema": group.tema,
     }
-    registro["puntaje_detalle"] = {k: puntaje[k] for k in ("rango", "version_reglas", "justificaciones")}
-    return registro | datos
+    return record | data
 
 
-def de_registro_ficha(registro: dict) -> Ficha:
-    datos = {k: v for k, v in registro.items() if k not in ("citas", "puntaje", "componentes", "puntaje_detalle")}
-    datos["puntaje"] = {
-        "componentes": registro["componentes"],
-        "valor": registro["puntaje"],
-        **registro["puntaje_detalle"],
-    }
-    return de_dict(Ficha, datos)
+def case_file_from_record(record: dict) -> CaseFile:
+    return CaseFile.model_validate({key: value for key, value in record.items() if key not in _EXPORT_ONLY})
 
 
-def escribir_jsonl(ruta: Path, registros: list[dict]) -> None:
-    ruta.parent.mkdir(parents=True, exist_ok=True)
-    with ruta.open("w", encoding="utf-8", newline="\n") as archivo:
-        for registro in registros:
-            archivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
-
-
-def leer_jsonl(ruta: Path) -> list[dict]:
-    with ruta.open(encoding="utf-8") as archivo:
-        return [json.loads(linea) for linea in archivo if linea.strip()]
-
-
-@dataclass(frozen=True)
-class Paquete:
-    """Everything the interface and the API read, as one validated object."""
-
-    grupos: tuple[Grupo, ...]
-    evidencias: dict[str, Evidencia]
-    fichas: tuple[Ficha, ...]
-    consultas: tuple[Respuesta, ...]
-    revisiones: tuple[RegistroRevision, ...]
-
-
-def verificar(paquete: Paquete) -> None:
-    """Rules that span records, which no single schema can see. Raises with every problem found."""
-    problemas = []
-    citas = [c for f in paquete.fichas for a in f.afirmaciones for c in a.citas]
-    citas += [c for q in paquete.consultas for c in q.citas]
-    problemas += errores_de_citas(citas, paquete.evidencias)
-    versiones = [v for f in paquete.fichas for c in f.contradicciones for v in c.versiones]
-    versiones += [v for q in paquete.consultas for v in q.versiones]
-    problemas += [
-        f"{v.id_evidencia}: la versión contradictoria cita una evidencia que no existe"
-        for v in versiones
-        if v.id_evidencia not in paquete.evidencias
-    ]
-    for grupo in paquete.grupos:
-        ids = [m.id_noticia for m in grupo.miembros] + [v.id_evidencia for v in grupo.contexto]
-        problemas += [f"{grupo.id_grupo}: {i} no está en evidencias" for i in ids if i not in paquete.evidencias]
-    casos = {f.id_caso: f for f in paquete.fichas}
-    grupos = {g.id_grupo: g for g in paquete.grupos}
-    for ficha in paquete.fichas:
-        origen = grupos.get(ficha.id_grupo)
-        if (
-            origen is None
-            or origen.id_caso != ficha.id_caso
-            or origen.puntaje != ficha.puntaje
-            or origen.estado_revision != ficha.estado_revision
-        ):
-            problemas.append(f"{ficha.id_caso}: la ficha no coincide con su grupo")
-    problemas += [
-        f"{g.id_grupo}: id_caso {g.id_caso} sin ficha" for g in paquete.grupos if g.id_caso and g.id_caso not in casos
-    ]
-    ultimo: dict[str, str] = {}
-    for revision in paquete.revisiones:
-        ultimo[revision.id_caso] = revision.estado
-    for id_caso, estado in ultimo.items():
-        if id_caso not in casos:
-            problemas.append(f"{id_caso}: hay revisiones de un caso sin ficha")
-        elif casos[id_caso].estado_revision != estado:
-            problemas.append(f"{id_caso}: la revisión más reciente ({estado}) no coincide con la ficha")
-    if problemas:
-        raise ValueError("el paquete es incoherente:\n- " + "\n- ".join(problemas))
-
-
-def escribir(paquete: Paquete, datos: Path = PROCESSED, salidas: Path = OUTPUTS) -> None:
-    """Validates the whole package, then writes `grupos` and `evidencias` to `datos` and the rest to `salidas`."""
-    verificar(paquete)
-    escribir_jsonl(datos / GROUPS_FILE, [a_dict(g) for g in paquete.grupos])
-    escribir_jsonl(datos / EVIDENCE_FILE, [a_dict(e) for e in paquete.evidencias.values()])
-    escribir_jsonl(salidas / FICHAS_FILE, [a_registro_ficha(f) for f in paquete.fichas])
-    escribir_jsonl(salidas / QUERIES_FILE, [a_dict(c) for c in paquete.consultas])
-    escribir_jsonl(salidas / REVIEWS_FILE, [a_dict(r) for r in paquete.revisiones])
-
-
-def cargar(datos: Path = PROCESSED, salidas: Path = OUTPUTS) -> Paquete:
-    """Loads the real pipeline output, rejecting anything that breaks a schema or a cross-record rule."""
-    evidencias = [de_dict(Evidencia, r) for r in leer_jsonl(datos / EVIDENCE_FILE)]
-    paquete = Paquete(
-        grupos=tuple(de_dict(Grupo, r) for r in leer_jsonl(datos / GROUPS_FILE)),
-        evidencias={e.id_evidencia: e for e in evidencias},
-        fichas=tuple(de_registro_ficha(r) for r in leer_jsonl(salidas / FICHAS_FILE)),
-        consultas=tuple(de_dict(Respuesta, r) for r in leer_jsonl(salidas / QUERIES_FILE)),
-        revisiones=tuple(de_dict(RegistroRevision, r) for r in leer_jsonl(salidas / REVIEWS_FILE)),
+def write(output: OutputSet, data: Path = PROCESSED, outputs: Path = OUTPUTS) -> None:
+    """Validates the whole set, then writes groups and evidence to `data` and the rest to `outputs`."""
+    verify(output)
+    groups = {group.id_grupo: group for group in output.grupos}
+    write_jsonl(data / GROUPS_FILE, [group.model_dump(mode="json") for group in output.grupos])
+    write_jsonl(data / EVIDENCE_FILE, [evidence.model_dump(mode="json") for evidence in output.evidencias.values()])
+    write_jsonl(
+        outputs / FICHAS_FILE,
+        [
+            case_file_to_record(case_file, groups[case_file.id_grupo], output.review_state(case_file.id_caso))
+            for case_file in output.fichas
+        ],
     )
-    verificar(paquete)
-    return paquete
+    write_jsonl(outputs / QUERIES_FILE, [answer.model_dump(mode="json") for answer in output.consultas])
+    write_jsonl(outputs / REVIEWS_FILE, [record.model_dump(mode="json") for record in output.revisiones])
 
 
-def cargar_demo() -> Paquete:
+def load(data: Path = PROCESSED, outputs: Path = OUTPUTS) -> OutputSet:
+    """Loads the real pipeline output, rejecting anything that breaks a schema or a rule between records."""
+    output = OutputSet.model_validate(
+        {
+            "grupos": read_jsonl(data / GROUPS_FILE),
+            "evidencias": {record["id_evidencia"]: record for record in read_jsonl(data / EVIDENCE_FILE)},
+            "fichas": [case_file_from_record(record).model_dump() for record in read_jsonl(outputs / FICHAS_FILE)],
+            "consultas": read_jsonl(outputs / QUERIES_FILE),
+            "revisiones": read_jsonl(outputs / REVIEWS_FILE),
+        }
+    )
+    verify(output)
+    return output
+
+
+def load_demo() -> OutputSet:
     """The synthetic set in `data/demo/`: same files and schemas, all in one directory."""
-    return cargar(DEMO, DEMO)
+    return load(DEMO, DEMO)

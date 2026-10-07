@@ -5,6 +5,12 @@ Reviewed at `ded96a832327d550ba4ec5e4884efc708e767623` against fixed base
 independently using the `code-review` skill. No GitHub review or approval was
 submitted. Existing requested changes belong to G2's developer.
 
+Update: NoSkill007 implemented the four requested changes in `92c3e6e` and
+merged PR #32 into `prod` at `bcc0fba` on 2026-10-07. G5 uses that final
+Pydantic/English contract. Findings below describe the originally reviewed
+revision, not the updated state. The short demo-script duration remains a
+separate demo-content limitation; G5 serves those supplied drafts unchanged.
+
 ## Standards
 
 - **P1:** Review state is duplicated in `Group`, `Case` and the review ledger.

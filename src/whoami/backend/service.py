@@ -25,6 +25,9 @@ class EditorialService:
                      n_procedencias=len({member["procedencia"] for member in members}),
                      tema_etiqueta=TOPIC_LABELS.get(group["tema"], group["tema"]))
         group["estado_revision"] = self.repository.case(group["id_caso"])["estado_revision"] if group.get("id_caso") else "nuevo"
+        for context in group["contexto"]:
+            fields = self.repository.record("evidence", context["id_evidencia"])["campos"]
+            context.update(periodo=fields["periodo"], unidad=fields["unidad"], valor=fields["valor"] or None)
         return group
 
     def case(self, case_id: str) -> dict:

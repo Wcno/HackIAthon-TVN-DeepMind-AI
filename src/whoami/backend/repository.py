@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from whoami.backend.pipeline import PipelineBundle
-from whoami.contracts import REVIEW_STATES
+from whoami.contracts import REVIEW_STATES, REVIEW_TRANSITIONS
 
 
 def canonical_json(value: object) -> str:
@@ -35,13 +35,8 @@ class InvalidReview(ValueError):
     pass
 
 
-REVIEW_TRANSITIONS = {
-    "nuevo": {"en_revision", "descartado"},
-    "en_revision": {"requiere_evidencia", "aprobado_como_borrador", "descartado"},
-    "requiere_evidencia": {"en_revision", "descartado"},
-    "aprobado_como_borrador": {"en_revision"},
-    "descartado": {"en_revision"},
-}
+def cited_ids(case: dict) -> list[str]:
+    return list(dict.fromkeys(citation["id_evidencia"] for claim in case["afirmaciones"] for citation in claim["citas"]))
 
 
 class EditorialRepository:
@@ -110,7 +105,7 @@ class EditorialRepository:
                 body = {key: value for key, value in case.items() if key != "estado_revision"}
                 group = groups[case["id_grupo"]]
                 dependency = {key: value for key, value in group.items() if key != "estado_revision"}
-                source_ids = set(case["ids_fuente"])
+                source_ids = set(cited_ids(case))
                 source_ids.update(member["id_noticia"] for member in group["miembros"])
                 source_ids.update(context["id_evidencia"] for context in group["contexto"])
                 digest = content_hash({"case": body, "group": dependency,
@@ -161,7 +156,15 @@ class EditorialRepository:
             if row is None:
                 raise MissingRecord(f"Unknown case: {case_id}")
             review = self._current_review(connection, case_id)
-            return json.loads(row["body"]) | {"estado_revision": review["state"] if review else "nuevo", "version": row["version"]}
+            case = json.loads(row["body"])
+            group_record = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
+            if group_record is None:
+                raise MissingRecord(f"The group of case {case_id} is no longer available.")
+            group = json.loads(group_record["body"])
+            return case | {"titulo": group["titulo"], "tema": group["tema"], "estado_evidencia": group["estado_evidencia"],
+                           "puntaje": group["puntaje"]["valor"], "componentes": group["puntaje"]["componentes"],
+                           "ids_fuente": cited_ids(case), "estado_revision": review["state"] if review else "nuevo",
+                           "version": row["version"]}
 
     def review_history(self, case_id: str) -> list[dict]:
         self.case(case_id)
@@ -184,10 +187,14 @@ class EditorialRepository:
             current_state = current["state"] if current else "nuevo"
             if state not in REVIEW_TRANSITIONS[current_state]:
                 raise InvalidReview(f"Transition {current_state} -> {state} is not allowed.")
-            if current_state in ("aprobado_como_borrador", "descartado") and not (note or "").strip():
+            if state == "en_revision" and current_state in ("aprobado_como_borrador", "descartado") and not (note or "").strip():
                 raise InvalidReview("Reopening a case requires a reason.")
             case = json.loads(row["body"])
-            if state == "aprobado_como_borrador" and (case["estado_evidencia"] == "insuficiente" or case["borrador"] is None):
+            group_record = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
+            if group_record is None:
+                raise MissingRecord(f"The group of case {case_id} is no longer available.")
+            group = json.loads(group_record["body"])
+            if state == "aprobado_como_borrador" and (group["estado_evidencia"] == "insuficiente" or case["borrador"] is None):
                 raise InvalidReview("Approval requires a draft and evidence that is not insufficient.")
             version = row["version"] + 1
             connection.execute("UPDATE cases SET version = ? WHERE id = ?", (version, case_id))

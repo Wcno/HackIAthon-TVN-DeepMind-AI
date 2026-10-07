@@ -145,13 +145,14 @@ def test_removed_cases_are_archived_and_cannot_remain_approved(settings):
     bundle = load_pipeline(settings.data_directory, settings.output_directory)
     repository = EditorialRepository(settings.database)
     repository.import_bundle(bundle)
+    original_history = len(repository.review_history("CASO-005"))
     repository.import_bundle(PipelineBundle((), (), (), (), ()))
     with pytest.raises(MissingRecord):
         repository.case("CASO-005")
     with pytest.raises(MissingRecord):
         repository.review("CASO-005", state="en_revision", actor="Reviewer", note="Reopen", expected_version=2)
     with repository.connection() as connection:
-        assert connection.execute("SELECT count(*) FROM reviews WHERE case_id = 'CASO-005'").fetchone()[0] == 2
+        assert connection.execute("SELECT count(*) FROM reviews WHERE case_id = 'CASO-005'").fetchone()[0] == original_history + 1
         assert repository._current_review(connection, "CASO-005")["state"] == "requiere_evidencia"
     repository.import_bundle(bundle)
     assert repository.case("CASO-005")["estado_revision"] == "en_revision"

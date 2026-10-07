@@ -1,36 +1,43 @@
 import math
 
 import pytest
+from pydantic import ValidationError
 
 from whoami.schemas import (
-    Afirmacion,
-    Cita,
-    Componentes,
-    Contradiccion,
-    Evidencia,
-    Ficha,
-    Grupo,
-    Miembro,
-    PaqueteEditorial,
-    Puntaje,
-    RegistroRevision,
-    Respuesta,
-    VersionContradictoria,
-    VinculoContexto,
-    calcular_puntaje,
-    errores_de_citas,
-    ordenar_bandeja,
-    rango_de,
+    Answer,
+    CaseFile,
+    Citation,
+    Claim,
+    Components,
+    ContextLink,
+    Contradiction,
+    ContradictionVersion,
+    EditorialPackage,
+    Evidence,
+    Group,
+    Member,
+    OutputSet,
+    ReviewRecord,
+    Score,
+    citation_errors,
+    compute_score,
+    current_review_state,
+    parse_utc,
+    range_of,
+    sort_inbox,
+    verify,
 )
 
+HEADLINE_LEGEND = "basado únicamente en titular/metadatos"
 
-def componentes(R=0.0, I=0.0, U=0.0, N=0.0, E=0.0) -> Componentes:
-    return Componentes(R=R, I=I, U=U, N=N, E=E)
+
+def components(R=0.0, I=0.0, U=0.0, N=0.0, E=0.0) -> Components:
+    return Components(R=R, I=I, U=U, N=N, E=E)
 
 
 # §4: P = 30R + 25I + 20U + 15N + 10E, each component in 0-1.
 @pytest.mark.parametrize(
-    ("valores", "esperado"),
+    ("values", "expected"),
     [
         (dict(R=1, I=1, U=1, N=1, E=1), 100.0),
         (dict(), 0.0),
@@ -38,32 +45,32 @@ def componentes(R=0.0, I=0.0, U=0.0, N=0.0, E=0.0) -> Componentes:
         (dict(R=0.25, N=1.0), 22.5),  # 7.5 + 15
     ],
 )
-def test_puntaje_follows_the_weighted_formula(valores, esperado):
-    assert calcular_puntaje(componentes(**valores)) == esperado
+def test_score_follows_the_weighted_formula(values, expected):
+    assert compute_score(components(**values)) == expected
 
 
-@pytest.mark.parametrize("malo", [-0.01, 1.01, math.nan, math.inf])
-def test_components_outside_zero_one_are_rejected(malo):
+@pytest.mark.parametrize("bad", [-0.01, 1.01, math.nan, math.inf])
+def test_components_outside_zero_one_are_rejected(bad):
     with pytest.raises(ValueError, match="R"):
-        componentes(R=malo)
+        components(R=bad)
 
 
-# §4: bajo [0,40), medio [40,70), alto [70,100], sin solapamiento.
+# §4: bajo [0,40), medio [40,70), alto [70,100], no overlap.
 @pytest.mark.parametrize(
-    ("valor", "esperado"),
+    ("value", "expected"),
     [(0, "bajo"), (39.99, "bajo"), (40, "medio"), (69.99, "medio"), (70, "alto"), (100, "alto")],
 )
-def test_range_boundaries_do_not_overlap(valor, esperado):
-    assert rango_de(valor) == esperado
+def test_range_boundaries_do_not_overlap(value, expected):
+    assert range_of(value) == expected
 
 
-@pytest.mark.parametrize("fuera", [-0.1, 100.01, math.nan])
-def test_range_rejects_values_outside_zero_hundred(fuera):
+@pytest.mark.parametrize("outside", [-0.1, 100.01, math.nan])
+def test_range_rejects_values_outside_zero_hundred(outside):
     with pytest.raises(ValueError):
-        rango_de(fuera)
+        range_of(outside)
 
 
-JUSTIFICACIONES = {
+JUSTIFICATIONS = {
     "R": "Afecta el tránsito por el Canal.",
     "I": "Alcance sectorial.",
     "U": "Publicado hace menos de 24 h.",
@@ -73,112 +80,137 @@ JUSTIFICACIONES = {
 
 
 def test_score_is_computed_from_components_never_supplied():
-    puntaje = Puntaje.de(componentes(R=0.8, I=0.6, U=1.0, N=0.5, E=0.5), JUSTIFICACIONES)
+    score = Score.from_components(components(R=0.8, I=0.6, U=1.0, N=0.5, E=0.5), JUSTIFICATIONS)
 
-    assert (puntaje.valor, puntaje.rango) == (71.5, "alto")
-    assert puntaje.version_reglas == "1.0.0"
+    assert (score.valor, score.rango) == (71.5, "alto")
+    assert score.version_reglas == "1.0.0"
+
+
+def score_fields(**changes) -> dict:
+    fields = dict(
+        componentes=components(R=1, I=1, U=1, N=1, E=1),
+        valor=100.0,
+        rango="alto",
+        version_reglas="1.0.0",
+        justificaciones=JUSTIFICATIONS,
+    )
+    return fields | changes
 
 
 def test_a_score_whose_value_does_not_match_its_components_is_rejected():
     with pytest.raises(ValueError, match="valor"):
-        Puntaje(
-            componentes=componentes(R=1, I=1, U=1, N=1, E=1),
-            valor=55.0,
-            rango="medio",
-            version_reglas="1.0.0",
-            justificaciones=JUSTIFICACIONES,
-        )
+        Score(**score_fields(valor=55.0, rango="medio"))
 
 
 def test_a_score_whose_range_does_not_match_its_value_is_rejected():
     with pytest.raises(ValueError, match="rango"):
-        Puntaje(
-            componentes=componentes(R=1, I=1, U=1, N=1, E=1),
-            valor=100.0,
-            rango="bajo",
-            version_reglas="1.0.0",
-            justificaciones=JUSTIFICACIONES,
-        )
+        Score(**score_fields(rango="bajo"))
 
 
-@pytest.mark.parametrize("quitar", ["R", "E"])
-def test_every_component_needs_a_justification(quitar):
-    incompletas = {k: v for k, v in JUSTIFICACIONES.items() if k != quitar}
+@pytest.mark.parametrize("missing", ["R", "E"])
+def test_every_component_needs_a_justification(missing):
+    incomplete = {k: v for k, v in JUSTIFICATIONS.items() if k != missing}
 
-    with pytest.raises(ValueError, match=quitar):
-        Puntaje.de(componentes(R=1), incompletas)
+    with pytest.raises(ValueError, match=missing):
+        Score.from_components(components(R=1), incomplete)
 
 
-def evidencia(**cambios) -> Evidencia:
-    datos = dict(
+def evidence(**changes) -> Evidence:
+    fields = dict(
         id_evidencia="N-af71800f62ff",
         tipo="noticia",
         titulo="El Canal reduce los tránsitos diarios por la sequía",
         url="https://ejemplo.test/canal",
-        fecha="2026-10-05T14:00:00Z",
+        fecha=parse_utc("2026-10-05T14:00:00Z"),
         campos={"titulo": "El Canal reduce los tránsitos diarios por la sequía", "descripcion": "Pasan de 36 a 32 buques."},
     )
-    return Evidencia(**(datos | cambios))
+    return Evidence(**(fields | changes))
 
 
 def test_evidence_id_prefix_must_match_its_type():
     with pytest.raises(ValueError, match="id_evidencia"):
-        evidencia(id_evidencia="WB-PAN-NY.GDP.MKTP.KD.ZG-2023")
+        evidence(id_evidencia="WB-PAN-NY.GDP.MKTP.KD.ZG-2023")
 
 
-@pytest.mark.parametrize("fecha", ["2026-10-05", "2026-10-05T14:00:00-05:00", "ayer"])
-def test_evidence_dates_must_be_iso_8601_utc(fecha):
+@pytest.mark.parametrize("date", ["2026-10-05", "2026-10-05T14:00:00-05:00", "2026-13-45T99:00:00Z", "ayer"])
+def test_evidence_dates_must_be_real_iso_8601_utc(date):
     with pytest.raises(ValueError, match="fecha"):
-        evidencia(fecha=fecha)
+        evidence(fecha=date)
+
+
+def test_values_of_the_wrong_type_are_rejected_when_loading():
+    record = evidence().model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match="titulo"):
+        Evidence.model_validate(record | {"titulo": 123})
+    with pytest.raises(ValidationError, match="campo"):
+        Citation.model_validate({"id_evidencia": "N-af71800f62ff", "campo": 5, "pasaje": "x"})
+    with pytest.raises(ValidationError, match="campos"):
+        Evidence.model_validate(record | {"campos": {"titulo": 7}})
+
+
+def test_unknown_fields_are_rejected_when_loading():
+    record = evidence().model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match="atribuida"):
+        Evidence.model_validate(record | {"atribuida": "x"})
 
 
 def test_a_citation_resolves_only_to_a_literal_passage_of_an_existing_field():
-    registro = {"N-af71800f62ff": evidencia()}
-    buena = Cita("N-af71800f62ff", "descripcion", "de 36 a 32 buques")
+    registry = {"N-af71800f62ff": evidence()}
+    good = Citation(id_evidencia="N-af71800f62ff", campo="descripcion", pasaje="de 36 a 32 buques")
 
-    assert errores_de_citas([buena], registro) == []
+    assert citation_errors([good], registry) == []
 
 
 @pytest.mark.parametrize(
-    ("cita", "fragmento"),
+    ("citation", "fragment"),
     [
-        (Cita("N-000000000000", "titulo", "Canal"), "no existe"),
-        (Cita("N-af71800f62ff", "cuerpo", "Canal"), "campo"),
-        (Cita("N-af71800f62ff", "descripcion", "de 36 a 30 buques"), "literal"),
+        (Citation(id_evidencia="N-000000000000", campo="titulo", pasaje="Canal"), "no existe"),
+        (Citation(id_evidencia="N-af71800f62ff", campo="cuerpo", pasaje="Canal"), "campo"),
+        (Citation(id_evidencia="N-af71800f62ff", campo="descripcion", pasaje="de 36 a 30 buques"), "literal"),
     ],
 )
-def test_citations_that_do_not_resolve_are_reported(cita, fragmento):
-    errores = errores_de_citas([cita], {"N-af71800f62ff": evidencia()})
+def test_citations_that_do_not_resolve_are_reported(citation, fragment):
+    errors = citation_errors([citation], {"N-af71800f62ff": evidence()})
 
-    assert len(errores) == 1 and fragmento in errores[0]
+    assert len(errors) == 1 and fragment in errors[0]
 
 
-CITA = Cita("N-af71800f62ff", "titulo", "reduce los tránsitos")
+CITATION = Citation(id_evidencia="N-af71800f62ff", campo="titulo", pasaje="reduce los tránsitos")
+
+
+def claim(**changes) -> Claim:
+    fields = dict(
+        id_afirmacion="A-1",
+        texto="El Canal reduce los tránsitos.",
+        tipo="hecho",
+        citas=(CITATION,),
+        atribuida_a=None,
+    )
+    return Claim(**(fields | changes))
 
 
 def test_every_claim_needs_at_least_one_citation():
-    with pytest.raises(ValueError, match="cita"):
-        Afirmacion("A-1", "El Canal reduce los tránsitos.", "hecho", ())
+    with pytest.raises(ValueError, match="citas"):
+        claim(citas=())
 
 
 def test_claim_type_must_be_one_of_the_four_the_challenge_distinguishes():
     with pytest.raises(ValueError, match="tipo"):
-        Afirmacion("A-1", "El Canal reduce los tránsitos.", "rumor", (CITA,))
+        claim(tipo="rumor")
 
 
 def test_a_statement_must_say_who_made_it():
     with pytest.raises(ValueError, match="atribuida_a"):
-        Afirmacion("A-1", "La ministra dice que habrá más restricciones.", "declaracion", (CITA,))
+        claim(texto="La ministra dice que habrá más restricciones.", tipo="declaracion")
 
-    atribuida = Afirmacion("A-1", "La ministra dice que habrá más restricciones.", "declaracion", (CITA,), "la ministra")
-    assert atribuida.atribuida_a == "la ministra"
-
-
-LEYENDA = "basado únicamente en titular/metadatos"
+    attributed = claim(texto="La ministra dice que habrá más restricciones.", tipo="declaracion", atribuida_a="la ministra")
+    assert attributed.atribuida_a == "la ministra"
 
 
-def paquete(**cambios) -> PaqueteEditorial:
-    datos = dict(
+def editorial_package(**changes) -> EditorialPackage:
+    fields = dict(
         titulo="El Canal reduce los tránsitos por la sequía",
         brief="El Canal informa una reducción de tránsitos diarios.",
         enfoque_interes_publico="Efecto sobre el comercio y los costos logísticos.",
@@ -188,131 +220,103 @@ def paquete(**cambios) -> PaqueteEditorial:
         copy_digital="El Canal reduce los tránsitos por la sequía.",
         leyenda=None,
     )
-    return PaqueteEditorial(**(datos | cambios))
+    return EditorialPackage(**(fields | changes))
 
 
 def test_brief_is_limited_to_250_words_and_copy_to_80():
-    assert paquete(brief="palabra " * 250)
+    assert editorial_package(brief="palabra " * 250)
     with pytest.raises(ValueError, match="brief"):
-        paquete(brief="palabra " * 251)
-    assert paquete(copy_digital="palabra " * 80)
+        editorial_package(brief="palabra " * 251)
+    assert editorial_package(copy_digital="palabra " * 80)
     with pytest.raises(ValueError, match="copy_digital"):
-        paquete(copy_digital="palabra " * 81)
+        editorial_package(copy_digital="palabra " * 81)
 
 
-@pytest.mark.parametrize("cantidad", [2, 4])
-def test_the_package_has_exactly_three_research_questions(cantidad):
+@pytest.mark.parametrize("count", [2, 4])
+def test_the_package_has_exactly_three_research_questions(count):
     with pytest.raises(ValueError, match="preguntas"):
-        paquete(preguntas=tuple(f"¿Pregunta {i}?" for i in range(cantidad)))
+        editorial_package(preguntas=tuple(f"¿Pregunta {i}?" for i in range(count)))
 
 
-def ficha(**cambios) -> Ficha:
-    datos = dict(
-        id_caso="G-001",
-        modalidad="editorial_tvn",
+def case_file(**changes) -> CaseFile:
+    fields = dict(
+        id_caso="CASO-001",
         id_grupo="G-001",
-        titulo="El Canal reduce los tránsitos por la sequía",
-        tema="logistica_canal",
         alcance_texto="titular_descripcion",
-        ids_fuente=("N-af71800f62ff",),
-        afirmaciones=(Afirmacion("A-1", "El Canal reduce los tránsitos.", "hecho", (CITA,)),),
-        puntaje=Puntaje.de(componentes(R=0.8, I=0.6, U=1.0, N=0.5, E=0.5), JUSTIFICACIONES),
-        estado_evidencia="suficiente_para_borrador",
-        estado_revision="nuevo",
-        borrador=paquete(),
+        afirmaciones=(claim(),),
+        borrador=editorial_package(),
         vacios=(),
         contradicciones=(),
         accion_recomendada="Confirmar la cifra con el Canal antes de publicar.",
     )
-    return Ficha(**(datos | cambios))
-
-
-def test_a_fiche_lists_every_source_it_cites():
-    with pytest.raises(ValueError, match="ids_fuente"):
-        ficha(ids_fuente=("N-otra00000000",))
+    return CaseFile(**(fields | changes))
 
 
 def test_a_draft_based_only_on_headline_must_say_so():
     with pytest.raises(ValueError, match="leyenda"):
-        ficha(alcance_texto="titular_metadatos", borrador=paquete(leyenda=None))
+        case_file(alcance_texto="titular_metadatos", borrador=editorial_package(leyenda=None))
 
-    assert ficha(alcance_texto="titular_metadatos", borrador=paquete(leyenda=LEYENDA))
-
-
-def test_high_priority_with_insufficient_evidence_cannot_be_approved():
-    with pytest.raises(ValueError, match="aprobado_como_borrador"):
-        ficha(estado_evidencia="insuficiente", vacios=("Falta la cifra oficial.",), estado_revision="aprobado_como_borrador")
-
-    assert ficha(estado_evidencia="insuficiente", vacios=("Falta la cifra oficial.",), estado_revision="requiere_evidencia")
+    assert case_file(alcance_texto="titular_metadatos", borrador=editorial_package(leyenda=HEADLINE_LEGEND))
 
 
-@pytest.mark.parametrize("estado", ["insuficiente", "parcial"])
-def test_missing_evidence_must_say_what_is_missing(estado):
-    with pytest.raises(ValueError, match="vacios"):
-        ficha(estado_evidencia=estado, vacios=())
-
-
-def test_vocabularies_are_closed():
-    for campo, valor in [("estado_evidencia", "dudosa"), ("estado_revision", "publicado"), ("tema", "deportes")]:
-        with pytest.raises(ValueError, match=campo):
-            ficha(**{campo: valor})
+def test_a_case_file_has_at_least_one_claim():
+    with pytest.raises(ValueError, match="afirmaciones"):
+        case_file(afirmaciones=())
 
 
 def test_a_contradiction_shows_both_versions_with_their_source():
+    one = ContradictionVersion(valor="2,1 %", alcance="anual 2025", id_evidencia="N-af71800f62ff")
+
     with pytest.raises(ValueError, match="versiones"):
-        Contradiccion("Cifras distintas de inflación.", (VersionContradictoria("2,1 %", "anual 2025", "N-af71800f62ff"),))
+        Contradiction(descripcion="Cifras distintas de inflación.", versiones=(one,))
 
 
-def miembro(n: int, medio: str, procedencia: str, publicada="2026-10-05T14:00:00Z", **cambios) -> Miembro:
-    datos = dict(
+def member(n: int, medium: str, provenance: str, published="2026-10-05T14:00:00Z", **changes) -> Member:
+    fields = dict(
         id_noticia=f"N-{n:012d}",
         titulo=f"Titular {n}",
         url=f"https://ejemplo.test/{n}",
-        medio=medio,
-        procedencia=procedencia,
-        fecha_publicacion=publicada,
+        medio=medium,
+        procedencia=provenance,
+        fecha_publicacion=published,
         alcance_texto="titular_metadatos",
         recirculada_en=None,
     )
-    return Miembro(**(datos | cambios))
+    return Member(**(fields | changes))
 
 
-VINCULO = VinculoContexto(
-    id_evidencia="WB-PAN-NE.EXP.GNFS.ZS-2023",
+LINK = ContextLink(
+    id_evidencia="WB-PAN-NE.EXP.GNFS.ZS-2024",
     etiqueta="Exportaciones de bienes y servicios",
     pais="PAN",
-    periodo="2023",
-    valor=48.1,
-    unidad="% del PIB",
     limitaciones="Serie anual: no es una medición actual.",
     razon="El Canal es la principal exportación de servicios.",
 )
 
 
-def grupo(id_grupo="G-001", miembros=None, puntaje=None, **cambios) -> Grupo:
-    datos = dict(
+def group(id_grupo="G-001", members=None, score=None, **changes) -> Group:
+    fields = dict(
         id_grupo=id_grupo,
         titulo="El Canal reduce los tránsitos",
         tema="logistica_canal",
-        miembros=miembros or (miembro(1, "TVN", "Canal de Panamá"),),
-        puntaje=puntaje or Puntaje.de(componentes(R=0.8, I=0.6, U=1.0, N=0.5, E=0.5), JUSTIFICACIONES),
+        miembros=members or (member(1, "TVN", "Canal de Panamá"),),
+        puntaje=score or Score.from_components(components(R=0.8, I=0.6, U=1.0, N=0.5, E=0.5), JUSTIFICATIONS),
         estado_evidencia="parcial",
-        estado_revision="nuevo",
-        contexto=(VINCULO,),
+        contexto=(LINK,),
         sin_contexto_motivo=None,
         id_caso=None,
     )
-    return Grupo(**(datos | cambios))
+    return Group(**(fields | changes))
 
 
 def test_a_replicated_wire_story_counts_as_one_provenance():
     # CU-03: three outlets republish the same agency item; a fourth reports independently.
-    g = grupo(
-        miembros=(
-            miembro(1, "TVN", "EFE"),
-            miembro(2, "Telemetro", "EFE"),
-            miembro(3, "La Prensa", "EFE"),
-            miembro(4, "Metro Libre", "Metro Libre"),
+    g = group(
+        members=(
+            member(1, "TVN", "EFE"),
+            member(2, "Telemetro", "EFE"),
+            member(3, "La Prensa", "EFE"),
+            member(4, "Metro Libre", "Metro Libre"),
         )
     )
 
@@ -321,85 +325,241 @@ def test_a_replicated_wire_story_counts_as_one_provenance():
 
 def test_a_group_has_unique_members():
     with pytest.raises(ValueError, match="miembros"):
-        grupo(miembros=(miembro(1, "TVN", "EFE"), miembro(1, "TVN", "EFE")))
+        group(members=(member(1, "TVN", "EFE"), member(1, "TVN", "EFE")))
 
 
 def test_a_recirculated_story_keeps_its_original_date():
     with pytest.raises(ValueError, match="recirculada_en"):
-        miembro(1, "TVN", "TVN", publicada="2026-10-05T14:00:00Z", recirculada_en="2025-11-02T10:00:00Z")
+        member(1, "TVN", "TVN", published="2026-10-05T14:00:00Z", recirculada_en="2025-11-02T10:00:00Z")
 
-    vieja = miembro(1, "TVN", "TVN", publicada="2025-11-02T10:00:00Z", recirculada_en="2026-10-05T14:00:00Z")
-    assert grupo(miembros=(vieja,)).miembros[0].fecha_publicacion == "2025-11-02T10:00:00Z"
+    old = member(1, "TVN", "TVN", published="2025-11-02T10:00:00Z", recirculada_en="2026-10-05T14:00:00Z")
+    assert group(members=(old,)).miembros[0].fecha_publicacion == parse_utc("2025-11-02T10:00:00Z")
 
 
 def test_without_official_context_the_group_says_why_not_forcing_a_link():
     with pytest.raises(ValueError, match="sin_contexto_motivo"):
-        grupo(contexto=())
+        group(contexto=())
 
-    assert grupo(contexto=(), sin_contexto_motivo="No hay indicador oficial pertinente.")
+    assert group(contexto=(), sin_contexto_motivo="No hay indicador oficial pertinente.")
     with pytest.raises(ValueError, match="sin_contexto_motivo"):
-        grupo(sin_contexto_motivo="Hay contexto y motivo a la vez.")
+        group(sin_contexto_motivo="Hay contexto y motivo a la vez.")
 
 
-def test_official_context_always_carries_period_unit_and_limitations():
-    for campo in ("periodo", "unidad", "limitaciones"):
-        with pytest.raises(ValueError, match=campo):
-            VinculoContexto(**({**VINCULO.__dict__, campo: " "}))
+@pytest.mark.parametrize("field", ["limitaciones", "razon"])
+def test_official_context_always_says_its_limitations_and_why_it_was_linked(field):
+    with pytest.raises(ValueError, match=field):
+        ContextLink(**(LINK.model_dump() | {field: " "}))
 
 
 def test_official_context_cannot_point_to_a_news_item():
     with pytest.raises(ValueError, match="id_evidencia"):
-        VinculoContexto(**({**VINCULO.__dict__, "id_evidencia": "N-af71800f62ff"}))
+        ContextLink(**(LINK.model_dump() | {"id_evidencia": "N-af71800f62ff"}))
+
+
+def test_vocabularies_are_closed():
+    for field, value in [("tema", "deportes"), ("estado_evidencia", "dudosa")]:
+        with pytest.raises(ValueError, match=field):
+            group(**{field: value})
+    with pytest.raises(ValueError, match="alcance_texto"):
+        case_file(alcance_texto="resumen")
 
 
 def test_inbox_orders_by_score_then_urgency_then_id():
-    alto = Puntaje.de(componentes(R=1, I=1, U=1, N=1, E=1), JUSTIFICACIONES)
+    top = Score.from_components(components(R=1, I=1, U=1, N=1, E=1), JUSTIFICATIONS)
     # Both reach P = 45 by different routes; the more urgent one goes first.
-    urgente = Puntaje.de(componentes(R=0.5, I=0.4, U=1.0, N=0.0, E=0.0), JUSTIFICACIONES)  # 15+10+20 = 45
-    pausado = Puntaje.de(componentes(R=1.0, I=0.4, U=0.25, N=0.0, E=0.0), JUSTIFICACIONES)  # 30+10+5 = 45
-    assert urgente.valor == pausado.valor == 45.0
+    urgent = Score.from_components(components(R=0.5, I=0.4, U=1.0, N=0.0, E=0.0), JUSTIFICATIONS)  # 15+10+20
+    relaxed = Score.from_components(components(R=1.0, I=0.4, U=0.25, N=0.0, E=0.0), JUSTIFICATIONS)  # 30+10+5
+    assert urgent.valor == relaxed.valor == 45.0
 
-    ordenados = ordenar_bandeja(
-        [
-            grupo("G-003", puntaje=pausado),
-            grupo("G-002", puntaje=urgente),
-            grupo("G-001", puntaje=urgente),
-            grupo("G-009", puntaje=alto),
-        ]
+    ordered = sort_inbox(
+        [group("G-003", score=relaxed), group("G-002", score=urgent), group("G-001", score=urgent), group("G-009", score=top)]
     )
 
-    assert [g.id_grupo for g in ordenados] == ["G-009", "G-001", "G-002", "G-003"]
+    assert [g.id_grupo for g in ordered] == ["G-009", "G-001", "G-002", "G-003"]
 
 
 def test_an_answer_with_evidence_cites_it():
     with pytest.raises(ValueError, match="citas"):
-        Respuesta("Q-1", "¿Cuántos buques cruzaron?", "respondida", respuesta="32 buques.")
+        Answer(id_consulta="Q-1", consulta="¿Cuántos buques cruzaron?", estado="respondida", respuesta="32 buques.")
 
 
 def test_an_abstention_says_what_information_is_missing_and_answers_nothing():
-    with pytest.raises(ValueError, match="faltante"):
-        Respuesta("Q-2", "¿Cuál fue el PIB de 2027?", "abstencion", motivo_abstencion="No hay datos.")
-    with pytest.raises(ValueError, match="abstencion"):
-        Respuesta(
-            "Q-2", "¿Cuál fue el PIB de 2027?", "abstencion",
-            respuesta="Será de 5 %.", motivo_abstencion="No hay datos.", faltante="Dato oficial de 2027.",
-        )
+    base = dict(id_consulta="Q-2", consulta="¿Cuál fue el PIB de 2027?", estado="abstencion")
 
-    assert Respuesta(
-        "Q-2", "¿Cuál fue el PIB de 2027?", "abstencion",
-        motivo_abstencion="No hay datos.", faltante="Dato oficial de 2027.",
-    )
+    with pytest.raises(ValueError, match="faltante"):
+        Answer(**base, motivo_abstencion="No hay datos.")
+    with pytest.raises(ValueError, match="abstencion"):
+        Answer(**base, respuesta="Será de 5 %.", motivo_abstencion="No hay datos.", faltante="Dato oficial de 2027.")
+
+    assert Answer(**base, motivo_abstencion="No hay datos.", faltante="Dato oficial de 2027.")
 
 
 def test_a_contradictory_answer_shows_both_versions():
     with pytest.raises(ValueError, match="versiones"):
-        Respuesta("Q-3", "¿Cuál es la inflación?", "contradiccion")
+        Answer(id_consulta="Q-3", consulta="¿Cuál es la inflación?", estado="contradiccion")
+
+
+def review(id_caso="CASO-001", state="en_revision", at="2026-10-07T13:00:00Z", who="Ana", note=None) -> ReviewRecord:
+    return ReviewRecord(id_caso=id_caso, estado=state, responsable=who, fecha=at, nota=note)
 
 
 def test_a_review_beyond_new_names_the_responsible_person():
     with pytest.raises(ValueError, match="responsable"):
-        RegistroRevision("G-001", "aprobado_como_borrador", "", "2026-10-07T15:00:00Z", None)
+        review(state="aprobado_como_borrador", who="")
     with pytest.raises(ValueError, match="estado"):
-        RegistroRevision("G-001", "publicado", "Ana", "2026-10-07T15:00:00Z", None)
+        review(state="publicado")
 
-    assert RegistroRevision("G-001", "nuevo", None, "2026-10-07T15:00:00Z", None)
+    assert review(state="nuevo", who=None)
+
+
+# ---------------------------------------------------------------------------
+# Rules that span records (`verify`) and the review state derived from the history.
+# ---------------------------------------------------------------------------
+
+NEWS_ID = "N-af71800f62ff"
+
+CONTEXT_EVIDENCE = Evidence(
+    id_evidencia="WB-PAN-NE.EXP.GNFS.ZS-2024",
+    tipo="indicador",
+    titulo="Exportaciones de bienes y servicios (PAN, 2024)",
+    url="https://api.worldbank.org/v2/country/PAN",
+    fecha=None,
+    campos={"indicador": "Exportaciones", "periodo": "2024", "valor": "44,36", "unidad": "% del PIB"},
+)
+
+
+def output_set(**changes) -> OutputSet:
+    news = evidence()
+    fields = dict(
+        grupos=(
+            group(
+                members=(member(1, "TVN", "TVN", id_noticia=NEWS_ID),),
+                estado_evidencia="suficiente_para_borrador",
+                id_caso="CASO-001",
+            ),
+        ),
+        evidencias={news.id_evidencia: news, CONTEXT_EVIDENCE.id_evidencia: CONTEXT_EVIDENCE},
+        fichas=(case_file(),),
+        consultas=(),
+        revisiones=(),
+    )
+    return OutputSet(**(fields | changes))
+
+
+def problems(output: OutputSet) -> str:
+    with pytest.raises(ValueError) as caught:
+        verify(output)
+    return str(caught.value)
+
+
+def test_a_coherent_output_set_verifies():
+    verify(output_set())
+
+
+def test_a_citation_that_does_not_resolve_is_reported():
+    broken = case_file(afirmaciones=(claim(citas=(Citation(id_evidencia=NEWS_ID, campo="titulo", pasaje="no está"),)),))
+
+    assert "literal" in problems(output_set(fichas=(broken,)))
+
+
+def test_a_case_file_can_only_cite_evidence_of_its_own_group():
+    stranger = Evidence(
+        id_evidencia="N-0000000000aa",
+        tipo="noticia",
+        titulo="Otra",
+        url="https://ejemplo.test/o",
+        fecha=None,
+        campos={"titulo": "Otra nota"},
+    )
+    cited = case_file(afirmaciones=(claim(citas=(Citation(id_evidencia=stranger.id_evidencia, campo="titulo", pasaje="Otra"),)),))
+    evidences = output_set().evidencias | {stranger.id_evidencia: stranger}
+
+    message = problems(output_set(evidencias=evidences, fichas=(cited,)))
+
+    assert stranger.id_evidencia in message and "grupo" in message
+
+
+def test_members_and_context_must_exist_as_evidence():
+    without_context = {k: v for k, v in output_set().evidencias.items() if k != CONTEXT_EVIDENCE.id_evidencia}
+
+    assert CONTEXT_EVIDENCE.id_evidencia in problems(output_set(evidencias=without_context))
+
+
+@pytest.mark.parametrize("missing", ["periodo", "unidad", "valor"])
+def test_official_context_evidence_carries_period_unit_and_value(missing):
+    thin = CONTEXT_EVIDENCE.model_copy(update={"campos": {k: v for k, v in CONTEXT_EVIDENCE.campos.items() if k != missing}})
+    evidences = output_set().evidencias | {thin.id_evidencia: thin}
+
+    assert missing in problems(output_set(evidencias=evidences))
+
+
+def test_a_case_file_and_its_group_point_at_each_other():
+    detached = group(
+        members=(member(1, "TVN", "TVN", id_noticia=NEWS_ID),),
+        estado_evidencia="suficiente_para_borrador",
+        id_caso=None,
+    )
+
+    assert "CASO-001" in problems(output_set(grupos=(detached,)))
+
+
+def test_evidence_that_is_not_sufficient_must_say_what_is_missing():
+    partial = group(members=(member(1, "TVN", "TVN", id_noticia=NEWS_ID),), estado_evidencia="parcial", id_caso="CASO-001")
+
+    assert "vacios" in problems(output_set(grupos=(partial,)))
+    verify(output_set(grupos=(partial,), fichas=(case_file(vacios=("Falta la cifra oficial.",)),)))
+
+
+def insufficient_output(*records: ReviewRecord, draft=True) -> OutputSet:
+    insufficient = group(
+        members=(member(1, "TVN", "TVN", id_noticia=NEWS_ID),), estado_evidencia="insuficiente", id_caso="CASO-001"
+    )
+    filed = case_file(vacios=("Falta la cifra oficial.",), borrador=editorial_package() if draft else None)
+    return output_set(grupos=(insufficient,), fichas=(filed,), revisiones=records)
+
+
+APPROVAL = (review(state="en_revision", at="2026-10-07T12:00:00Z"), review(state="aprobado_como_borrador"))
+
+
+def test_high_priority_with_insufficient_evidence_cannot_be_approved():
+    assert "aprobado_como_borrador" in problems(insufficient_output(*APPROVAL))
+    verify(insufficient_output(review(state="requiere_evidencia")))
+
+
+def test_a_case_without_a_draft_cannot_be_approved():
+    assert "borrador" in problems(output_set(fichas=(case_file(borrador=None),), revisiones=APPROVAL))
+
+
+@pytest.mark.parametrize(
+    ("history", "allowed"),
+    [
+        (["aprobado_como_borrador"], False),  # a new case must be reviewed first
+        (["en_revision", "aprobado_como_borrador"], True),
+        (["descartado", "aprobado_como_borrador"], False),  # a discarded case must be reopened first
+        (["descartado", "en_revision", "aprobado_como_borrador"], True),
+        (["en_revision", "en_revision"], False),  # not a change
+    ],
+)
+def test_review_state_changes_follow_the_allowed_transitions(history, allowed):
+    records = tuple(review(state=s, at=f"2026-10-07T1{i}:00:00Z") for i, s in enumerate(history))
+    output = output_set(revisiones=records)
+
+    if allowed:
+        verify(output)
+    else:
+        assert "transición" in problems(output)
+
+
+def test_the_current_review_state_is_the_latest_by_date_not_by_line_order():
+    out_of_order = (
+        review(state="aprobado_como_borrador", at="2026-10-07T14:00:00Z"),
+        review(state="en_revision", at="2026-10-07T13:00:00Z"),
+    )
+
+    assert current_review_state(out_of_order, "CASO-001") == "aprobado_como_borrador"
+    assert current_review_state((), "CASO-001") == "nuevo"
+    verify(output_set(revisiones=out_of_order))
+
+
+def test_a_review_of_an_unknown_case_is_reported():
+    assert "CASO-099" in problems(output_set(revisiones=(review(id_caso="CASO-099"),)))

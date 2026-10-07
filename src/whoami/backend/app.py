@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
@@ -19,12 +19,12 @@ from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.service import EditorialService, quality_report
 from whoami.backend.settings import Settings
-from whoami.contracts import PROCESSED, REVIEW_STATES, TOPIC_LABELS
+from whoami.contracts import PROCESSED, REVIEW_STATES, TOPIC_LABELS, ReviewState
 
 
 class ReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    state: Literal["nuevo", "en_revision", "requiere_evidencia", "aprobado_como_borrador", "descartado"]
+    state: ReviewState
     actor: str = Field(min_length=1, max_length=120)
     expected_version: int = Field(ge=1)
     note: str | None = Field(default=None, max_length=2000)
@@ -44,7 +44,10 @@ def panama_time(value: str | None) -> str:
 
 
 def safe_url(value: str) -> str:
-    return value if urlsplit(value).scheme in ("https", "http") else "#"
+    try:
+        return value if urlsplit(value).scheme in ("https", "http") else "#"
+    except ValueError:
+        return "#"
 
 
 # G4 supplies generation/retrieval; G5 owns the cached client and transport.
@@ -61,6 +64,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         repository = EditorialRepository(settings.database)
         repository.import_bundle(load_pipeline(settings.data_directory, settings.output_directory))
         app.state.repository = repository
+        app.state.synthetic = any(group.get("sintetico", False) for group in repository.records("group"))
         app.state.editorial = EditorialService(repository)
         app.state.gemini = GeminiClient(repository, settings)
         try:
@@ -72,7 +76,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
-            "screen": screen, "title": title, "demo": settings.demo,
+            "screen": screen, "title": title, "demo": settings.demo or request.app.state.synthetic,
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
             "review_states": REVIEW_STATES, **context,
         }, status_code=status_code)
