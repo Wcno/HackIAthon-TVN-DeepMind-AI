@@ -1,0 +1,1 @@
+<p>{{ evidence.fecha|panama_time }} (Panamá) · <a href="{{ evidence.url|safe_url }}">Fuente original</a></p><dl>{% for name, value in evidence.campos.items() %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>

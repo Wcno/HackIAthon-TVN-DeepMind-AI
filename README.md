@@ -18,6 +18,10 @@ integration, runtime settings, available screens and validation.
 uv run --locked pytest -q
 ```
 
+Stop the server and export the current human review cycle with
+`uv run --locked whoami export-backend --output outputs`.
+The test suite includes a real HTTP server restart and G2 export round-trip.
+
 ## Flujo de trabajo del equipo
 
 La rama de integración y producción es `prod`. Cada cambio se desarrolla en una rama corta y se revisa una sola vez mediante un pull request hacia `prod`. No usamos una rama `dev` en este flujo.
@@ -53,7 +57,7 @@ También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen p
 - Usar `prod` como rama predeterminada.
 - Proteger `prod`: exigir pull request y una aprobación de otro integrante; aplicar la regla también a administradores e impedir force pushes y la eliminación de la rama.
 - Invalidar aprobaciones cuando se suban cambios nuevos al pull request.
-- Exigir los checks de CI cuando existan; actualmente el repositorio no tiene CI.
+- Exigir los checks de `G5 validation`: pruebas y build en Windows y Linux. La protección de rama debe configurarse en GitHub.
 - Configurar el proveedor de despliegue para publicar desde `prod`; actualmente no hay un despliegue configurado.
 
 Estas son las reglas acordadas. La protección, la rama predeterminada y el despliegue deben verificarse en sus respectivas plataformas.

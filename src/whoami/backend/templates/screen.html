@@ -5,48 +5,6 @@
 <main id="screen">
 {% if demo %}<p role="status">Demostración: las noticias son sintéticas; no describen hechos reales.</p>{% endif %}
 <h1>{{ title }}</h1>
-{% if screen == 'error' %}
-  <p role="alert">{{ message }}</p><p><a href="/inbox">Volver a la agenda</a></p>
-{% elif screen == 'quality' %}
-  <p>Informes del corpus de entrada. La agenda de demostración se presenta por separado.</p>
-  {% include 'quality.html' %}
-{% elif screen == 'inbox' %}
-  <form method="get"><label>Tema <select name="topic"><option value="">Todos</option>{% for slug, label in topics.items() %}<option value="{{ slug }}">{{ label }}</option>{% endfor %}</select></label><button>Filtrar</button></form>
-  {% for group in groups %}<article><h2><a href="/groups/{{ group.id_grupo|urlencode }}">{{ group.titulo }}</a></h2>
-  <p>{{ group.tema_etiqueta }} · Prioridad {{ group.puntaje.valor }} ({{ group.puntaje.rango }}) · Evidencia {{ group.estado_evidencia }} · {{ group.estado_revision }}</p>
-  <p>{{ group.n_noticias }} noticias · {{ group.n_medios }} medios · {{ group.n_procedencias }} procedencias</p>
-  <dl>{% for name, value in group.puntaje.componentes.items() %}<dt>{{ name }}: {{ value }}</dt><dd>{{ group.puntaje.justificaciones[name] }}</dd>{% endfor %}</dl>
-  <p>Reglas: {{ group.puntaje.version_reglas }}</p>{% if group.id_caso %}<a href="/cases/{{ group.id_caso|urlencode }}">Abrir ficha</a>{% endif %}</article>{% else %}<p>No hay grupos para este filtro.</p>{% endfor %}
-{% elif screen == 'group' %}
-  <p>{{ group.n_medios }} medios, {{ group.n_procedencias }} procedencias independientes. Repetición no significa corroboración.</p>
-  <a href="/groups/{{ group.id_grupo|urlencode }}/context">Contexto oficial</a>
-  {% if group.id_caso %} · <a href="/cases/{{ group.id_caso|urlencode }}">Ficha de evidencia</a>{% endif %}
-  {% for member in group.miembros %}<article><h2><a href="{{ member.url|safe_url }}">{{ member.titulo }}</a></h2><p>{{ member.medio }} · Procedencia {{ member.procedencia }}</p><p>Publicación original: {{ member.fecha_publicacion|panama_time }} (Panamá)</p>{% if member.recirculada_en %}<p>Recirculada: {{ member.recirculada_en|panama_time }} (Panamá)</p>{% endif %}<p>{{ member.alcance_texto }}</p></article>{% endfor %}
-{% elif screen == 'context' %}
-  {% for item in group.contexto %}<article><h2>{{ item.etiqueta }}</h2><p>{{ item.pais }} · {{ item.periodo }} · {{ item.valor if item.valor is not none else 'Dato no disponible' }} {{ item.unidad }}</p><p>{{ item.limitaciones }}</p><p>{{ item.razon }}</p><a href="/evidence/{{ item.id_evidencia|urlencode }}">Ver evidencia</a></article>{% else %}<p>{{ group.sin_contexto_motivo }}</p>{% endfor %}
-{% elif screen == 'evidence' %}
-  <p>{{ evidence.fecha|panama_time }} (Panamá) · <a href="{{ evidence.url|safe_url }}">Fuente original</a></p><dl>{% for name, value in evidence.campos.items() %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
-{% elif screen == 'case' %}
-  <p>Estado de evidencia: {{ case.estado_evidencia }} · {{ case.alcance_texto }}</p><p>{{ case.accion_recomendada }}</p>
-  <a href="/cases/{{ case.id_caso|urlencode }}/draft">Paquete editorial</a> · <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
-  {% include 'claims.html' %}
-  <h2>Verificaciones pendientes</h2>{% for gap in case.vacios %}<p>{{ gap }}</p>{% else %}<p>No se registraron vacíos.</p>{% endfor %}
-  {% for contradiction in case.contradicciones %}<section><h2>{{ contradiction.descripcion }}</h2>{% for version in contradiction.versiones %}<p>{{ version.valor }} · {{ version.alcance }} · <a href="/evidence/{{ version.id_evidencia|urlencode }}">Evidencia</a></p>{% endfor %}<p>Requiere verificación.</p></section>{% endfor %}
-{% elif screen == 'draft' %}
-  <h2>Afirmaciones y evidencia</h2>{% include 'claims.html' %}
-  {% if case.borrador %}{% set package = case.borrador %}<h2>{{ package.titulo }}</h2>{% if package.leyenda %}<p>{{ package.leyenda }}</p>{% endif %}<p>{{ package.enfoque_interes_publico }}</p><h2>Brief</h2><p>{{ package.brief }}</p><h2>Preguntas</h2><ol>{% for question in package.preguntas %}<li>{{ question }}</li>{% endfor %}</ol><h2>Guion</h2><p>{{ package.guion }}</p><h2>Copy digital</h2><p>{{ package.copy_digital }}</p><h2>Fuentes y verificaciones pendientes</h2>{% for item in package.fuentes_y_verificaciones %}<p>{{ item }}</p>{% endfor %}{% else %}<p>No hay borrador: se necesita más evidencia.</p>{% endif %}
-  <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
-{% elif screen == 'review' %}
-  <p>Estado actual: <strong>{{ case.estado_revision }}</strong>. Aprobar como borrador no publica el contenido.</p>
-  <form method="post" action="/cases/{{ case.id_caso|urlencode }}/review" hx-post="/cases/{{ case.id_caso|urlencode }}/review" hx-target="#screen" hx-swap="outerHTML">
-  <input type="hidden" name="expected_version" value="{{ case.version }}"><label>Decisión <select name="state">{% for state in review_states %}<option value="{{ state }}">{{ state }}</option>{% endfor %}</select></label>
-  <label>Responsable <input name="actor" required maxlength="120"></label><label>Nota <textarea name="note" maxlength="2000"></textarea></label><button>Guardar decisión</button></form>
-  <h2>Historial humano</h2>{% for item in history %}<article><p>{{ item.fecha|panama_time }} (Panamá) · {{ item.estado }} · {{ item.responsable or 'Revisión pendiente' }} · {% if item.content_version == case.content_version %}Contenido actual{% else %}Versión anterior: decisión histórica{% endif %}</p><p>{{ item.nota or '' }}</p></article>{% endfor %}
-  {% if audit %}<h2>Cambios del contenido</h2>{% for event in audit %}<p>{{ event.timestamp|panama_time }} (Panamá): cambió el contenido del caso. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}{% endif %}
-{% elif screen == 'queries' %}
-  <form method="get"><label>Consulta <input name="q" required maxlength="2000"></label><button>Consultar</button></form>
-  <h2>Consultas disponibles</h2>{% for item in examples %}<p><a href="/queries?q={{ item.consulta|urlencode }}">{{ item.consulta }}</a></p>{% endfor %}
-  {% if answer %}<section><h2>{{ answer.consulta }}</h2><p>{{ answer.estado }}</p><p>{{ answer.respuesta or answer.motivo_abstencion }}</p>{% if answer.faltante %}<p>Falta: {{ answer.faltante }}</p>{% endif %}{% for citation in answer.citas %}<blockquote>{{ citation.pasaje }} <a href="/evidence/{{ citation.id_evidencia|urlencode }}">Ver evidencia</a></blockquote>{% endfor %}{% for version in answer.versiones %}<p>{{ version.valor }} · {{ version.alcance }} · <a href="/evidence/{{ version.id_evidencia|urlencode }}">Evidencia</a></p>{% endfor %}</section>{% endif %}
-{% endif %}
+{% include 'views/' ~ screen ~ '.html' %}
 </main>
 {% if not fragment %}</body></html>{% endif %}

@@ -1,6 +1,7 @@
 """Explicit paths and runtime options for the local MVP."""
 
 import os
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -26,7 +27,7 @@ class Settings:
     generation_attempts: int = 3
 
     def __post_init__(self) -> None:
-        if self.generation_timeout <= 0 or self.generation_attempts < 1:
+        if not math.isfinite(self.generation_timeout) or self.generation_timeout <= 0 or self.generation_attempts < 1:
             raise ValueError("Generation requires a positive deadline and at least one attempt.")
 
     @classmethod
@@ -41,4 +42,6 @@ class Settings:
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
             gemini_base_url=os.environ.get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
             gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
+            generation_timeout=float(os.environ.get("WHOAMI_GENERATION_TIMEOUT", "20")),
+            generation_attempts=int(os.environ.get("WHOAMI_GENERATION_ATTEMPTS", "3")),
         )

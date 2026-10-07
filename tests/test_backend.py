@@ -202,3 +202,15 @@ def test_empty_optional_form_note_remains_valid_g2_history(settings):
         records = [ReviewRecord.model_validate(record) for record in repository.current_review_records("CASO-001")]
         assert transition_errors(records) == []
         assert records[-1].nota is None
+
+
+def test_g4_provider_deadline_returns_a_controlled_error(settings):
+    import asyncio
+
+    async def slow_provider(query, gemini, repository):
+        await asyncio.sleep(60)
+
+    with TestClient(create_app(replace(settings, offline=False, generation_timeout=0.03), query_provider=slow_provider)) as client:
+        response = client.get("/queries", params={"q": "New query"})
+        assert response.status_code == 503
+        assert "deadline" in response.text

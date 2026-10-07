@@ -1,4 +1,4 @@
-"""The only boundary that imports G2's file contract."""
+"""Load and validate the G2 contract at the backend input boundary."""
 
 from dataclasses import dataclass
 from pathlib import Path

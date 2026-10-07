@@ -50,10 +50,17 @@ class GeminiClient:
         try:
             async with asyncio.timeout(self.settings.generation_timeout):
                 async with self.lock:
-                    cached = self.repository.cache_get(key)
-                    if cached is not None:
-                        validate(cached)
-                        return GenerationResult(cached, True, 0)
+                    try:
+                        cached = self.repository.cache_get(key)
+                        if cached is not None:
+                            if not isinstance(cached, dict):
+                                raise ValueError("Expected cached JSON object")
+                            validate(cached)
+                            return GenerationResult(cached, True, 0)
+                    except (ValueError, TypeError, AttributeError):
+                        self.repository.cache_delete(key)
+                        if self.settings.offline:
+                            raise GenerationUnavailable("The cached response is invalid; online regeneration is required.") from None
                     if self.settings.offline:
                         raise GenerationUnavailable("Offline mode permits cached generation only.")
                     if not self.settings.gemini_api_key:

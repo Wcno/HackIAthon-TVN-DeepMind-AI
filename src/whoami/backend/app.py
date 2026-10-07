@@ -1,6 +1,7 @@
 """FastAPI views for the eight G2 screens. G6 can replace the small templates."""
 
 from contextlib import asynccontextmanager
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
@@ -164,7 +165,11 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                     raise
                 if query_provider is None:
                     raise GenerationUnavailable("Live query generation is not configured by the G4 pipeline.") from None
-                answer = await query_provider(q, request.app.state.gemini, request.app.state.repository)
+                try:
+                    async with asyncio.timeout(settings.generation_timeout):
+                        answer = await query_provider(q, request.app.state.gemini, request.app.state.repository)
+                except TimeoutError:
+                    raise GenerationUnavailable("The query deadline was exceeded.") from None
                 evidence = {item["id_evidencia"]: item for item in request.app.state.repository.records("evidence")}
                 try:
                     validate_answer(answer, evidence)

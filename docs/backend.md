@@ -76,9 +76,22 @@ Future dates in synthetic demo reviews are anchored before first import, with
 the original synthetic timestamps preserved in their notes. Real human decision
 timestamps are never shifted. Unchanged seed files do not reset decisions on restart.
 
-Fiches and generation cache survive a process restart. Exporting SQLite
-decisions back to a delivery `fichas.jsonl` is an integration concern for the
-delivery lane; the source JSONL remains input data. `backend/pipeline.py` adapts
+Fiches and generation cache survive a process restart. Stop the backend before
+writing a shared delivery directory, then export a consistent SQLite snapshot:
+
+```powershell
+uv run --locked whoami export-backend --output outputs
+```
+
+`--database PATH` selects another SQLite database. This command writes
+`fichas.jsonl`, `revisiones.jsonl` and the persisted `consultas.jsonl`; the output
+round-trips through G2's loader using the matching group/evidence inputs. Every
+record and cross-record rule is validated before writing. Human decisions from
+earlier content versions remain in SQLite history and are omitted from the active
+delivery cycle. Files are replaced individually, so concurrent readers/writers
+must be stopped during export. Export does not rewrite group/evidence inputs.
+
+`backend/pipeline.py` adapts
 the final Pydantic contract merged by G2's developer in PR #32. Cases reference
 their group for score, title, topic and evidence state; context figures are read
 from evidence. Review transitions and typed state vocabulary come from G2's
@@ -119,6 +132,26 @@ abstention, escaped source text, restart persistence, stale decisions,
 insufficient evidence, approval invalidation, 429/503 recovery, deadline,
 cache invalidation and invalid provider outputs. HTTP transports are mocked;
 no credentials or network are used by tests.
+
+The process acceptance test starts an actual Uvicorn server over loopback,
+opens every supplied group/case/evidence view, traverses human review states,
+terminates the process and starts another against the same SQLite file. It then
+executes the export CLI and reloads its output through G2. No external provider
+or live news source is called. The recorded synthetic run is in
+`outputs/validation/g5-runtime.json`, with delivery files in
+`outputs/validation/g5-delivery/`.
+
+The quality screen compares processed file bytes against manifest hashes.
+`.gitattributes` fixes JSON/GeoJSON to LF and CSV to CRLF, matching G1's writers
+and preserving the frozen hashes across Windows/Linux checkouts.
+
+GitHub Actions validates Python 3.12 on Windows and Linux, builds the wheel and
+retains the runtime report as an artifact. Local validation also covers Python
+3.14. The generation deadline and attempt budget can be set with
+`WHOAMI_GENERATION_TIMEOUT` and `WHOAMI_GENERATION_ATTEMPTS`. Invalid cached
+responses are discarded; online requests regenerate them, and offline requests
+return a controlled unavailable response. The injected query provider also has
+a deadline, so it cannot leave a request waiting indefinitely.
 
 Publication uses `scripts/push_g5.ps1`: it checks that PR #32 was merged by
 G2's developer, the final merge and latest `origin/prod` are ancestors of G5,

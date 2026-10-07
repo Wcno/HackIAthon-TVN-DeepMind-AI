@@ -1,0 +1,11 @@
+{"id_caso": "CASO-005", "estado": "en_revision", "responsable": "Revisor de demostración", "fecha": "2026-10-07T05:56:38.342558Z", "nota": "[Synthetic seed date 2026-10-07T13:25:00Z anchored at import.]"}
+{"id_caso": "CASO-001", "estado": "en_revision", "responsable": "Revisor de demostración", "fecha": "2026-10-07T06:01:38.341718Z", "nota": "Pendiente confirmar la cifra con el comunicado. [Synthetic seed date 2026-10-07T13:00:00Z anchored at import.]"}
+{"id_caso": "CASO-002", "estado": "en_revision", "responsable": "Revisor de demostración", "fecha": "2026-10-07T06:01:38.342268Z", "nota": "Esperando el dato oficial del INEC. [Synthetic seed date 2026-10-07T13:10:00Z anchored at import.]"}
+{"id_caso": "CASO-003", "estado": "requiere_evidencia", "responsable": "Revisor de demostración", "fecha": "2026-10-07T06:01:38.342377Z", "nota": "Solo hay un titular. [Synthetic seed date 2026-10-07T13:20:00Z anchored at import.]"}
+{"id_caso": "CASO-005", "estado": "aprobado_como_borrador", "responsable": "Revisor de demostración", "fecha": "2026-10-07T06:01:38.342558Z", "nota": "Aviso verificado con dos medios. [Synthetic seed date 2026-10-07T13:30:00Z anchored at import.]"}
+{"id_caso": "CASO-001", "estado": "requiere_evidencia", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.133786Z", "nota": "Real HTTP validation"}
+{"id_caso": "CASO-001", "estado": "en_revision", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.153421Z", "nota": "Real HTTP validation"}
+{"id_caso": "CASO-001", "estado": "aprobado_como_borrador", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.169867Z", "nota": "Real HTTP validation"}
+{"id_caso": "CASO-001", "estado": "descartado", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.184225Z", "nota": "Real HTTP validation"}
+{"id_caso": "CASO-001", "estado": "en_revision", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.197472Z", "nota": "Real HTTP validation"}
+{"id_caso": "CASO-001", "estado": "aprobado_como_borrador", "responsable": "Runtime reviewer", "fecha": "2026-10-07T06:01:40.215954Z", "nota": "Real HTTP validation"}

@@ -116,6 +116,8 @@ class EditorialRepository:
                 source_ids = set(cited_ids(case))
                 source_ids.update(member["id_noticia"] for member in group["miembros"])
                 source_ids.update(context["id_evidencia"] for context in group["contexto"])
+                source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
+                                  for version in contradiction["versiones"])
                 digest = content_hash({"case": body, "group": dependency,
                                        "evidence": {key: evidence[key] for key in source_ids}})
                 existing = connection.execute("SELECT * FROM cases WHERE id = ?", (case["id_caso"],)).fetchone()
@@ -249,3 +251,25 @@ class EditorialRepository:
         with self.connection() as connection:
             connection.execute("INSERT OR REPLACE INTO generation_cache VALUES (?, ?, ?)",
                                (key, canonical_json(value), datetime.now(UTC).isoformat()))
+
+    def cache_delete(self, key: str) -> None:
+        with self.connection() as connection:
+            connection.execute("DELETE FROM generation_cache WHERE key = ?", (key,))
+
+    def snapshot_bundle(self) -> PipelineBundle:
+        """Read current pipeline content and matching human decisions atomically."""
+        with self.connection() as connection:
+            connection.execute("BEGIN")
+            records = {kind: tuple(json.loads(row["body"]) for row in connection.execute(
+                "SELECT body FROM records WHERE kind = ? ORDER BY id", (kind,)))
+                for kind in ("group", "evidence", "answer")}
+            cases = tuple(json.loads(row["body"]) for row in connection.execute(
+                "SELECT body FROM cases WHERE active = 1 ORDER BY id"))
+            reviews = tuple({"id_caso": row["case_id"], "estado": row["state"], "responsable": row["actor"],
+                             "fecha": row["timestamp"], "nota": row["note"]}
+                            for row in connection.execute("""
+                                SELECT reviews.* FROM reviews JOIN cases ON cases.id = reviews.case_id
+                                WHERE cases.active = 1 AND reviews.content_version = cases.content_version
+                                ORDER BY reviews.timestamp, reviews.id
+                            """))
+            return PipelineBundle(records["group"], records["evidence"], cases, records["answer"], reviews)

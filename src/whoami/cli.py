@@ -4,12 +4,14 @@
     whoami build                        data/raw to data/processed (offline)
     whoami refresh                      ingest + build
     whoami demo                         write the synthetic contract set to data/demo (offline)
+    whoami export-backend               export persisted case files and human reviews (offline)
 """
 
 import argparse
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from whoami import demo
 from whoami.ingest import inec, manifest, usgs, worldbank
@@ -42,11 +44,25 @@ def main() -> int:
         command.add_argument("--only", help="comma-separated keys: news sources, worldbank, usgs, inec")
     commands.add_parser("build")
     commands.add_parser("demo")
+    export_command = commands.add_parser("export-backend")
+    export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
+    export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args()
 
     if args.command == "demo":
         output = demo.generate()
         print(f"data/demo: {len(output.grupos)} grupos, {len(output.fichas)} fichas, {len(output.consultas)} consultas")
+        return 0
+
+    if args.command == "export-backend":
+        from whoami.backend.export import export_backend
+        from whoami.backend.repository import EditorialRepository
+        from whoami.backend.settings import Settings
+
+        database = args.database or Settings.from_environment().database
+        if not database.is_file():
+            parser.error(f"backend database does not exist: {database}")
+        print(json.dumps(export_backend(EditorialRepository(database), args.output), indent=2))
         return 0
 
     only = set(args.only.split(",")) if getattr(args, "only", None) else None
