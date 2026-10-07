@@ -136,6 +136,14 @@ def test_quake_evidence_has_place_day_magnitude_and_utc_time():
     assert evidence.campos["hora_utc"] == "2025-10-04T07:31:11Z"
 
 
+def test_quake_evidence_keeps_the_epicenter_when_the_catalog_gives_it():
+    evidence = quake_evidence(QUAKE | {"latitude": 6.2706, "longitude": -82.7069})
+
+    assert evidence.campos["latitud"] == "6.2706"
+    assert evidence.campos["longitud"] == "-82.7069"
+    assert "latitud" not in quake_evidence(QUAKE).campos
+
+
 def test_the_processed_data_loads_as_citable_evidence():
     rows = load_news_rows()
     official = load_official_evidence()

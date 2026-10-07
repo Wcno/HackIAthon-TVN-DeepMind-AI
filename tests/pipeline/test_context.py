@@ -28,10 +28,11 @@ def inec(series_id, period, value, frequency="mensual", unit="% interanual"):
     )
 
 
-def quake(usgs_id, time, magnitude):
-    return quake_evidence(
-        {"id": usgs_id, "magnitude": magnitude, "time": time, "status": "reviewed", "place": "Burica, Panama", "url": "https://usgs.test"}
-    )
+def quake(usgs_id, time, magnitude, place="Burica, Panama", epicenter=None):
+    props = {"id": usgs_id, "magnitude": magnitude, "time": time, "status": "reviewed", "place": place, "url": "https://usgs.test"}
+    if epicenter:
+        props |= {"latitude": epicenter[0], "longitude": epicenter[1]}
+    return quake_evidence(props)
 
 
 OFFICIAL = {
@@ -169,3 +170,57 @@ def test_rules_are_pluggable():
 
     assert ids(links) == ["WB-PAN-NE.EXP.GNFS.ZS-2024"]
     assert "Regla de prueba." in links[0].razon
+
+
+# ----------------------------------------------------------------------------------------------- quake location
+
+CHOCO_QUAKE = quake("us-choco", "2026-10-03T07:00:00Z", 5.5, "15 km N of Acandi, Colombia", epicenter=(8.6, -77.3))
+CHOCO_OFFICIAL = {CHOCO_QUAKE.id_evidencia: CHOCO_QUAKE}
+
+
+def test_a_quake_in_colombia_is_not_linked_to_news_about_a_quake_in_colombia():
+    links, reason = link("Fuerte terremoto sacude el Chocó, en Colombia", official=CHOCO_OFFICIAL)
+
+    assert links == ()
+    assert reason == NO_QUAKE
+
+
+def test_news_naming_another_country_still_links_when_it_also_names_a_panamanian_province():
+    links, _ = link("Sismo en Colombia se sintió en Darién", official=CHOCO_OFFICIAL)
+
+    assert ids(links) == ["USGS-us-choco"]
+
+
+def test_a_quake_whose_place_is_not_panama_links_when_the_epicenter_is_inside_the_panama_box():
+    links, _ = link("Fuerte sismo sacude la frontera", official=CHOCO_OFFICIAL)
+
+    assert ids(links) == ["USGS-us-choco"]
+
+
+def test_a_quake_outside_panama_by_place_and_epicenter_is_never_linked():
+    far = quake("us-far", "2026-10-03T07:00:00Z", 5.5, "10 km S of Quepos, Costa Rica", epicenter=(9.9, -84.2))
+
+    links, reason = link("Fuerte sismo sacude el país", official={far.id_evidencia: far})
+
+    assert links == ()
+    assert reason == NO_QUAKE
+
+
+def test_a_quake_without_epicenter_and_without_panama_in_its_place_is_not_linked():
+    unknown = quake("us-unknown", "2026-10-03T07:00:00Z", 5.5, "Costa Rica region")
+
+    links, _ = link("Fuerte sismo sacude el país", official={unknown.id_evidencia: unknown})
+
+    assert links == ()
+
+
+def test_the_country_check_ignores_accents_and_case():
+    links, _ = link("TERREMOTO EN MÉXICO deja daños", official=OFFICIAL)
+
+    assert links == ()
+
+
+def test_naming_the_us_geological_survey_does_not_make_a_panamanian_quake_foreign():
+    links, _ = link("Sismo sacude el país, informó el Servicio Geológico de Estados Unidos")
+
+    assert ids(links) == ["USGS-us1"]

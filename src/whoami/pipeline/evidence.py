@@ -75,6 +75,11 @@ def inec_evidence(row: dict) -> Evidence:
 
 
 def quake_evidence(props: dict) -> Evidence:
+    epicenter = (
+        {"latitud": str(props["latitude"]), "longitud": str(props["longitude"])}
+        if "latitude" in props and "longitude" in props
+        else {}
+    )
     return Evidence(
         id_evidencia=f"USGS-{props['id']}",
         tipo="sismo",
@@ -88,6 +93,7 @@ def quake_evidence(props: dict) -> Evidence:
             "unidad": "magnitud",
             "hora_utc": props["time"],
             "estado": props["status"],
+            **epicenter,
         },
     )
 

@@ -84,8 +84,56 @@ def _matches_stated_magnitude(evidence: Evidence, stated: list[float]) -> bool:
     return not stated or any(round(abs(magnitude - value), 1) <= MAGNITUDE_TOLERANCE for value in stated)
 
 
+#: Latitude and longitude range of Panama; an epicenter inside it counts as a Panamanian quake.
+PANAMA_LATITUDES = (7.0, 9.7)
+PANAMA_LONGITUDES = (-83.1, -77.1)
+
+#: Countries a quake story can be about instead of Panama; the folded names are matched as whole words.
+#: Estados Unidos is left out on purpose: "Servicio Geológico de Estados Unidos" appears in Panamanian quake news.
+_OTHER_COUNTRIES = word_pattern(
+    tuple(
+        fold(name)
+        for name in (
+            "Colombia", "Costa Rica", "México", "Chile", "Perú", "Ecuador", "Guatemala", "Japón", "Nicaragua",
+            "Honduras", "El Salvador", "Venezuela", "Argentina", "Bolivia", "Haití", "Cuba", "Turquía",
+            "Indonesia", "Filipinas", "China", "Irán", "Italia", "Grecia", "Nepal", "Nueva Zelanda",
+        )
+    )
+)
+_PANAMANIAN_REGIONS = word_pattern(
+    tuple(
+        fold(name)
+        for name in (
+            "Bocas del Toro", "Chiriquí", "Veraguas", "Coclé", "Herrera", "Los Santos", "Colón", "Panamá Oeste",
+            "Darién", "Guna Yala", "Emberá-Wounaan", "Ngäbe-Buglé",
+        )
+    )
+)
+
+
+def _is_in_panama(quake: Evidence) -> bool:
+    """The USGS place names Panama, or the epicenter (when the catalog gives it) is inside Panama's box."""
+    if "panama" in fold(quake.campos["lugar"]):
+        return True
+    try:
+        latitude, longitude = float(quake.campos["latitud"]), float(quake.campos["longitud"])
+    except (KeyError, ValueError):
+        return False
+    return PANAMA_LATITUDES[0] <= latitude <= PANAMA_LATITUDES[1] and PANAMA_LONGITUDES[0] <= longitude <= PANAMA_LONGITUDES[1]
+
+
+def _names_another_country(text: str) -> bool:
+    """The news places the event in another country and never in a Panamanian province."""
+    folded = fold(text)
+    return bool(_OTHER_COUNTRIES.search(folded)) and not _PANAMANIAN_REGIONS.search(folded)
+
+
 def closest_quake(official: Mapping[str, Evidence], text: str, earliest: datetime) -> Evidence | None:
-    """The USGS event nearest in time within a day; a magnitude written in the text must match."""
+    """The USGS event nearest in time within a day, in Panama; a magnitude written in the text must match.
+
+    A news item about a quake in another country is never linked, even when the catalog box holds an event."""
+    if _names_another_country(text):
+        return None
     stated = magnitudes_in(text)
     candidates = [
         (abs(e.fecha - earliest), e)
@@ -93,6 +141,7 @@ def closest_quake(official: Mapping[str, Evidence], text: str, earliest: datetim
         if key.startswith("USGS-")
         and e.fecha is not None
         and abs(e.fecha - earliest) <= QUAKE_WINDOW
+        and _is_in_panama(e)
         and _matches_stated_magnitude(e, stated)
     ]
     return min(candidates, key=lambda pair: pair[0], default=(None, None))[1]
