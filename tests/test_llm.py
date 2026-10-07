@@ -618,3 +618,14 @@ def test_embedding_limiter_counts_texts_not_requests(tmp_path: Path):
     assert fake.sleeps == []
     llm.embed(EMBEDDING, ["uno más"], purpose="t", dimensions=1)
     assert fake.sleeps and fake.sleeps[0] > 0
+
+
+class APITimeoutError(Exception):
+    """Stands in for `openai.APITimeoutError`: retried by class name, it has no HTTP status."""
+
+
+def test_complete_retries_a_timed_out_call(tmp_path: Path):
+    fake = FakeTime()
+    client = FakeClient(APITimeoutError("Request timed out."), chat_response("ok"))
+    assert make_llm(tmp_path, client, fake).complete(CHAT, USER_MESSAGE, purpose="t").text == "ok"
+    assert fake.sleeps == [1.0]
