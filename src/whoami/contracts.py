@@ -6,7 +6,7 @@
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal, get_args
 
 #: Team decision D-04 (§6.A default): news from the 30 days before the extraction date.
 NEWS_WINDOW: Final = timedelta(days=30)
@@ -123,7 +123,8 @@ class PublicationDateOrigin(StrEnum):
 TEXT_SCOPE_HEADLINE: Final = "titular_metadatos"
 TEXT_SCOPE_DESCRIPTION: Final = "titular_descripcion"
 TEXT_SCOPE_FULL: Final = "texto_completo"
-TEXT_SCOPES: Final = (TEXT_SCOPE_HEADLINE, TEXT_SCOPE_DESCRIPTION, TEXT_SCOPE_FULL)
+TextScope = Literal["titular_metadatos", "titular_descripcion", "texto_completo"]
+TEXT_SCOPES: Final = get_args(TextScope)
 
 #: §3: a draft built only on headline and metadata must carry this wording.
 HEADLINE_ONLY_LEGEND: Final = "basado únicamente en titular/metadatos"
@@ -133,6 +134,7 @@ SCORE_WEIGHTS: Final = {"R": 30, "I": 25, "U": 20, "N": 15, "E": 10}
 
 #: §4 ranges, no overlap: bajo [0,40), medio [40,70), alto [70,100].
 SCORE_RANGES: Final = (("bajo", 0, 40), ("medio", 40, 70), ("alto", 70, 100))
+ScoreRange = Literal["bajo", "medio", "alto"]
 
 #: Bump when weights or component rules change, so a score can be traced to its rules (§4).
 RULES_VERSION: Final = "1.0.0"
@@ -140,14 +142,23 @@ RULES_VERSION: Final = "1.0.0"
 #: Evidence id prefixes, one per kind of source. Ids are stable so a citation can be checked later.
 #: noticia: `N-<hash>` (noticias.csv), indicador: `WB-PAN-NY.GDP.MKTP.KD.ZG-2023`,
 #: serie_inec: `INEC-ipc_indice-2024-01`, sismo: `USGS-us6000rerc`.
-EVIDENCE_PREFIXES: Final = {"noticia": "N-", "indicador": "WB-", "serie_inec": "INEC-", "sismo": "USGS-"}
+EvidenceKind = Literal["noticia", "indicador", "serie_inec", "sismo"]
+EVIDENCE_PREFIXES: Final[dict[EvidenceKind, str]] = {
+    "noticia": "N-",
+    "indicador": "WB-",
+    "serie_inec": "INEC-",
+    "sismo": "USGS-",
+}
 
 #: §3 stage 6: the draft must tell these four apart.
-CLAIM_TYPES: Final = ("hecho", "declaracion", "inferencia", "hipotesis")
+ClaimType = Literal["hecho", "declaracion", "inferencia", "hipotesis"]
+CLAIM_TYPES: Final = get_args(ClaimType)
 
 #: §3 stage 2 topics as stable slugs. `sin_tema` is ours: no description passed the threshold, so
 #: the topic is not forced. TOPIC_LABELS are the names the interface shows.
-TOPICS: Final = ("economia", "logistica_canal", "turismo", "servicios_publicos", "eventos_naturales", "regulacion")
+Topic = Literal["economia", "logistica_canal", "turismo", "servicios_publicos", "eventos_naturales", "regulacion"]
+TopicOrNone = Literal[Topic, "sin_tema"]
+TOPICS: Final = get_args(Topic)
 NO_TOPIC: Final = "sin_tema"
 TOPIC_LABELS: Final = {
     "economia": "Economía",
@@ -160,11 +171,24 @@ TOPIC_LABELS: Final = {
 }
 
 #: §8 human review states. Approving a draft does not mean publishing it.
-REVIEW_STATES: Final = ("nuevo", "en_revision", "requiere_evidencia", "aprobado_como_borrador", "descartado")
+ReviewState = Literal["nuevo", "en_revision", "requiere_evidencia", "aprobado_como_borrador", "descartado"]
+REVIEW_STATES: Final = get_args(ReviewState)
+
+#: Allowed moves between review states. Every case starts in `nuevo`; nothing goes back to it, and a
+#: discarded case has to be reopened before it can be approved.
+REVIEW_TRANSITIONS: Final[dict[ReviewState, tuple[ReviewState, ...]]] = {
+    "nuevo": ("en_revision", "requiere_evidencia", "descartado"),
+    "en_revision": ("requiere_evidencia", "aprobado_como_borrador", "descartado"),
+    "requiere_evidencia": ("en_revision", "descartado"),
+    "aprobado_como_borrador": ("en_revision", "descartado"),
+    "descartado": ("en_revision",),
+}
 
 #: §4 evidence status, independent of the score.
-EVIDENCE_STATES: Final = ("insuficiente", "parcial", "suficiente_para_borrador")
+EvidenceState = Literal["insuficiente", "parcial", "suficiente_para_borrador"]
+EVIDENCE_STATES: Final = get_args(EvidenceState)
 
+Modality = Literal["editorial_tvn"]
 MODALITY: Final = "editorial_tvn"
 
 #: §3 editorial package limits.
@@ -173,4 +197,5 @@ COPY_MAX_WORDS: Final = 80
 RESEARCH_QUESTIONS: Final = 3
 
 #: Outcome of a query box answer: answered with citations, abstained, or showing both versions.
-ANSWER_STATES: Final = ("respondida", "abstencion", "contradiccion")
+AnswerState = Literal["respondida", "abstencion", "contradiccion"]
+ANSWER_STATES: Final = get_args(AnswerState)
