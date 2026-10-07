@@ -142,7 +142,7 @@ or live news source is called. The recorded synthetic run is in
 `outputs/validation/g5-delivery/`.
 
 The quality screen compares processed file bytes against manifest hashes.
-`.gitattributes` fixes JSON/GeoJSON to LF and CSV to CRLF, matching G1's writers
+`.gitattributes` fixes JSON/GeoJSON to LF and preserves original CSV bytes (CRLF), matching G1's writers
 and preserving the frozen hashes across Windows/Linux checkouts.
 
 GitHub Actions validates Python 3.12 on Windows and Linux, builds the wheel and

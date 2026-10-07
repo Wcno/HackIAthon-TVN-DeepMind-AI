@@ -1,4 +1,4 @@
 # Preserve the exact bytes used by the frozen processed-data manifest.
 data/processed/*.json text eol=lf
 data/processed/*.geojson text eol=lf
-data/processed/*.csv text eol=crlf
+data/processed/*.csv -text
