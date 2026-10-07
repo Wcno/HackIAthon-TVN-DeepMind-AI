@@ -11,7 +11,7 @@ from whoami.llm import default_llm
 from whoami.llm.client import LLM, CapExceeded, Completion, LLMError
 from whoami.llm.cache import ResponseCache
 from whoami.llm.ledger import Ledger, format_summary
-from whoami.llm.models import MODELS, ModelLimits
+from whoami.llm.models import MODELS, ModelLimits, RATE_HEADROOM
 from whoami.llm.ratelimit import RateLimiter
 from whoami.llm.settings import Settings, find_env_file, quota_day_start
 
@@ -595,3 +595,15 @@ def test_ledger_summary_renders_as_a_markdown_table(tmp_path: Path):
     assert lines[0].startswith("| model | calls | hits")
     assert lines[1].startswith("|---")
     assert lines[2].startswith("| chat | 1 | 0 | 0 |")
+
+
+def test_chat_limiter_keeps_headroom_under_the_published_rpm(tmp_path: Path):
+    allowed = int(MODELS[CHAT].rpm * RATE_HEADROOM)
+    client = FakeClient(*[chat_response() for _ in range(allowed + 1)])
+    fake = FakeTime()
+    llm = make_llm(tmp_path, client, fake)
+    for n in range(allowed):
+        llm.complete(CHAT, [{"role": "user", "content": f"q{n}"}], purpose="t")
+    assert fake.sleeps == []
+    llm.complete(CHAT, [{"role": "user", "content": "una más"}], purpose="t")
+    assert fake.sleeps and fake.sleeps[0] > 0

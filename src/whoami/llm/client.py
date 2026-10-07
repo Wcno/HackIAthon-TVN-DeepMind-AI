@@ -15,7 +15,7 @@ from openai import OpenAI
 
 from whoami.llm.cache import ResponseCache
 from whoami.llm.ledger import Ledger
-from whoami.llm.models import MODELS, ModelLimits
+from whoami.llm.models import MODELS, RATE_HEADROOM, ModelLimits
 from whoami.llm.ratelimit import RateLimiter
 from whoami.llm.settings import Settings
 
@@ -230,7 +230,9 @@ class LLM:
 
     def _limiter(self, limits: ModelLimits) -> RateLimiter:
         if limits.name not in self._limiters:
-            self._limiters[limits.name] = RateLimiter(limits.rpm, limits.tpm, self._monotonic, self._sleep)
+            self._limiters[limits.name] = RateLimiter(
+                max(int(limits.rpm * RATE_HEADROOM), 1), max(int(limits.tpm * RATE_HEADROOM), 1), self._monotonic, self._sleep
+            )
         return self._limiters[limits.name]
 
     def _enforce_cap(self, limits: ModelLimits, cost: int) -> None:
