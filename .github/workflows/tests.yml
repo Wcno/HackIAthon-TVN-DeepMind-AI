@@ -1,0 +1,37 @@
+name: G5 validation
+
+on:
+  pull_request:
+    branches: [prod]
+  push:
+    branches: [prod, feat/g5-backend]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.12.5'
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv sync --locked --link-mode copy
+      - run: uv run --locked pytest -q
+        env:
+          WHOAMI_VALIDATION_REPORT: outputs/validation/runtime-ci.json
+      - run: uv build --wheel --out-dir dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: validation-${{ matrix.os }}
+          path: outputs/validation/runtime-ci.json
+          if-no-files-found: ignore
