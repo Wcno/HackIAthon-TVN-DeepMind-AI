@@ -31,6 +31,13 @@ class RateLimiter:
                 self._sleep(wait)
             self._requests.append([self._clock(), tokens, units])
 
+    def seed(self, ages_s_tokens_units: list[tuple[float, int, int]]) -> None:
+        """Requests made before this limiter existed, given by how many seconds ago they happened."""
+        with self._lock:
+            now = self._clock()
+            for age, tokens, units in sorted(ages_s_tokens_units, reverse=True):
+                self._requests.append([now - age, tokens, units])
+
     def adjust(self, estimated: int, actual: int) -> None:
         with self._lock:
             for request in reversed(self._requests):
