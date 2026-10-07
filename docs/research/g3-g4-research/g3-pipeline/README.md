@@ -11,7 +11,7 @@ Branch: `feat/g3-g4-ia` (developed on `proto/g3-pipeline`).
 - Topic classification bake-off → [topic-classification.md](topic-classification.md).
 - Duplicate grouping bake-off → [grouping.md](grouping.md).
 - Pipeline code (`src/whoami/pipeline/`, `src/whoami/embeddings.py`): evidence for every source, provenance (agency markers, near-identical copies), recirculation (metadata rule and in-group rule), official context by explicit rules (with a fixed quake false positive), score R/I/U/N/E with written rules and Spanish justifications, evidence state, hybrid topics, agglomerative grouping with Gemma verdicts on the grey zone, `whoami embed`, `whoami pipeline [--sin-llm]`.
-- Experiment scripts and labeled data: `experiments/g3/` (see its README).
+- Experiment scripts and labeled data: `experiments/g3/` (see its README). The single-threshold grouping used as a comparison was removed from the code after the bake-off (measured at commit `07139a3`).
 
 ## Setup facts found tonight
 
@@ -51,7 +51,7 @@ Branch: `feat/g3-g4-ia` (developed on `proto/g3-pipeline`).
 ## How to run
 
 ```bash
-uv run whoami embed                  # corpus vectors (2 min on CPU), already committed
+uv run whoami embed                  # corpus vectors (2 min on all CPU cores), already committed
 uv run whoami pipeline --sin-llm     # offline: logistic topics, embedding-only grouping
 WHOAMI_BUDGET_SINCE=2026-10-07T06:30:00Z uv run whoami pipeline   # with Gemma (cached calls are free)
 uv run python -m whoami.llm.ledger --since 2026-10-07T06:30:00Z    # calls per model

@@ -143,7 +143,7 @@ Same pipeline, no prompt changes needed: it matches gemini-3.1-flash-lite and be
 
 ## Real outputs (committed on `proto/g4-generation`)
 
-`whoami generar --modelo gemini-3.5-flash-lite --top 5 --generador two --implicacion --recuperador hybrid --compuerta coseno`:
+`whoami generar --modelo gemini-3.5-flash-lite --top 5 --generador two --implicacion --recuperador hybrid --compuerta coseno` (the options of that night; today the same run is `whoami generar --top 5`):
 
 - `outputs/fichas.jsonl`: 5 case files for the 5 top groups, 11 claims (all kept by the deterministic verifier and the entailment check), 5 editorial packages; `verify()` passes on load.
 - `outputs/consultas.jsonl`: 35 precomputed answers (13 answered, 5 contradictions, 17 abstentions) for the offline demo (D-01).
@@ -167,17 +167,12 @@ Same pipeline, no prompt changes needed: it matches gemini-3.1-flash-lite and be
 ## How to run
 
 ```bash
-uv run --all-groups pytest -q                                          # 615 tests, no network
-WHOAMI_BUDGET_SINCE=2026-10-07T06:30:00Z uv run --all-groups whoami generar --modelo gemini-3.5-flash-lite --top 5 --generador two --implicacion
-export WHOAMI_DEV_EVIDENCE=$PWD/data/processed/evidencias.jsonl
-uv run --all-groups python experiments/g4/query_devset.py retrieval
-uv run --all-groups python experiments/g4/query_devset.py answer --gate retrieval --retriever hybrid --model gemini-3.5-flash-lite --min-cos 0.62
-uv run --all-groups python experiments/g4/contradictions_eval.py --model gemma-4-26b-a4b-it
-uv run --all-groups python experiments/g4/injection.py --model gemma-4-26b-a4b-it
-uv run --all-groups python experiments/g4/verifier_perturbations.py --model gemini-3.5-flash-lite
-uv run --all-groups python experiments/g4/case_files_devset.py --generator two --model gemini-3.5-flash-lite --data data/processed --groups 5 --entailment
+uv run --all-groups pytest -q                      # no network, fake LLM
+uv run --all-groups whoami generar --top 5         # two-step + entailment, hybrid retrieval, cosine gate, gemini-3.5-flash-lite
 ```
 
+The experiments and how to rerun them are in `experiments/g4/README.md`.
+After the experiments, the discarded configurations (LLM and combined gates, single-shot generation, BM25-only and embeddings-only answering) were removed from the code; they were measured at commit `07139a3`.
 Calls are cached on disk (`~/.cache/whoami/llm/`) on the machine that made them: re-running there costs nothing.
 
 ## Calls per model (whole night, both issues, from the ledger)
