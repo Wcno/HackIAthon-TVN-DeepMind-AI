@@ -31,6 +31,7 @@ from whoami.generation.jsonschemas import (
     to_claims,
     to_package,
 )
+from whoami.generation.entailment import EntailmentChecker
 from whoami.generation.prompting import Gate, build_messages
 from whoami.generation.query_box import answer_query
 from whoami.generation.retrieval import Retriever
@@ -54,6 +55,8 @@ SINGLE_SHOT_TASK = (
     f"{PACKAGE_TASK.replace('que se te entregan', 'que tú mismo extraigas')}"
 )
 SINGLE_SHOT_NO_DRAFT_TASK = f"{CLAIMS_TASK} Indica en vacios qué información falta y en accion_recomendada el siguiente paso."
+
+UNSUPPORTED_ISSUE = "los pasajes citados no respaldan la afirmación"
 
 DEFAULT_ACTIONS: dict[EvidenceState, str] = {
     "insuficiente": "Buscar más fuentes antes de redactar: la evidencia es insuficiente.",
@@ -111,7 +114,12 @@ def _wants_package(group: Group) -> bool:
 def _gaps(group: Group, stated: Iterable[str], report: VerificationReport, package_error: str | None) -> tuple[str, ...]:
     stated = [gap.strip() for gap in stated if gap.strip()]
     gaps = list(stated)
-    gaps += [f"afirmación descartada por cita no verificable ({claim_id})" for claim_id in report.issues]
+    gaps += [
+        f"afirmación descartada: {UNSUPPORTED_ISSUE} ({claim_id})"
+        if reasons == (UNSUPPORTED_ISSUE,)
+        else f"afirmación descartada por cita no verificable ({claim_id})"
+        for claim_id, reasons in report.issues.items()
+    ]
     if package_error is not None:
         gaps.append(f"el borrador no cumplió los límites del paquete editorial y no se generó: {package_error}")
     if group.estado_evidencia != "suficiente_para_borrador" and not stated:
@@ -120,10 +128,17 @@ def _gaps(group: Group, stated: Iterable[str], report: VerificationReport, packa
 
 
 class _Generator:
-    def __init__(self, llm, model: str, checker: ContradictionChecker | None = None) -> None:
+    def __init__(
+        self,
+        llm,
+        model: str,
+        checker: ContradictionChecker | None = None,
+        entailment: EntailmentChecker | None = None,
+    ) -> None:
         self._llm = llm
         self._model = model
         self._checker = checker or RuleBasedChecker()
+        self._entailment = entailment
 
     def _complete(self, messages: list[dict], purpose: str, ids: Sequence[str], schema: dict) -> dict:
         completion = self._llm.complete(
@@ -147,8 +162,22 @@ class _Generator:
         except (LLMError, ValueError) as error:
             raise NoGroundedClaims(f"{group.id_grupo}: el modelo no devolvió afirmaciones válidas") from error
 
-    def _verify(self, group: Group, sources: _Sources, claims: Sequence[Claim]) -> VerificationReport:
+    def _check(self, sources: _Sources, claims: Sequence[Claim]) -> VerificationReport:
+        """Citation verification, then the entailment check on the claims that passed it: `no_respaldada` is dropped."""
         report = verify_claims(claims, sources.evidences)
+        if self._entailment is None:
+            return report
+        kept: list[Claim] = []
+        issues = dict(report.issues)
+        for claim in report.valid_claims:
+            if self._entailment.check(claim, sources.evidences) == "no_respaldada":
+                issues[claim.id_afirmacion] = (UNSUPPORTED_ISSUE,)
+            else:
+                kept.append(claim)
+        return VerificationReport(tuple(kept), issues, report.repaired)
+
+    def _verify(self, group: Group, sources: _Sources, claims: Sequence[Claim]) -> VerificationReport:
+        report = self._check(sources, claims)
         if not report.valid_claims:
             raise NoGroundedClaims(f"{group.id_grupo}: ninguna afirmación pasó la verificación")
         return report
@@ -204,7 +233,7 @@ class SingleShotGenerator(_Generator):
             calls = 2
             try:
                 retry = self._ask(sources, _retry_task(task, answer.package_error), scope, wants_package)
-                retry_report = verify_claims(retry.claims, sources.evidences)
+                retry_report = self._check(sources, retry.claims)
             except (LLMError, ValueError):
                 retry = None
             if retry is not None and retry.package_error is None and retry_report.valid_claims:

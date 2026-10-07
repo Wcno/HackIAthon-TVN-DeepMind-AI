@@ -40,6 +40,7 @@ class FakeLLM:
             "purpose": purpose,
             "evidence_ids": sorted(set(evidence_ids)),
             "response_format": response_format,
+            "max_tokens": max_tokens,
         }
         self.calls.append(call)
         result = self._responder(call)
