@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 import time
 from collections.abc import Callable
 
@@ -12,6 +13,7 @@ from openai import OpenAI
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 EMBEDDING_MODEL = "gemini-embedding-2"
 EMBEDDING_DIMENSIONS = 768
+BATCH_PROBE_SIZE = 10
 TOPICS = [
     "economía",
     "logística/Canal",
@@ -87,6 +89,18 @@ def embeddings() -> str:
     return f"cos same={same:.3f} unrelated={cross_a:.3f}/{cross_b:.3f}"
 
 
+def embeddings_batch_quota() -> str:
+    """One request with 10 inputs: compare the RPD counter in AI Studio before and after (+1 or +10)."""
+    texts = [f"{HEADLINE} ({index})" for index in range(BATCH_PROBE_SIZE)]
+    response = client.embeddings.create(
+        model=EMBEDDING_MODEL, input=texts, dimensions=EMBEDDING_DIMENSIONS
+    )
+    assert len(response.data) == BATCH_PROBE_SIZE, f"got {len(response.data)} vectors"
+    sent_at = time.strftime("%Y-%m-%d %H:%M:%S %Z")
+    tokens = response.usage.total_tokens if response.usage else "not reported"
+    return f"sent_at={sent_at} vectors={len(response.data)} tokens={tokens}"
+
+
 def run(name: str, check: Callable[[], str]) -> bool:
     start = time.perf_counter()
     try:
@@ -106,6 +120,12 @@ checks = {
     "strict json gemini-3.5-flash-lite": strict_json("gemini-3.5-flash-lite"),
     "strict json gemini-3.8-flash": strict_json("gemini-3.8-flash"),
     f"embeddings {EMBEDDING_MODEL}": embeddings,
+    f"embeddings batch quota {EMBEDDING_MODEL}": embeddings_batch_quota,
 }
-results = [run(name, check) for name, check in checks.items()]
+selected = sys.argv[1:]
+results = [
+    run(name, check)
+    for name, check in checks.items()
+    if not selected or any(term in name for term in selected)
+]
 print(f"{sum(results)}/{len(results)} PASS")
