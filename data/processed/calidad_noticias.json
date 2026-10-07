@@ -1,0 +1,30 @@
+{
+  "ventana": {
+    "desde": "2026-09-07T04:36:06Z",
+    "hasta": "2026-10-07T04:36:06Z"
+  },
+  "registros_leidos": 30372,
+  "noticias_unicas": 30130,
+  "incluidas": 2941,
+  "excluidas_por_motivo": {
+    "fuera_de_ventana": 27189
+  },
+  "incluidas_por_fuente": {
+    "tvn": 2820,
+    "sinaproc": 34,
+    "mici": 32,
+    "amp": 19,
+    "pancanal": 14,
+    "mef": 14,
+    "atp": 8
+  },
+  "incluidas_por_origen_fecha": {
+    "lastmod": 2766,
+    "feed": 171,
+    "pagina": 4
+  },
+  "umbrales_6A": {
+    "minimo_100_noticias": true,
+    "minimo_20_tvn": true
+  }
+}

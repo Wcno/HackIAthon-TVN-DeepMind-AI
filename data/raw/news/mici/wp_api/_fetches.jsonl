@@ -1,0 +1,2 @@
+{"name": "posts_p001.json", "url": "https://www.mici.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:36:02&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1", "sha256": "e74a952b5252aa1f498cab77ed9c487675accb0f5ed2e6195145122d3151a177", "fetched_at": "2026-10-07T04:36:02+00:00"}
+{"name": "categories_p001.json", "url": "https://www.mici.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1", "sha256": "5b9059f047acd84d2f638dfc13d49739bed365331c9a3a5ec3ca1d08ecc7b2da", "fetched_at": "2026-10-07T04:36:03+00:00"}

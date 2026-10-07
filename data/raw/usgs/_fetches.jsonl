@@ -1,0 +1,1 @@
+{"name": "eventos.geojson", "url": "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=5&maxlatitude=12&minlongitude=-86&maxlongitude=-76&minmagnitude=3&starttime=2025-10-02T00:00:00Z&endtime=2026-10-07T04:32:33Z&orderby=time-asc", "sha256": "2e765f1f11057b502bfae6fdc5058a221227df34485d1bb916cf7dcc91b3b44a", "fetched_at": "2026-10-07T04:32:34+00:00"}

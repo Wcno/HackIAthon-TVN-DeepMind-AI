@@ -1,0 +1,12 @@
+{
+  "filas_esperadas": 540,
+  "filas_con_valor": 540,
+  "filas_nulas_en_fuente": 0,
+  "filas_faltantes_agregadas": 0,
+  "faltantes_por_indicador": {},
+  "nulos_por_indicador": {},
+  "anios": {
+    "desde": 2010,
+    "hasta": 2024
+  }
+}
