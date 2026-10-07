@@ -15,4 +15,4 @@ Single-context. See `docs/agents/domain.md`.
 ## Hackathon challenge
 
 Before any task about the hackathon requirements, read `docs/challenge/INDEX.md`.
-Team decisions in `docs/challenge/00-decisiones-del-equipo.md` override the original PDF (e.g. test T10 offline is intentionally dropped).
+Team decisions in `docs/challenge/00-decisiones-del-equipo.md` override the original PDF (e.g. the date window and the precalculated offline mode for T10).

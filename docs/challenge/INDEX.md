@@ -15,7 +15,7 @@ Los IDs (`CU-01`, `T01`, `R/I/U/N/E`) y los nombres de archivo de datos son esta
 
 > **Desviaciones del equipo:** lee primero [00-decisiones-del-equipo.md](00-decisiones-del-equipo.md).
 > Prevalece sobre el PDF.
-> Hoy: T10 (offline) está descartada; demo offline solo como fallback opcional.
+> Hoy: T10 está en alcance con todo precalculado (D-01); ventana de fechas desde 2025-10-02 (D-02); fuentes abiertas (D-03).
 
 ## Resumen en 5 líneas
 
@@ -29,7 +29,7 @@ Los IDs (`CU-01`, `T01`, `R/I/U/N/E`) y los nombres de archivo de datos son esta
 
 | Archivo | Sección | Responde a |
 | --- | --- | --- |
-| [00-decisiones-del-equipo.md](00-decisiones-del-equipo.md) | n/a | Desviaciones del equipo respecto al PDF (T10 descartada). |
+| [00-decisiones-del-equipo.md](00-decisiones-del-equipo.md) | n/a | Desviaciones y aclaraciones respecto al PDF (T10 offline, ventana de fechas, fuentes abiertas). |
 | [01-resumen-ejecutivo.md](01-resumen-ejecutivo.md) | 1 | ¿Qué es el reto y cuáles son las condiciones esenciales? |
 | [02-problema-y-alcance.md](02-problema-y-alcance.md) | 2 | ¿Quién usa el producto? ¿Qué entra y qué NO entra en el MVP? |
 | [03-prototipo-flujo.md](03-prototipo-flujo.md) | 3 | ¿Qué etapas tiene el flujo? ¿Cómo debe verse el brief/guion/boletín? |
