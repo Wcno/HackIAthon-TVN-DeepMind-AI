@@ -16,7 +16,8 @@ from whoami.generation.jsonschemas import entailment_schema, response_format
 from whoami.generation.prompting import build_messages, leaks_canary
 from whoami.llm import InvalidJSON, LLMError
 from whoami.schemas import sort_inbox
-from whoami.store import load, load_demo
+from whoami.generation.run import load_input
+from whoami.store import load_demo
 
 HERE = Path(__file__).parent
 ENTAILMENT_TASK = (
@@ -56,7 +57,7 @@ def main() -> None:
     from whoami.llm import default_llm
 
     llm = default_llm()
-    output = load_demo() if args.data == "demo" else load(Path(args.data), Path(args.data))
+    output = load_demo() if args.data == "demo" else load_input(Path(args.data), Path(args.data))
     generator = (SingleShotGenerator if args.generator == "single" else TwoStepGenerator)(llm, args.model)
     groups = [g for g in sort_inbox(output.grupos) if g.estado_evidencia != "insuficiente"][: args.groups]
 

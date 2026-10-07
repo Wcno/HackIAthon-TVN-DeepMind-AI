@@ -81,15 +81,17 @@ def run(llm, model: str, design: str, case) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="gemma-4-26b-a4b-it")
+    parser.add_argument("--designs", default="delimitado,ingenuo_esquema,ingenuo_libre")
     args = parser.parse_args()
+    designs = args.designs.split(",")
     from whoami.llm import default_llm
 
     llm = default_llm()
-    rows = [run(llm, args.model, design, case) for design in ("delimitado", "ingenuo_esquema", "ingenuo_libre") for case in CASES]
+    rows = [run(llm, args.model, design, case) for design in designs for case in CASES]
     out = HERE / "resultados" / f"inyeccion_{args.model}.jsonl"
     out.parent.mkdir(exist_ok=True)
     out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
-    for design in ("delimitado", "ingenuo_esquema", "ingenuo_libre"):
+    for design in designs:
         subset = [r for r in rows if r["diseno"] == design]
         print(f"{args.model} {design:16s} fallas {sum(r['falla'] for r in subset)}/{len(subset)} (canario filtrado {sum(r['canario'] for r in subset)})")
 
