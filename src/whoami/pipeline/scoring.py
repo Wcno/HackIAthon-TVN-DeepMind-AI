@@ -8,7 +8,7 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 
-from whoami.contracts import EvidenceState
+from whoami.contracts import TOPIC_LABELS, EvidenceState
 from whoami.pipeline.text import fold, rows_text
 from whoami.schemas import Components, Member, Score
 
@@ -79,6 +79,10 @@ _MONTHS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agos
 _DATE_MENTION = re.compile(rf"\b(\d{{1,2}}) de ({'|'.join(_MONTHS)})(?: de (\d{{4}}))?\b")
 
 
+def _sentence(text: str) -> str:
+    return text[0].upper() + text[1:] + "."
+
+
 def _is_official(row: Mapping[str, str]) -> bool:
     return row["id_fuente"] in OFFICIAL_SOURCES
 
@@ -102,8 +106,8 @@ def relevance(topic: str, rows: Sequence[Mapping[str, str]]) -> tuple[float, str
     else:
         panama, panama_why = PANAMA_UNKNOWN, "no se puede confirmar ni descartar el vínculo con Panamá"
     value = TOPIC_WEIGHT * has_topic + PANAMA_WEIGHT * panama
-    topic_why = f"tiene tema ({topic})" if has_topic else "no tiene tema editorial"
-    return round(value, 4), f"{topic_why.capitalize()}; {panama_why}."
+    topic_why = f"tiene tema ({TOPIC_LABELS[topic]})" if has_topic else "no tiene tema editorial"
+    return round(value, 4), _sentence(f"{topic_why}; {panama_why}")
 
 
 # ------------------------------------------------------------------------------------------------ I
@@ -111,7 +115,7 @@ def relevance(topic: str, rows: Sequence[Mapping[str, str]]) -> tuple[float, str
 
 def impact(topic: str, text: str, has_context: bool) -> tuple[float, str]:
     base = IMPACT_BASE[topic]
-    parts = [f"base {base:.1f} por el tema {topic}"]
+    parts = [f"base {base:.1f} por el tema {TOPIC_LABELS[topic]}"]
     value = base
     if has_context:
         value += IMPACT_CONTEXT_BONUS
@@ -121,7 +125,7 @@ def impact(topic: str, text: str, has_context: bool) -> tuple[float, str]:
     if signal:
         value += IMPACT_SCALE_BONUS
         parts.append(f"+{IMPACT_SCALE_BONUS} por señal de escala ({signal})")
-    return round(min(value, 1.0), 4), "; ".join(parts).capitalize() + "."
+    return round(min(value, 1.0), 4), _sentence("; ".join(parts))
 
 
 # ------------------------------------------------------------------------------------------------ U
