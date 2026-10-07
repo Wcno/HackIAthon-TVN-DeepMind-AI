@@ -11,6 +11,8 @@ from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
 TOP_K = 8
+#: Gemma can degenerate into endless output inside JSON; a cap turns that into a fast, uncached failure.
+ANSWER_MAX_TOKENS = 800
 UNVERIFIABLE_REASON = "las citas generadas no se pudieron verificar"
 INVALID_ANSWER_REASON = "el modelo no devolvió una respuesta válida"
 
@@ -105,6 +107,7 @@ def answer_query(
             purpose="consulta",
             evidence_ids=ids,
             response_format=response_format("respuesta", answer_schema(ids)),
+            max_tokens=ANSWER_MAX_TOKENS,
         )
         cleaned = _verified(completion.json(), consulta, evidences, set(ids))
         if cleaned["estado"] == "abstencion":

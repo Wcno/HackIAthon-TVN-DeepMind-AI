@@ -25,6 +25,7 @@ MONTHS = (
 #: Modifiers shared by many metrics ("inflación anual", "PIB anual"): they do not identify one.
 GENERIC_WORDS = frozenset({"anual", "mensual", "diario", "semanal", "total", "interanual", "promedio", "nuevo"})
 CONTEXT_WORDS = 3
+SHORT_ANSWER_MAX_TOKENS = 300
 NOT_EVENT_VERBS = frozenset({"partir", "haber", "estar", "poder"})
 
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
@@ -237,6 +238,7 @@ class LLMContradictionChecker:
                 purpose="contradiccion",
                 evidence_ids=[e.id_evidencia for e in pair],
                 response_format=response_format("contradiccion", contradiction_pair_schema()),
+                max_tokens=SHORT_ANSWER_MAX_TOKENS,
             )
             data = completion.json()
             if data["contradiccion"] is not True:

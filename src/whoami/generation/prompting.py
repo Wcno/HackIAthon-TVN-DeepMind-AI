@@ -17,6 +17,7 @@ from whoami.schemas import Claim, Evidence
 
 #: A secret placed in the system prompt that must never appear in an output: a leak proves the prompt was exposed.
 CANARY = "CANARIO-7Q2"
+GATE_MAX_TOKENS = 300
 
 SYSTEM_RULES = f"""Eres un asistente de verificación periodística para un equipo editorial.
 Reglas:
@@ -182,6 +183,7 @@ class LLMGate:
                 purpose="compuerta",
                 evidence_ids=[e.id_evidencia for e in sources],
                 response_format=response_format("compuerta", gate_schema()),
+                max_tokens=GATE_MAX_TOKENS,
             )
             data = completion.json()
             answerable = data["respondible"] is True

@@ -39,6 +39,9 @@ from whoami.generation.verifier import VerificationReport, verify_claims
 from whoami.llm.client import CapExceeded, LLMError
 from whoami.schemas import CaseFile, Claim, EditorialPackage, Evidence, Group, OutputSet, sort_inbox, verify
 
+#: Room for claims plus a full package; the cap stops a model that degenerates into endless output.
+GENERATION_MAX_TOKENS = 2000
+
 CLAIMS_TASK = (
     "Extrae las afirmaciones verificables de las fuentes. Cada afirmación lleva tipo "
     "(hecho, declaracion, inferencia o hipotesis), atribuida_a solo si es una declaración, "
@@ -147,6 +150,7 @@ class _Generator:
             purpose=purpose,
             evidence_ids=ids,
             response_format=response_format(purpose, schema),
+            max_tokens=GENERATION_MAX_TOKENS,
         )
         data = completion.json()
         if not isinstance(data, dict):

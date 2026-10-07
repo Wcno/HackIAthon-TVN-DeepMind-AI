@@ -188,3 +188,11 @@ def test_a_contradiction_version_with_a_figure_its_record_lacks_is_dropped():
         {"valor": "15 millones", "alcance": "B", "id_evidencia": "N-b"},
     ]
     assert [v.valor for v in _distinct_versions(raw, {"N-a", "N-b"}, evidences)] == ["9 millones"]
+
+
+def test_the_answer_call_caps_its_output_so_a_degenerate_model_fails_fast():
+    from whoami.generation.query_box import ANSWER_MAX_TOKENS
+
+    llm = FakeLLM([model_answer()])
+    ask(llm)
+    assert llm.calls[0]["max_tokens"] == ANSWER_MAX_TOKENS
