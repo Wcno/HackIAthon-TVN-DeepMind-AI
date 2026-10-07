@@ -10,7 +10,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from whoami.ingest import inec, usgs, worldbank
+from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
 from whoami.ingest.news import ingest as news_ingest
 from whoami.ingest.news.sources import SOURCES
@@ -54,6 +54,7 @@ def main() -> int:
                 failures += dataset.ingest(selected)
     if args.command in ("build", "refresh"):
         reports = {name: dataset.build() for name, dataset in DATASETS.items()}
+        reports["manifest"] = manifest.build()
         print(json.dumps(reports, indent=2, ensure_ascii=False))
     return 1 if failures else 0
 

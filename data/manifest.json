@@ -1,0 +1,281 @@
+{
+  "version": "20261007-e65b449c",
+  "fecha_corte_UTC": "2026-10-07T04:36:58Z",
+  "consultas": [
+    {
+      "archivo": "raw/inec/catalogo_ipc.html",
+      "url": "https://www.inec.gob.pa/avance/Default2.aspx?ID_CATEGORIA=2&ID_CIFRAS=10&ID_IDIOMA=1",
+      "sha256": "264fecdf91fa6fcc996ce34479337980911bf5504c2718c31604804e014d0320",
+      "fecha_descarga": "2026-10-07T04:36:55Z"
+    },
+    {
+      "archivo": "raw/inec/ipc_anexo4.xlsx",
+      "url": "https://www.inec.gob.pa/archivos/A0705547520260914092740Anexo%204.xlsx",
+      "sha256": "0ff6674f39bf0e2592bf81ffb28218386db0f618126b9284dfd4d1f6f9a40a3c",
+      "fecha_descarga": "2026-10-07T04:36:56Z"
+    },
+    {
+      "archivo": "raw/inec/catalogo_pib.html",
+      "url": "https://www.inec.gob.pa/publicaciones/Default3.aspx?ID_CATEGORIA=4&ID_PUBLICACION=1419&ID_SUBCATEGORIA=73",
+      "sha256": "1091de4e0b28eaf33501e388f24ff5863ac4124442a93dad6086722c472e6497",
+      "fecha_descarga": "2026-10-07T04:36:57Z"
+    },
+    {
+      "archivo": "raw/inec/pib_trimestral.csv",
+      "url": "https://www.inec.gob.pa/archivos/P0705547520260915114300PIB_TRIMESTRAL2018.csv",
+      "sha256": "79765f7083118d9eec170224096e34ba1bcdd5040a5ad1414b6ad353464c26c5",
+      "fecha_descarga": "2026-10-07T04:36:58Z"
+    },
+    {
+      "archivo": "raw/news/amp/wp_api/posts_p001.json",
+      "url": "https://www.amp.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:36:05&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "d704862335e0dfc91c93edba8c5a71fabceb126d2ff90495e8576e9935d876d9",
+      "fecha_descarga": "2026-10-07T04:36:06Z"
+    },
+    {
+      "archivo": "raw/news/amp/wp_api/categories_p001.json",
+      "url": "https://www.amp.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "3f974d4c4a9e2fc5d2104c6de178326669a71154c435e623dedfc88341524632",
+      "fecha_descarga": "2026-10-07T04:36:07Z"
+    },
+    {
+      "archivo": "raw/news/atp/wp_api/posts_p001.json",
+      "url": "https://www.atp.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:36:03&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "5649e81692ca649b7d37b3b3a686576a8f400ebc3629f53bcebca0b8b89e8859",
+      "fecha_descarga": "2026-10-07T04:36:04Z"
+    },
+    {
+      "archivo": "raw/news/atp/wp_api/categories_p001.json",
+      "url": "https://www.atp.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "1287844d9ec623e6b376ae219dbefb36071f768154b5bf186f1c2ee45c8eca42",
+      "fecha_descarga": "2026-10-07T04:36:05Z"
+    },
+    {
+      "archivo": "raw/news/mef/wp_api/posts_p001.json",
+      "url": "https://www.mef.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:35:57&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "2dd58b4f01c936ba5b96114d770f9a69d0d83ed3c7d50e545f9940d6c45aa5b7",
+      "fecha_descarga": "2026-10-07T04:35:59Z"
+    },
+    {
+      "archivo": "raw/news/mef/wp_api/categories_p001.json",
+      "url": "https://www.mef.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "63d7e9cbd963047f417387e87e22fbc5b653dea01ff1873c24b874e60acdc802",
+      "fecha_descarga": "2026-10-07T04:36:02Z"
+    },
+    {
+      "archivo": "raw/news/mici/wp_api/posts_p001.json",
+      "url": "https://www.mici.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:36:02&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "e74a952b5252aa1f498cab77ed9c487675accb0f5ed2e6195145122d3151a177",
+      "fecha_descarga": "2026-10-07T04:36:02Z"
+    },
+    {
+      "archivo": "raw/news/mici/wp_api/categories_p001.json",
+      "url": "https://www.mici.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "5b9059f047acd84d2f638dfc13d49739bed365331c9a3a5ec3ca1d08ecc7b2da",
+      "fecha_descarga": "2026-10-07T04:36:03Z"
+    },
+    {
+      "archivo": "raw/news/pancanal/wp_api/posts_p001.json",
+      "url": "https://pancanal.com/wp-json/wp/v2/posts?after=2026-09-06T04:35:54&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "1fdaa428cea6e7483a37dd9e6ef857c3e6c87977d47ed6a7726a8efa73d2dc5d",
+      "fecha_descarga": "2026-10-07T04:35:55Z"
+    },
+    {
+      "archivo": "raw/news/pancanal/wp_api/categories_p001.json",
+      "url": "https://pancanal.com/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "78b9e075ec2587a48ac5aaaaf15a2fce6e3531e5536c4beaa0b57ac3b97f75d6",
+      "fecha_descarga": "2026-10-07T04:35:56Z"
+    },
+    {
+      "archivo": "raw/news/sinaproc/wp_api/posts_p001.json",
+      "url": "https://www.sinaproc.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:35:56&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
+      "sha256": "81ee73c715257797fc94889b6b336e7aabf3166cab64252536f2e633d25b91d4",
+      "fecha_descarga": "2026-10-07T04:35:57Z"
+    },
+    {
+      "archivo": "raw/news/sinaproc/wp_api/categories_p001.json",
+      "url": "https://www.sinaproc.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
+      "sha256": "b4a1c00fa79e8f0d54135e6f8ca8483c9246e0b00c65dd4860f4f1909ee09e48",
+      "fecha_descarga": "2026-10-07T04:35:57Z"
+    },
+    {
+      "archivo": "raw/news/tvn/rss/capture_20261007T033304Z.xml",
+      "url": "https://www.tvn-2.com/rss/",
+      "sha256": "78c35123e939710700abf128b93999073cfab832fe43079c25f97bf10fd8166a",
+      "fecha_descarga": "2026-10-07T03:33:05Z"
+    },
+    {
+      "archivo": "raw/news/tvn/rss/capture_20261007T040026Z.xml",
+      "url": "https://www.tvn-2.com/rss/",
+      "sha256": "e4bfcc94f2f30b392b069f5eff14209e4f733b83672f4bfdd6ed1bb3b4eb2a57",
+      "fecha_descarga": "2026-10-07T04:00:26Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2025_10.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2025_10.xml",
+      "sha256": "984d44cffee3a3122d1c82a519c4914743679a541596794a383b73233d698053",
+      "fecha_descarga": "2026-10-07T03:32:48Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2025_11.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2025_11.xml",
+      "sha256": "20dd0cc6f568b5493110fc2f9ed74c9ee722f645020d92372812e55d177beb35",
+      "fecha_descarga": "2026-10-07T03:32:49Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2025_12.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2025_12.xml",
+      "sha256": "82b0df590a40e20e335188bd73f912dcfe63e147bd356f01351e056e5dfaa650",
+      "fecha_descarga": "2026-10-07T03:32:51Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_01.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_01.xml",
+      "sha256": "f0f62ebd211db8cb1e45b1566cb93ebc3845194ef7057f29a77f5b3f60ef66ef",
+      "fecha_descarga": "2026-10-07T03:32:52Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_02.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_02.xml",
+      "sha256": "b7aff7645157bbc3ebf6d578667ac6c2f89a757f00c9b9d11f89e3dafc160ea3",
+      "fecha_descarga": "2026-10-07T03:32:53Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_03.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_03.xml",
+      "sha256": "cdbf1a314fb8e75bbb225c0a5b9c5358854cf074ab7afa90b4d978d1f4604b45",
+      "fecha_descarga": "2026-10-07T03:32:54Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_04.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_04.xml",
+      "sha256": "9856909499013bee267af4691360fde25053ee1719035fcb8f0d82132fc7bf09",
+      "fecha_descarga": "2026-10-07T03:32:56Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_05.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_05.xml",
+      "sha256": "fd75a6f849a2765302e1f2fa8f6503a536ee5746d3602c5885a3aa52726307b7",
+      "fecha_descarga": "2026-10-07T03:32:57Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_06.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_06.xml",
+      "sha256": "f8117e7788266806cc1c57461aaf9e98bbc0baed036940ef0047ec00356a96d9",
+      "fecha_descarga": "2026-10-07T03:32:59Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_07.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_07.xml",
+      "sha256": "8c90d523f7b6fe072bae6430a211428dc568e8fa82a795b8732b37666d1f12c1",
+      "fecha_descarga": "2026-10-07T03:33:00Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/index.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_index.xml",
+      "sha256": "a7b4d9f2c37e4cd21d0660ce782eb5cff2efbb75bf90ecd26673de4b51cecd32",
+      "fecha_descarga": "2026-10-07T04:00:15Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_08.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_08.xml",
+      "sha256": "20e950c6addcd73d40a8118e46282b48e4c231200e0e1304eeea308fda8571d0",
+      "fecha_descarga": "2026-10-07T04:00:17Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_09.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_09.xml",
+      "sha256": "848a8b34d39f194ee149230fa306e472034b2fbb1870b060b619ccef2ba09c7f",
+      "fecha_descarga": "2026-10-07T04:00:19Z"
+    },
+    {
+      "archivo": "raw/news/tvn/tvn_sitemap/contents_2026_10.xml",
+      "url": "https://www.tvn-2.com/tvn_sitemap_contents_2026_10.xml",
+      "sha256": "d84dbdd4e45f9138ddf735f3e59886f98b6e6a7a65bb514a36509224a1e736b6",
+      "fecha_descarga": "2026-10-07T04:00:20Z"
+    },
+    {
+      "archivo": "raw/usgs/eventos.geojson",
+      "url": "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=5&maxlatitude=12&minlongitude=-86&maxlongitude=-76&minmagnitude=3&starttime=2025-10-02T00:00:00Z&endtime=2026-10-07T04:32:33Z&orderby=time-asc",
+      "sha256": "2e765f1f11057b502bfae6fdc5058a221227df34485d1bb916cf7dcc91b3b44a",
+      "fecha_descarga": "2026-10-07T04:32:34Z"
+    },
+    {
+      "archivo": "raw/worldbank/NY.GDP.MKTP.KD.ZG_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "c86460294554efe74cbfa8904d3cb3ea3e8ad7227f692ba8673d29a1c7802efb",
+      "fecha_descarga": "2026-10-07T04:32:28Z"
+    },
+    {
+      "archivo": "raw/worldbank/FP.CPI.TOTL.ZG_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/FP.CPI.TOTL.ZG?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "05c1ad3e128b655a3540eabbded275d336f4b11a4aa826dbd4f0e1a5b24e077c",
+      "fecha_descarga": "2026-10-07T04:32:29Z"
+    },
+    {
+      "archivo": "raw/worldbank/SL.UEM.TOTL.ZS_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/SL.UEM.TOTL.ZS?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "1181f8e669628663be0601eef7910fcada5188aac722284c463c1a28ac2dc1fd",
+      "fecha_descarga": "2026-10-07T04:32:30Z"
+    },
+    {
+      "archivo": "raw/worldbank/SP.POP.TOTL_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/SP.POP.TOTL?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "e06e40801774c234af8de85ee9f42b0c25c547a8e2d5f454751ba60753939c0f",
+      "fecha_descarga": "2026-10-07T04:32:31Z"
+    },
+    {
+      "archivo": "raw/worldbank/IT.NET.USER.ZS_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/IT.NET.USER.ZS?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "e0d043c22432a247b3ac3046b7de6c20310be79952ac4e2b9ae395f56943dcf6",
+      "fecha_descarga": "2026-10-07T04:32:32Z"
+    },
+    {
+      "archivo": "raw/worldbank/NE.EXP.GNFS.ZS_p1.json",
+      "url": "https://api.worldbank.org/v2/country/PAN;CRI;COL;DOM;MEX;GTM/indicator/NE.EXP.GNFS.ZS?format=json&date=2010:2024&per_page=1000&page=1",
+      "sha256": "e76574bb0b65dbdd4ac248aaaeb968ac910878afc16f2fdf74516ff22259b428",
+      "fecha_descarga": "2026-10-07T04:32:33Z"
+    }
+  ],
+  "cantidades": {
+    "processed/eventos.geojson": 88,
+    "processed/fuentes.json": 7,
+    "processed/indicadores.csv": 540,
+    "processed/indicadores_inec.csv": 144,
+    "processed/noticias.csv": 2941,
+    "processed/noticias_excluidas.csv": 27189
+  },
+  "licencias": {
+    "noticias/tvn": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed.",
+    "noticias/pancanal": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API. Los términos del sitio de la ACP restringen la copia del contenido.",
+    "noticias/sinaproc": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+    "noticias/mef": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+    "noticias/mici": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+    "noticias/atp": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+    "noticias/amp": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+    "banco_mundial": "CC BY 4.0 - The World Bank (https://data.worldbank.org/summary-terms-of-use)",
+    "usgs": "Public domain (US government). Credit: U.S. Geological Survey, Department of the Interior/USGS",
+    "inec": "CC BY 4.0 - Instituto Nacional de Estadistica y Censo (INEC), Contraloria General de la Republica de Panama"
+  },
+  "sha256": {
+    "processed/calidad_eventos.json": "f343b33cdee1fa009193fdf51c2878731c8fa316dc38c05a8e43d4c5dc604550",
+    "processed/calidad_indicadores.json": "c9daff89a24eda42de970f7a10c27b1c072960f70ba735a0fd3f024711955819",
+    "processed/calidad_inec.json": "d1aa273e61cf89107ae69487543ce53728ef0500b68d115355061f557f477c33",
+    "processed/calidad_noticias.json": "b85ef3f99a414114029d913b3c994e72c1041ed4049ac7b1359c9859ae4e558e",
+    "processed/eventos.geojson": "79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d",
+    "processed/fuentes.json": "6bd010d0e826cea6f49e9ccd29d1f3705a7322d58fd18e5b1d8753d0cfba26b8",
+    "processed/indicadores.csv": "f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e",
+    "processed/indicadores_inec.csv": "900c4f9dab874f2a279d7e4512f4b48c0275d75dc1a587aa283492fbc1acb599",
+    "processed/noticias.csv": "2dbc4e81bdf470a6cba482db5601138baed37142f2cbbdf2bd5ee1ee2b636d9b",
+    "processed/noticias_excluidas.csv": "0a8e0d5a9b7772f3b8bbc077b7cc761e5ca612d9d0a8d19644e7c672d84d6b25"
+  },
+  "registros_extraidos_en_descarga": {
+    "raw/news/tvn/tvn_sitemap/page_dates.jsonl": "6a36f5616401787a5b75c5971fb8ed098a31000c2c4149ac6e317a4cb7701082"
+  },
+  "transformaciones": [
+    "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) o del lastmod del sitemap; ventana de 30 días hasta la fecha de corte (D-04); excluidas con su motivo en noticias_excluidas.csv.",
+    "Banco Mundial: una consulta por indicador; cuadrícula completa país x indicador x año; nulos conservados; unidad derivada del indicador.",
+    "USGS: caja lat 5 a 12, lon -86 a -76, magnitud >= 3, desde 2025-10-02T00:00:00Z (D-02); propiedades del §7 (mag -> magnitude).",
+    "INEC: CSV y XLSX decodificados a UTF-8 en formato largo desde 2022; variación interanual del PIB calculada; períodos duplicados en origen excluidos."
+  ]
+}

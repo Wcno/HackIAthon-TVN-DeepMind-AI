@@ -1,0 +1,127 @@
+{
+  "fuentes": [
+    {
+      "id_fuente": "tvn",
+      "medio": "TVN",
+      "dominio": "www.tvn-2.com",
+      "tipo": "medio",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "tvn_sitemap",
+          "url": "https://www.tvn-2.com/tvn_sitemap_index.xml"
+        },
+        {
+          "canal": "rss",
+          "url": "https://www.tvn-2.com/rss/"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed.",
+      "fecha_consulta": "2026-10-07T04:00:26Z",
+      "n_registros": 2820
+    },
+    {
+      "id_fuente": "pancanal",
+      "medio": "Autoridad del Canal de Panamá",
+      "dominio": "pancanal.com",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://pancanal.com"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API. Los términos del sitio de la ACP restringen la copia del contenido.",
+      "fecha_consulta": "2026-10-07T04:35:55Z",
+      "n_registros": 14
+    },
+    {
+      "id_fuente": "sinaproc",
+      "medio": "SINAPROC",
+      "dominio": "www.sinaproc.gob.pa",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://www.sinaproc.gob.pa"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+      "fecha_consulta": "2026-10-07T04:35:57Z",
+      "n_registros": 34
+    },
+    {
+      "id_fuente": "mef",
+      "medio": "Ministerio de Economía y Finanzas",
+      "dominio": "www.mef.gob.pa",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://www.mef.gob.pa"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+      "fecha_consulta": "2026-10-07T04:35:59Z",
+      "n_registros": 14
+    },
+    {
+      "id_fuente": "mici",
+      "medio": "Ministerio de Comercio e Industrias",
+      "dominio": "www.mici.gob.pa",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://www.mici.gob.pa"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+      "fecha_consulta": "2026-10-07T04:36:02Z",
+      "n_registros": 32
+    },
+    {
+      "id_fuente": "atp",
+      "medio": "Autoridad de Turismo de Panamá",
+      "dominio": "www.atp.gob.pa",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://www.atp.gob.pa"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+      "fecha_consulta": "2026-10-07T04:36:04Z",
+      "n_registros": 8
+    },
+    {
+      "id_fuente": "amp",
+      "medio": "Autoridad Marítima de Panamá",
+      "dominio": "www.amp.gob.pa",
+      "tipo": "oficial",
+      "idioma": "es",
+      "canales": [
+        {
+          "canal": "wp_api",
+          "url": "https://www.amp.gob.pa"
+        }
+      ],
+      "licencia": "Sin licencia abierta declarada",
+      "condiciones_reutilizacion": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
+      "fecha_consulta": "2026-10-07T04:36:06Z",
+      "n_registros": 19
+    }
+  ]
+}

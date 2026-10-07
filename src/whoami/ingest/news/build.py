@@ -2,13 +2,14 @@
 
 Steps: parse every channel, merge the same URL into one row, keep rows inside
 the window and record every exclusion with its reason (T01 quality report).
+`fuentes.json` catalogs each source with its reuse conditions (§6.A).
 """
 
 import hashlib
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from whoami.contracts import (
@@ -18,6 +19,7 @@ from whoami.contracts import (
     NEWS_CSV,
     NEWS_QUALITY_JSON,
     PROCESSED,
+    SOURCES_JSON,
     TEXT_SCOPE_DESCRIPTION,
     TEXT_SCOPE_HEADLINE,
     PublicationDateOrigin,
@@ -77,6 +79,7 @@ def build() -> dict:
         EXCLUDED_NEWS_COLUMNS,
         (_excluded_row(item, reason) for item, reason in sorted(excluded, key=lambda pair: pair[0].id)),
     )
+    write_json(SOURCES_JSON, {"fuentes": [_source_entry(source, articles, kept) for source in SOURCES]})
     report = _quality_report(articles, kept, excluded, cutoff)
     write_json(NEWS_QUALITY_JSON, report)
     return report
@@ -175,17 +178,55 @@ def _excluded_row(item: NewsItem, reason: Exclusion) -> dict:
     }
 
 
+def _source_entry(source: Source, articles: list[Article], kept: list[NewsItem]) -> dict:
+    fetched = [article.fetched_at for article in articles if article.source == source.key]
+    return {
+        "id_fuente": source.key,
+        "medio": source.name,
+        "dominio": source.domain,
+        "tipo": source.kind,
+        "idioma": source.language,
+        "canales": [{"canal": feed.channel, "url": feed.url} for feed in source.feeds],
+        "licencia": "Sin licencia abierta declarada",
+        "condiciones_reutilizacion": source.reuse_terms,
+        "fecha_consulta": iso(max(fetched, default=None)),
+        "n_registros": sum(1 for item in kept if item.source == source),
+    }
+
+
+def _coverage(items: list[NewsItem], window_start: datetime, cutoff: datetime) -> dict:
+    """Effective coverage per source (§6.A): which days of the window have at least one item."""
+    days_in_window = (cutoff.date() - window_start.date()).days + 1
+    coverage = {}
+    for source in SOURCES:
+        dates = sorted(item.published_at for item in items if item.source == source)
+        days = {date.date() for date in dates}
+        coverage[source.key] = {
+            "incluidas": len(dates),
+            "desde": iso(dates[0]) if dates else None,
+            "hasta": iso(dates[-1]) if dates else None,
+            "dias_con_noticias": len(days),
+            "dias_sin_noticias": [
+                day.isoformat()
+                for offset in range(days_in_window)
+                if (day := window_start.date() + timedelta(days=offset)) not in days
+            ] if dates else "todos",
+        }
+    return coverage
+
+
 def _quality_report(
     articles: list[Article], kept: list[NewsItem], excluded: list[tuple[NewsItem, Exclusion]], cutoff: datetime
 ) -> dict:
     kept_by_source = Counter(item.source.key for item in kept)
+    window_start = news_window_start(cutoff)
     return {
-        "ventana": {"desde": iso(news_window_start(cutoff)), "hasta": iso(cutoff)},
+        "ventana": {"desde": iso(window_start), "hasta": iso(cutoff)},
         "registros_leidos": len(articles),
         "noticias_unicas": len(kept) + len(excluded),
         "incluidas": len(kept),
         "excluidas_por_motivo": dict(Counter(reason.value for _, reason in excluded).most_common()),
-        "incluidas_por_fuente": dict(kept_by_source.most_common()),
+        "cobertura_por_fuente": _coverage(kept, window_start, cutoff),
         "incluidas_por_origen_fecha": dict(Counter(item.published_at_origin.value for item in kept).most_common()),
         "umbrales_6A": {
             "minimo_100_noticias": len(kept) >= 100,
