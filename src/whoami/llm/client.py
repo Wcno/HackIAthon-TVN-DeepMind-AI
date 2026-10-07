@@ -20,6 +20,10 @@ from whoami.llm.ratelimit import RateLimiter
 from whoami.llm.settings import Settings
 
 RETRYABLE_STATUS_CODES: Final = frozenset({429, 500, 503})
+#: Network failures with no HTTP status that are worth retrying (class names of the `openai` exceptions).
+RETRYABLE_ERRORS: Final = frozenset({"APITimeoutError", "APIConnectionError"})
+#: The `openai` default is 600 s; a Gemma call normally takes 1-3 s, so a stuck call is cut and retried.
+REQUEST_TIMEOUT_S: Final = 90
 MAX_BACKOFF_S: Final = 60
 DEFAULT_MAX_TOKENS_ESTIMATE: Final = 512
 CHARS_PER_TOKEN: Final = 3  # Spanish tokenizes denser than English; overestimating is the safe side
@@ -265,7 +269,10 @@ class LLM:
                     latency_s=self._monotonic() - started,
                     n_texts=n_texts,
                 )
-                retryable = getattr(error, "status_code", None) in RETRYABLE_STATUS_CODES
+                retryable = (
+                    getattr(error, "status_code", None) in RETRYABLE_STATUS_CODES
+                    or type(error).__name__ in RETRYABLE_ERRORS
+                )
                 if not retryable or attempt == self._max_retries:
                     if isinstance(error, LLMError):
                         raise
@@ -279,5 +286,5 @@ class LLM:
 def default_llm() -> LLM:
     settings = Settings.from_env()
     load_dotenv(settings.env_file)
-    client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url=settings.base_url, max_retries=0)
+    client = OpenAI(api_key=os.environ["GEMINI_API_KEY"], base_url=settings.base_url, max_retries=0, timeout=REQUEST_TIMEOUT_S)
     return LLM(client, settings)
