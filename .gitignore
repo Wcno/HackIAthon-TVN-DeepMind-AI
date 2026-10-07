@@ -3,3 +3,6 @@
 .venv/
 __pycache__/
 .pytest_cache/
+
+# Evidence index cache of the query box (rebuilt by `whoami generar`)
+data/processed/evidencias_vectores.*
