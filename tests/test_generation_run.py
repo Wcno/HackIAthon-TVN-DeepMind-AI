@@ -126,7 +126,7 @@ def test_the_implication_check_runs_through_the_command(workspace):
 
 def test_queries_file_needs_id_and_text_and_ignores_the_rest(tmp_path):
     path = tmp_path / "q.jsonl"
-    path.write_text('{"id": "D-1", "consulta": "¿Qué?", "tipo": "x", "nota": "y"}\n\n{"id": "D-2", "consulta": "¿Cómo?"}\n')
+    path.write_text('{"id": "D-1", "consulta": "¿Qué?", "tipo": "x", "nota": "y"}\n\n{"id": "D-2", "consulta": "¿Cómo?"}\n', encoding="utf-8")
     assert run.load_queries(path) == [("D-1", "¿Qué?"), ("D-2", "¿Cómo?")]
 
 

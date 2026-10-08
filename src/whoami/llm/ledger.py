@@ -69,7 +69,7 @@ class Ledger:
             "n_texts": n_texts,
         }
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        with self._path.open("a") as file:
+        with self._path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     def spent(self, model: str, since: datetime) -> int:
@@ -97,7 +97,7 @@ class Ledger:
     def _entries(self, since: datetime | None) -> Iterator[dict[str, Any]]:
         if not self._path.exists():
             return
-        for line in self._path.read_text().splitlines():
+        for line in self._path.read_text(encoding="utf-8").splitlines():
             entry = json.loads(line)
             if since is None or _parse_ts(entry["ts"]) >= since:
                 yield entry

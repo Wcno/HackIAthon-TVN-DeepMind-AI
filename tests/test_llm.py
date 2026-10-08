@@ -38,7 +38,7 @@ def test_quota_day_start_after_los_angeles_midnight():
 
 
 def test_find_env_file_prefers_the_root_env(tmp_path: Path):
-    (tmp_path / ".env").write_text("")
+    (tmp_path / ".env").write_text("", encoding="utf-8")
     assert find_env_file(tmp_path) == tmp_path / ".env"
 
 
@@ -46,7 +46,7 @@ def test_find_env_file_follows_a_worktree_to_the_main_checkout(tmp_path: Path):
     main = tmp_path / "main"
     worktree = tmp_path / "wt"
     worktree.mkdir()
-    (worktree / ".git").write_text(f"gitdir: {main}/.git/worktrees/wt\n")
+    (worktree / ".git").write_text(f"gitdir: {main}/.git/worktrees/wt\n", encoding="utf-8")
     assert find_env_file(worktree) == main / ".env"
 
 
@@ -100,7 +100,7 @@ def test_cache_corrupt_file_reads_as_a_miss(tmp_path: Path):
     cache = ResponseCache(tmp_path)
     key = cache.key({"q": 1})
     cache.put(key, {"text": "x"})
-    (tmp_path / key[:2] / f"{key}.json").write_text("{not json")
+    (tmp_path / key[:2] / f"{key}.json").write_text("{not json", encoding="utf-8")
     assert cache.get(key) is None
 
 
@@ -122,7 +122,7 @@ def test_ledger_appends_one_json_line_per_record(tmp_path: Path):
     ledger = make_ledger(tmp_path)
     ledger.record(model="m", purpose="p", cache="miss", status="ok", latency_s=0.5, prompt_tokens=3, total_tokens=5)
     ledger.record(model="m", purpose="p", cache="hit", status="ok", latency_s=0.0)
-    lines = (tmp_path / "ledger.jsonl").read_text().splitlines()
+    lines = (tmp_path / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
     first = json.loads(lines[0])
     assert len(lines) == 2
     assert first["ts"] == "2026-10-07T12:00:00Z"
@@ -311,7 +311,7 @@ def make_llm(tmp_path: Path, client: FakeClient, fake: FakeTime | None = None, *
 
 def ledger_lines(tmp_path: Path) -> list[dict]:
     path = tmp_path / "ledger.jsonl"
-    return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
 
 
 def test_complete_returns_the_text_and_records_a_miss(tmp_path: Path):
@@ -579,7 +579,7 @@ def test_embed_rejects_chat_models_and_handles_no_texts(tmp_path: Path):
 
 def test_default_llm_builds_from_the_environment_without_calling_the_network(monkeypatch, tmp_path: Path):
     env_file = tmp_path / "fake.env"
-    env_file.write_text("GEMINI_API_KEY=not-a-real-key\n")
+    env_file.write_text("GEMINI_API_KEY=not-a-real-key\n", encoding="utf-8")
     monkeypatch.setenv("GEMINI_API_KEY", "placeholder")
     monkeypatch.delenv("GEMINI_API_KEY")
     monkeypatch.setenv("WHOAMI_ENV_FILE", str(env_file))

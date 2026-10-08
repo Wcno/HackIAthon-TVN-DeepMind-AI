@@ -29,7 +29,7 @@ def find_env_file(root: Path = PROJECT_ROOT) -> Path:
     git_entry = root / ".git"
     if env_file.exists() or not git_entry.is_file():
         return env_file
-    pointer = git_entry.read_text().strip()
+    pointer = git_entry.read_text(encoding="utf-8").strip()
     if pointer.startswith(_GITDIR_PREFIX) and _WORKTREES_MARKER in pointer:
         main = pointer.removeprefix(_GITDIR_PREFIX).strip().split(_WORKTREES_MARKER)[0]
         return Path(main) / ".env"

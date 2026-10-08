@@ -135,7 +135,7 @@ def test_fetch_downloads_the_pinned_files_and_lays_them_out(tmp_path):
         requested.append((repo_id, filename, revision))
         source = tmp_path / "hub" / filename.replace("/", "_")
         source.parent.mkdir(parents=True, exist_ok=True)
-        source.write_text(filename)
+        source.write_text(filename, encoding="utf-8")
         return str(source)
 
     target = tmp_path / "model"
@@ -143,20 +143,20 @@ def test_fetch_downloads_the_pinned_files_and_lays_them_out(tmp_path):
 
     assert sorted(f for _, f, _ in requested) == sorted(MODEL_FILES)
     assert {(r, v) for r, _, v in requested} == {(embeddings.MODEL_REPO, MODEL_REVISION)}
-    assert (target / "tokenizer.json").read_text() == "tokenizer.json"
-    assert (target / "onnx" / "model.onnx").read_text() == "onnx/model_q4.onnx"
-    assert (target / "onnx" / "model_q4.onnx_data").read_text() == "onnx/model_q4.onnx_data"
+    assert (target / "tokenizer.json").read_text(encoding="utf-8") == "tokenizer.json"
+    assert (target / "onnx" / "model.onnx").read_text(encoding="utf-8") == "onnx/model_q4.onnx"
+    assert (target / "onnx" / "model_q4.onnx_data").read_text(encoding="utf-8") == "onnx/model_q4.onnx_data"
 
 
 def test_fetch_skips_files_already_present(tmp_path):
     target = tmp_path / "model"
     (target / "onnx").mkdir(parents=True)
     for name in ("tokenizer.json", "onnx/model.onnx", "onnx/model_q4.onnx_data"):
-        (target / name).write_text("kept")
+        (target / name).write_text("kept", encoding="utf-8")
 
     fetch_model(target, download=lambda *a, **k: pytest.fail("downloaded a file that was already there"))
 
-    assert (target / "onnx" / "model.onnx").read_text() == "kept"
+    assert (target / "onnx" / "model.onnx").read_text(encoding="utf-8") == "kept"
 
 
 @pytest.mark.skipif(not model_dir().exists(), reason="the local embedding model is not downloaded")

@@ -105,7 +105,7 @@ def test_build_index_embeds_every_evidence_and_writes_the_cache(tmp_path):
     ids, vectors = build_index(list(EVIDENCES.values()), embedder.embed_documents, cache)
     assert ids == ["N-1", "N-2"] and vectors.shape == (2, 3)
     assert embedder.documents == ["Canal de Panamá", "Sismo en Chiriquí"]
-    assert cache.exists() and json.loads(cache.with_suffix(".json").read_text()) == ["N-1", "N-2"]
+    assert cache.exists() and json.loads(cache.with_suffix(".json").read_text(encoding="utf-8")) == ["N-1", "N-2"]
 
 
 def test_build_index_reuses_the_cache_when_the_ids_match(tmp_path):

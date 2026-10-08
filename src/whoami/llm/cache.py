@@ -20,7 +20,7 @@ class ResponseCache:
 
     def get(self, key: str) -> dict | None:
         try:
-            value = json.loads(self._path(key).read_text())
+            value = json.loads(self._path(key).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
         return value if isinstance(value, dict) else None
@@ -30,7 +30,7 @@ class ResponseCache:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
         try:
-            with os.fdopen(fd, "w") as file:
+            with os.fdopen(fd, "w", encoding="utf-8") as file:
                 json.dump(value, file, ensure_ascii=False)
             os.replace(temporary, path)
         except BaseException:
