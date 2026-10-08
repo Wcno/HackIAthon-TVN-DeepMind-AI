@@ -26,9 +26,10 @@ from whoami.contracts import (
     news_window_start,
 )
 from whoami.ingest.news import channels
+from whoami.ingest.news.channels import gdelt, gdelt_gkg
 from whoami.ingest.news.article import Article
 from whoami.ingest.news.parsing import canonical_url
-from whoami.ingest.news.sources import SOURCES, Channel, Source
+from whoami.ingest.news.sources import GDELT_FEED, GDELT_GKG_FEED, SOURCES, Channel, Source
 from whoami.ingest.output import iso, write_csv, write_json
 
 
@@ -53,6 +54,11 @@ class NewsItem:
     modified_at: datetime | None
     description: str | None
     section: str | None
+    detected_at: datetime | None = None
+
+    @property
+    def window_date(self) -> datetime | None:
+        return self.published_at or self.detected_at
 
 
 def build() -> dict:
@@ -96,9 +102,9 @@ def merge(articles: Iterable[Article]) -> list[NewsItem]:
 def exclusion(item: NewsItem, cutoff: datetime) -> Exclusion | None:
     if not item.title:
         return Exclusion.NO_TITLE
-    if item.published_at is None:
+    if item.window_date is None:
         return Exclusion.NO_DATE
-    if not news_window_start(cutoff) <= item.published_at <= cutoff:
+    if not news_window_start(cutoff) <= item.window_date <= cutoff:
         return Exclusion.OUT_OF_WINDOW
     return None
 
@@ -125,6 +131,7 @@ def _merge_group(group: list[Article], sources: dict[str, Source]) -> NewsItem:
         modified_at=max((article.modified_at for article in group if article.modified_at), default=None),
         description=_first(article.description for article in group),
         section=_first(article.section for article in group),
+        detected_at=min((article.detected_at for article in group if article.detected_at), default=None),
     )
 
 
@@ -143,7 +150,7 @@ def _first[T](values: Iterable[T | None]) -> T | None:
 
 
 def _newest_first(items: list[NewsItem]) -> list[NewsItem]:
-    return sorted(items, key=lambda item: (item.published_at, item.id), reverse=True)
+    return sorted(items, key=lambda item: (item.window_date, item.id), reverse=True)
 
 
 def _news_row(item: NewsItem) -> dict:
@@ -155,7 +162,7 @@ def _news_row(item: NewsItem) -> dict:
         "idioma": item.source.language,
         "fecha_publicacion": iso(item.published_at),
         "origen_fecha_publicacion": item.published_at_origin or "",
-        "fecha_deteccion": "",
+        "fecha_deteccion": iso(item.detected_at),
         "fecha_extraccion": iso(item.fetched_at),
         "tema": "",
         "origen": "+".join(item.channels),
@@ -199,7 +206,7 @@ def _coverage(items: list[NewsItem], window_start: datetime, cutoff: datetime) -
     days_in_window = (cutoff.date() - window_start.date()).days + 1
     coverage = {}
     for source in SOURCES:
-        dates = sorted(item.published_at for item in items if item.source == source)
+        dates = sorted(item.window_date for item in items if item.source == source)
         days = {date.date() for date in dates}
         coverage[source.key] = {
             "incluidas": len(dates),
@@ -227,7 +234,12 @@ def _quality_report(
         "incluidas": len(kept),
         "excluidas_por_motivo": dict(Counter(reason.value for _, reason in excluded).most_common()),
         "cobertura_por_fuente": _coverage(kept, window_start, cutoff),
-        "incluidas_por_origen_fecha": dict(Counter(item.published_at_origin.value for item in kept).most_common()),
+        "incluidas_por_origen_fecha": dict(Counter(
+            item.published_at_origin.value if item.published_at_origin else "deteccion_gdelt"
+            for item in kept
+        ).most_common()),
+        "gdelt": gdelt.coverage(SOURCES[0].store(GDELT_FEED)),
+        "gdelt_gkg": gdelt_gkg.coverage(SOURCES[0].store(GDELT_GKG_FEED)),
         "umbrales_6A": {
             "minimo_100_noticias": len(kept) >= 100,
             "minimo_20_tvn": kept_by_source["tvn"] >= 20,

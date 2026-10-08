@@ -23,6 +23,7 @@ DATA: Final = Path(__file__).resolve().parents[2] / "data"
 RAW: Final = DATA / "raw"
 PROCESSED: Final = DATA / "processed"
 MANIFEST_JSON: Final = DATA / "manifest.json"
+PROCESSED_MANIFEST_JSON: Final = PROCESSED / "manifest.json"
 
 NEWS_CSV: Final = PROCESSED / "noticias.csv"
 EXCLUDED_NEWS_CSV: Final = PROCESSED / "noticias_excluidas.csv"

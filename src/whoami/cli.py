@@ -44,7 +44,7 @@ class Dataset:
 
 #: Adding a dataset is one line here.
 DATASETS = {
-    "news": Dataset(frozenset(source.key for source in SOURCES), news_ingest.ingest, news_build.build),
+    "news": Dataset(frozenset({"gdelt", "gdelt-gkg", *(source.key for source in SOURCES)}), news_ingest.ingest, news_build.build),
     "worldbank": Dataset(frozenset({"worldbank"}), lambda _: worldbank.fetch(), worldbank.build),
     "usgs": Dataset(frozenset({"usgs"}), lambda _: usgs.fetch(), usgs.build),
     "inec": Dataset(frozenset({"inec"}), lambda _: inec.fetch(), inec.build),

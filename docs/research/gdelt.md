@@ -115,3 +115,40 @@ Fits our design: an ingest channel saves untouched responses with a fetch log, t
 - Is the 429 tied to our IP or to global load? Test again from another network or at a different hour, and compare.
 - Do day-sliced queries also hit the 250 cap? Not verified, because the calls were throttled.
 - Is TVN indexed by GDELT? It was absent from the top 250, and `domain:tvn-2.com` returned 429 (untested).
+
+## 7. Integration check from the Windows checkout (2026-10-07 Panama / 2026-10-08 UTC)
+
+The provided handoff was used as diagnostic context. Physical network type and
+whether this public IP differs from the original machine are unknown; these
+results cannot settle per-IP versus global throttling.
+
+The standalone one-day DOC probe returned 429 in 11.159 s, 444 bytes. The ingest
+then retained the following attempts in `data/raw/news/gdelt/doc/_fetches.jsonl`:
+
+| UTC capture time | Status | Seconds | Bytes | Attempt |
+| --- | --- | --- | --- | --- |
+| 00:43:21 | 429 | 11.706 | 444 | 1 |
+| 00:43:29 | 429 | 10.755 | 444 | 1, separate run interrupted |
+| 00:44:01 | 429 | 10.818 | 444 | 2 |
+| 00:45:15 | 429 | 13.455 | 444 | 3 |
+| 00:47:27 | 429 | 12.442 | 444 | 4 |
+| 00:51:38 | 429 | 10.432 | 444 | 5 |
+
+DOC ingestion stops after that failed slice. No successful DOC interval is
+claimed. The failed raw responses remain evidence, and offline parsing skips
+them. No second physical network was tested.
+
+**GKG multilingual fallback works.** `lastupdate-translation.txt` returned 200.
+Six hourly `translation.gkg.csv.zip` batches from 18:00–23:00 UTC on October 7
+were downloaded with HTTP 200, each in 2.2–4.8 seconds during the final ingest.
+The archives contain 41 articles from five registered Panamanian outlets with
+headlines in `PAGE_TITLE`. The earlier English-only GKG sample did not measure
+this multilingual stream. The format is documented by the
+[official GKG 2.1 codebook](https://data.gdeltproject.org/documentation/GDELT-Global_Knowledge_Graph_Codebook-V2.1.pdf).
+
+Implementation: `src/whoami/ingest/news/channels/{gdelt,gdelt_gkg}.py`.
+This is a partial hourly sample, not continuous coverage of the 30-day window.
+Capture direct outlet feeds with `--only prensa,telemetro,panamaamerica`, GKG
+with `--only gdelt-gkg`, and retry DOC independently with `--only gdelt`.
+Coverage, rights, demonstration URLs and reproducibility are recorded in
+`docs/g1-completion.md` and `data/processed/calidad_noticias.json`.

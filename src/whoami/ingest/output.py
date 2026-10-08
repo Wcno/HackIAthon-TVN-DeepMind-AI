@@ -15,7 +15,7 @@ def write_csv(path: Path, columns: tuple[str, ...], rows: Iterable[dict]) -> Non
 
 
 def write_json(path: Path, content: dict) -> None:
-    path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
 
 def iso(value: datetime | None) -> str:

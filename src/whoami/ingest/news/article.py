@@ -19,3 +19,4 @@ class Article:
     modified_at: datetime | None = None
     description: str | None = None
     section: str | None = None
+    detected_at: datetime | None = None

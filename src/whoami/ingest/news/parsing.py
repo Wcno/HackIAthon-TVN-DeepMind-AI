@@ -55,3 +55,14 @@ def canonical_url(url: str) -> str:
     """Same article despite scheme, `www.`, query, fragment or trailing slash."""
     parts = urlsplit(url.strip())
     return parts.netloc.lower().removeprefix("www.") + parts.path.rstrip("/")
+
+
+def belongs_to_outlet(url: str | None, domain: str) -> bool:
+    """Exact HTTP URL host matching; metadata domain labels do not control attribution."""
+    if not isinstance(url, str):
+        return False
+    try:
+        parts = urlsplit(url)
+        return parts.scheme in {"http", "https"} and (parts.hostname or "").removeprefix("www.") == domain.removeprefix("www.")
+    except ValueError:
+        return False

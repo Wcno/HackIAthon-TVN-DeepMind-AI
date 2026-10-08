@@ -6,6 +6,7 @@ Spanish decimal comma, and a null value stays an empty string, never `"0"`.
 
 import csv
 import json
+import warnings
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -31,6 +32,8 @@ def spanish_number(value: float | str, decimals: int = 2) -> str:
 
 def news_evidence(row: dict) -> Evidence:
     fields = {"titulo": row["titulo"], "medio": row["medio"], "fecha_publicacion": row["fecha_publicacion"]}
+    if row.get("fecha_deteccion"):
+        fields["fecha_deteccion"] = row["fecha_deteccion"]
     if row.get("descripcion"):
         fields["descripcion"] = row["descripcion"]
     return Evidence(
@@ -38,7 +41,7 @@ def news_evidence(row: dict) -> Evidence:
         tipo="noticia",
         titulo=row["titulo"],
         url=row["url"],
-        fecha=parse_utc(row["fecha_publicacion"]),
+        fecha=parse_utc(row["fecha_publicacion"]) if row["fecha_publicacion"] else None,
         campos=fields,
     )
 
@@ -104,7 +107,20 @@ def _read_csv(path: Path) -> list[dict]:
 
 
 def load_news_rows() -> list[dict]:
-    return _read_csv(NEWS_CSV)
+    """Rows usable by the grouping contract, which requires publication time.
+
+    Detection-only GDELT rows remain in the G1 corpus; indexing time must never
+    be substituted for publication in grouping, urgency or recirculation.
+    """
+    rows = _read_csv(NEWS_CSV)
+    dated = [row for row in rows if row.get("fecha_publicacion")]
+    if len(dated) != len(rows):
+        warnings.warn(
+            f"{len(rows) - len(dated)} noticias sin fecha de publicación se omiten del agrupador; "
+            "se conservan con su fecha de detección en noticias.csv.",
+            stacklevel=2,
+        )
+    return dated
 
 
 def _quake_properties() -> Iterable[dict]:

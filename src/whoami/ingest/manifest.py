@@ -17,6 +17,7 @@ from whoami.contracts import (
     MANIFEST_JSON,
     NEWS_WINDOW,
     PROCESSED,
+    PROCESSED_MANIFEST_JSON,
     RAW,
 )
 from whoami.ingest import inec, usgs, worldbank
@@ -25,6 +26,8 @@ from whoami.ingest.output import iso, write_json
 from whoami.ingest.raw import FETCH_LOG, RawStore
 
 TRANSFORMATIONS = (
+    "GDELT: seendate se conserva como fecha_deteccion, nunca como fecha_publicacion; "
+    "se usa detección para la ventana solo si falta publicación. Capturas y errores se conservan sin modificar.",
     "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) "
     f"o del lastmod del sitemap; ventana de {NEWS_WINDOW.days} días hasta la fecha de corte (D-04); "
     "excluidas con su motivo en noticias_excluidas.csv.",
@@ -39,7 +42,7 @@ TRANSFORMATIONS = (
 
 def build() -> dict:
     fetches = _fetches()
-    processed = sorted(path for path in PROCESSED.iterdir() if path.is_file())
+    processed = sorted(path for path in PROCESSED.iterdir() if path.is_file() and path != PROCESSED_MANIFEST_JSON)
     hashes = {_relative(path): _sha256(path) for path in processed}
     cutoff = max(datetime.fromisoformat(fetch["fecha_descarga"]) for fetch in fetches)
     manifest = {
@@ -53,6 +56,7 @@ def build() -> dict:
         "transformaciones": list(TRANSFORMATIONS),
     }
     write_json(MANIFEST_JSON, manifest)
+    write_json(PROCESSED_MANIFEST_JSON, manifest)
     return {"version": manifest["version"], "fecha_corte_UTC": manifest["fecha_corte_UTC"], "archivos": len(hashes)}
 
 

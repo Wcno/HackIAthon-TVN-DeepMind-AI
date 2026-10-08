@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import pytest
 
 from whoami.pipeline.evidence import (
     WB_LABELS,
@@ -38,6 +39,22 @@ def test_news_evidence_omits_an_empty_description():
     evidence = news_evidence(NEWS_ROW | {"descripcion": ""})
 
     assert "descripcion" not in evidence.campos
+
+
+def test_detection_only_news_does_not_invent_a_publication_date():
+    row = NEWS_ROW | {"fecha_publicacion": "", "fecha_deteccion": "2026-10-05T16:00:00Z"}
+    evidence = news_evidence(row)
+    assert evidence.fecha is None
+    assert evidence.campos["fecha_publicacion"] == ""
+    assert evidence.campos["fecha_deteccion"] == "2026-10-05T16:00:00Z"
+
+
+def test_grouping_loader_reports_rows_without_publication(monkeypatch):
+    from whoami.pipeline import evidence
+    undated = NEWS_ROW | {"id_noticia": "N-detection", "fecha_publicacion": "", "fecha_deteccion": "2026-10-05T16:00:00Z"}
+    monkeypatch.setattr(evidence, "_read_csv", lambda _: [NEWS_ROW, undated])
+    with pytest.warns(UserWarning, match="1.*publicación"):
+        assert load_news_rows() == [NEWS_ROW]
 
 
 WB_ROW = {
