@@ -90,10 +90,26 @@ def main(argv: list[str] | None = None) -> int:
     from whoami import offline
     offline.add_arguments(commands.add_parser("offline-demo", help="prepare, verify or serve the frozen G10 demo"))
 
+    from whoami import model_comparison
+    model_comparison.add_arguments(commands.add_parser("compare-embeddings", help="blind human development comparison; keeps production q4"))
+
+    from whoami import local_demo
+    local_demo.add_arguments(commands.add_parser("local-demo", help="serve the canonical online app on this PC; refuses BM25 degradation"))
+
     export_command = commands.add_parser("export-backend")
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
+    if args.command == "local-demo":
+        try:
+            return local_demo.main(args)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+    if args.command == "compare-embeddings":
+        try:
+            return model_comparison.main(args)
+        except (OSError, ValueError, KeyError) as error:
+            parser.error(str(error))
     if args.command == "offline-demo":
         try:
             return offline.main(args)

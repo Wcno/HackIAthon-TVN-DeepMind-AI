@@ -2,7 +2,7 @@ name: G5 validation
 
 on:
   pull_request:
-    branches: [prod]
+    branches: [prod, feat/g10-offline]
   push:
     branches: [prod, feat/g5-backend]
 
@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
