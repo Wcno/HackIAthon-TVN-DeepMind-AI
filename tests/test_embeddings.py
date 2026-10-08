@@ -79,6 +79,28 @@ def test_vectors_are_float32_unit_length_with_768_dimensions():
     assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=1e-6)
 
 
+def test_model_setup_has_an_explicit_offline_mode(tmp_path):
+    with pytest.raises(FileNotFoundError, match="download-model"):
+        fetch_model(tmp_path / "empty", download=lambda *a, **k: pytest.fail("network"), offline=True)
+
+
+def test_cli_downloads_the_pinned_model_before_offline_use(tmp_path, monkeypatch):
+    from whoami.cli import main
+    import huggingface_hub
+    fixture = tmp_path / "downloaded"
+    fixture.write_bytes(b"model fixture")
+    calls = []
+    def download(repo, filename, **options):
+        calls.append((repo, filename, options["revision"]))
+        return str(fixture)
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
+    target = tmp_path / "model"
+    assert main(["download-model", "--directory", str(target)]) == 0
+    assert len(calls) == 3 and all(call[2] == MODEL_REVISION for call in calls)
+    assert main(["download-model", "--directory", str(target), "--offline"]) == 0
+    assert len(calls) == 3
+
+
 def test_the_session_receives_int64_ids_and_mask_and_the_sentence_embedding_is_read():
     model, session, _ = embedder()
 

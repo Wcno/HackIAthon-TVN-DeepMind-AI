@@ -127,6 +127,15 @@ def test_build_index_rebuilds_when_the_ids_differ(tmp_path):
     assert len(embedder.documents) == 5
 
 
+def test_build_index_rebuilds_same_ids_when_content_or_model_changes(tmp_path):
+    embedder = CountingEmbedder()
+    cache = tmp_path / "vectors.npy"
+    sources = [news("N-1", titulo="Canal")]
+    build_index(sources, embedder.embed_documents, cache)
+    build_index([news("N-1", titulo="Hospital")], embedder.embed_documents, cache)
+    assert embedder.documents == ["Canal", "Hospital"]
+
+
 def test_default_retrievers_offers_bm25_embeddings_and_hybrid(tmp_path):
     embedder = CountingEmbedder()
     retrievers = default_retrievers(list(EVIDENCES.values()), embedder, tmp_path / "vectors.npy")

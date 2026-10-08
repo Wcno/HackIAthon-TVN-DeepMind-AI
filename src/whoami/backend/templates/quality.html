@@ -4,7 +4,7 @@
 <p>{{ news.registros_leidos }} registros leídos · {{ news.incluidas }} noticias incluidas.</p>
 {% if news.ventana %}<p>Ventana: {{ news.ventana.desde|panama_time }} a {{ news.ventana.hasta|panama_time }} (Panamá).</p>{% endif %}
 <h3>Exclusiones</h3>{% for reason, count in news.excluidas_por_motivo.items() %}<p>{{ reason }}: {{ count }}</p>{% else %}<p>No se registraron exclusiones.</p>{% endfor %}
-<h3>Cobertura por fuente</h3>{% for source, coverage in news.cobertura_por_fuente.items() %}<p>{{ source }}: {{ coverage.incluidas }} incluidas · {{ coverage.dias_con_noticias }} días con noticias · {{ coverage.dias_sin_noticias|length }} días sin noticias.</p>{% endfor %}
+<h3>Cobertura por fuente</h3>{% for source, coverage in news.cobertura_por_fuente.items() %}<p>{{ source }}: {{ coverage.incluidas }} incluidas · {{ coverage.dias_con_noticias }} días con noticias · {% if coverage.dias_sin_noticias == 'todos' %}todos los días de la ventana sin noticias{% else %}{{ coverage.dias_sin_noticias|length }} días sin noticias{% endif %}.</p>{% endfor %}
 {% endif %}</section>
 {% set indicators = reports['calidad_indicadores.json'] %}
 <section><h2>Banco Mundial: series históricas</h2>{% if indicators.available is defined and not indicators.available %}<p>Reporte no disponible.</p>{% else %}<p>{{ indicators.filas_esperadas }} filas esperadas · {{ indicators.filas_con_valor }} con valor · {{ indicators.filas_nulas_en_fuente }} nulas en origen · {{ indicators.filas_faltantes_agregadas }} faltantes.</p><p>Período {{ indicators.anios.desde }}–{{ indicators.anios.hasta }}; no son datos actuales.</p>{% endif %}</section>

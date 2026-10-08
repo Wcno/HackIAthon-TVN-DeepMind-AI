@@ -8,6 +8,16 @@ from whoami.pipeline.grouping import GREY_ZONE, SameEventJudge, group_agglomerat
 CUTOFF = datetime(2026, 10, 7, 12, tzinfo=UTC)
 
 
+def test_bridge_members_cannot_average_away_time_or_event_exclusions():
+    vectors = np.tile([1., 0.], (10, 1))
+    dates = [CUTOFF, CUTOFF + timedelta(hours=73)] + [CUTOFF + timedelta(hours=36)] * 8
+    groups = group_agglomerative(vectors, dates)
+    assert all(not (0 in group and 1 in group) for group in groups)
+    groups = group_agglomerative(vectors, [CUTOFF] * 10, overrides={(0, 1): False})
+    assert all(not (0 in group and 1 in group) for group in groups)
+    assert sorted(i for group in groups for i in group) == list(range(10))
+
+
 def at(hours_ago: float) -> datetime:
     return CUTOFF - timedelta(hours=hours_ago)
 

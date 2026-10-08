@@ -2,6 +2,14 @@ from decimal import Decimal
 
 import pytest
 
+
+@pytest.mark.parametrize("text, expected", [("-0,5 %", "-0.5"), ("+0,5 %", "0.5"),
+                                          ("−32 millones", "-32000000"), ("menos cinco", "-5")])
+def test_numeric_grounding_preserves_the_sign(text, expected):
+    from decimal import Decimal
+    from whoami.generation.verifier import normalize_numbers
+    assert normalize_numbers(text) == [Decimal(expected)]
+
 from whoami.generation.verifier import (
     normalize_numbers,
     repair_passage,

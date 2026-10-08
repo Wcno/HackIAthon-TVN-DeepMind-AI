@@ -1,4 +1,5 @@
 import json
+import pytest
 from datetime import UTC, datetime
 
 from whoami.contracts import PublicationDateOrigin
@@ -17,6 +18,29 @@ URL = "https://www.tvn-2.com/nacionales/canal-restringe-transitos_1_2264701.html
 def article(channel: Channel, **fields) -> Article:
     defaults = {"source": "tvn", "url": URL, "title": "Canal restringe tránsitos", "fetched_at": datetime(2026, 10, 7, tzinfo=UTC)}
     return Article(channel=channel, **(defaults | fields))
+
+
+def test_failed_wordpress_refresh_preserves_the_previous_snapshot(tmp_path, monkeypatch):
+    from whoami.ingest.news.sources import Feed
+    store = RawStore(tmp_path)
+    store.save("posts_p001.json", Response("https://x.invalid", b'[]', {}))
+    store.save("categories_p001.json", Response("https://x.invalid", b'[]', {}))
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    def fail(url):
+        raise TimeoutError("test")
+    monkeypatch.setattr(wp_api.http, "get", fail)
+    with pytest.raises(TimeoutError):
+        wp_api.fetch(MEF.feeds[0], store)
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+@pytest.mark.parametrize("url", ["not-a-url", "javascript:alert(1)", "https://", "https://x.invalid:bad/", "https://a b.test/"])
+def test_malformed_urls_are_reported_as_exclusions(url):
+    from whoami.ingest.news.build import exclusion
+    stamp = datetime(2026, 10, 7, tzinfo=UTC)
+    [item] = merge([article(Channel.RSS, url=url, published_at=stamp, published_at_origin=PublicationDateOrigin.FEED)])
+    reason = exclusion(item, stamp)
+    assert reason is not None and reason.value == "url_invalida"
 
 
 def test_feed_date_wins_over_page_and_lastmod():

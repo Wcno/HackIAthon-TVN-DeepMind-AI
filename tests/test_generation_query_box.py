@@ -1,5 +1,19 @@
 import pytest
 
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_qualitative_contradictions_require_actual_source_support(structured):
+    evidence = by_id(news("N-1", titulo="Hospital sigue abierto"), news("N-2", titulo="Hospital sigue abierto"))
+    class Hits:
+        def search(self, query, k):
+            return [("N-1", 1.0), ("N-2", .9)][:k]
+    raw = model_answer(estado="contradiccion", respuesta=None, citas=[], afirmaciones=[], versiones=[
+        {"valor": "cerrado definitivamente", "alcance": "anuncio", "id_evidencia": "N-1"},
+        {"valor": "destruido", "alcance": "anuncio", "id_evidencia": "N-2"}])
+    answer = answer_query("Q-1", "Hospital", Hits(), CosineGate(Hits(), min_cosine=.5),
+                          evidence, FakeLLM([raw]), MODEL, structured=structured)
+    assert answer.estado == "abstencion"
+
 from generation_fakes import FakeLLM, LLMError, by_id, indicator, news
 from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import UNVERIFIABLE_REASON, INVALID_ANSWER_REASON, answer_query

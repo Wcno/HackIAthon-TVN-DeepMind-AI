@@ -309,6 +309,15 @@ def make_llm(tmp_path: Path, client: FakeClient, fake: FakeTime | None = None, *
     )
 
 
+def test_provider_switch_cannot_replay_another_endpoints_chat(tmp_path):
+    from dataclasses import replace
+    a = make_llm(tmp_path, FakeClient(chat_response("provider-a")))
+    a.complete(CHAT, USER_MESSAGE, purpose="test")
+    b = LLM(FakeClient(chat_response("provider-b")), replace(make_settings(tmp_path), base_url="http://other/"))
+    result = b.complete(CHAT, USER_MESSAGE, purpose="test")
+    assert result.text == "provider-b" and not result.cached
+
+
 def ledger_lines(tmp_path: Path) -> list[dict]:
     path = tmp_path / "ledger.jsonl"
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []

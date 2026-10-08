@@ -7,6 +7,20 @@ from whoami.backend.service import quality_report
 from whoami.contracts import PROCESSED
 
 
+def test_quality_screen_reports_all_missing_days_without_counting_a_string():
+    from jinja2 import Environment, FileSystemLoader
+    from whoami.backend.app import panama_time
+    from pathlib import Path
+    env = Environment(loader=FileSystemLoader(Path(__file__).parents[1] / "src/whoami/backend/templates"))
+    env.filters["panama_time"] = panama_time
+    reports = {name: {"available": False} for name in ["calidad_indicadores.json", "calidad_inec.json", "calidad_eventos.json", "manifest"]}
+    reports["calidad_noticias.json"] = {"registros_leidos": 0, "incluidas": 0, "ventana": None,
+        "excluidas_por_motivo": {}, "cobertura_por_fuente": {"missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"}}}
+    html = env.get_template("quality.html").render(reports=reports)
+    assert "5 días sin noticias" not in html
+    assert "todos los días de la ventana sin noticias" in html
+
+
 def test_snapshot_integrity_distinguishes_verified_missing_and_changed(tmp_path):
     processed = tmp_path / "processed"
     processed.mkdir()

@@ -42,18 +42,27 @@ def model_dir() -> Path:
     return Path(override) if override else MODELS_CACHE / "local" / MODEL_NAME
 
 
-def fetch_model(target: Path | None = None, download: Download | None = None) -> Path:
+def fetch_model(target: Path | None = None, download: Download | None = None, *, offline: bool = False) -> Path:
     """Downloads the pinned files (network) into `target`; files already there are kept."""
     if download is None:
         from huggingface_hub import hf_hub_download as download
     target = target or model_dir()
     for filename, destination in _LAYOUT.items():
         path = target / destination
-        if path.exists():
+        if path.is_file() and path.stat().st_size:
             continue
+        if offline:
+            raise FileNotFoundError("Local model is incomplete; run whoami download-model with internet access")
         cached = download(MODEL_REPO, filename, revision=MODEL_REVISION, cache_dir=MODELS_CACHE)
         path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(cached, path)
+        partial = path.with_suffix(path.suffix + ".part")
+        try:
+            shutil.copyfile(cached, partial)
+            if not partial.stat().st_size:
+                raise ValueError("Downloaded model file is empty")
+            partial.replace(path)
+        finally:
+            partial.unlink(missing_ok=True)
     return target
 
 

@@ -65,6 +65,12 @@ def ids(links):
     return [x.id_evidencia for x in links]
 
 
+def test_explicit_panama_trade_keeps_context_when_counterparty_is_foreign():
+    links, reason = link("Panamá incrementa exportaciones hacia México")
+    assert "WB-PAN-NE.EXP.GNFS.ZS-2024" in ids(links)
+    assert link("México incrementa sus exportaciones")[0] == ()
+
+
 def test_inflation_links_the_latest_non_null_inec_cpi_point():
     links, reason = link("Sube la inflación en los alimentos")
 

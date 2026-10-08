@@ -7,7 +7,7 @@ from whoami.generation.jsonschemas import answer_schema, response_format, to_ans
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import check_citations, check_claim, normalize_numbers, unsupported_numbers
-from whoami.generation.version_citations import enrich_version_citations
+from whoami.generation.version_citations import enrich_version_citations, support_version
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
@@ -50,23 +50,13 @@ def _distinct_versions(
     value and of each evidence."""
     versions: list[ContradictionVersion] = []
     for item in raw:
-        version = ContradictionVersion.model_validate(item)
+        version = support_version(ContradictionVersion.model_validate(item), evidences)
         if (
-            version.id_evidencia in allowed
-            and _version_supported(version, evidences)
+            version is not None and version.id_evidencia in allowed
             and all(version.valor != v.valor and version.id_evidencia != v.id_evidencia for v in versions)
         ):
             versions.append(version)
     return versions
-
-
-def _version_supported(version: ContradictionVersion, evidences: Mapping[str, Evidence]) -> bool:
-    """Every figure of the version appears in some field of the record it names."""
-    record = evidences.get(version.id_evidencia)
-    if record is None:
-        return False
-    in_record = {number for value in record.campos.values() for number in normalize_numbers(value)}
-    return set(normalize_numbers(version.valor)) <= in_record
 
 
 def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Evidence], allowed: set[str], *, structured: bool = False) -> dict:
@@ -85,6 +75,7 @@ def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Ev
     citations_json = [c.model_dump() for c in citations]
     # Two verified versions with distinct values are a contradiction, whatever state the model chose.
     if len(versions) >= 2:
+        citations_json = [c.model_dump() for c in dict.fromkeys([*citations, *(c for v in versions for c in v.citas)])]
         return {"estado": "contradiccion", "citas": citations_json, "versiones": [v.model_dump() for v in versions]}
     if structured and state in ("respondida", "contradiccion"):
         claims = []

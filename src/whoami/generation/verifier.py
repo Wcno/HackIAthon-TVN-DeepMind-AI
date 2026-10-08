@@ -56,7 +56,7 @@ _MILLION = ("millon", "millones")
 _ARTICLES = ("un", "uno", "una")
 _CONNECTABLE_UNITS = {word for word, value in _UNITS.items() if 1 <= value <= 9}
 
-_TOKEN = re.compile(r"\d+(?:[.,]\d+)*|[a-z]+")
+_TOKEN = re.compile(r"(?<!\w)[+−-]?\d+(?:[.,]\d+)*|\d+(?:[.,]\d+)*|[a-z]+")
 
 
 @dataclass(frozen=True)
@@ -67,26 +67,28 @@ class _Token:
 
     @property
     def is_number(self) -> bool:
-        return self.text[0].isdigit()
+        return self.text.lstrip("+−-")[0].isdigit()
 
 
 def parse_digits(token: str) -> list[Decimal]:
     """`1.500` and `1,500` are 1500; `1,5` and `1.5` are 1.5; `1.234,56` and `1,234.56` are 1234.56."""
+    sign = -1 if token.startswith(("-", "−")) else 1
+    token = token.lstrip("+−-")
     separators = re.findall(r"[.,]", token)
     if not separators:
-        return [Decimal(token)]
+        return [Decimal(token) * sign]
     if len(set(separators)) == 2:
         decimal_separator = token[max(token.rfind("."), token.rfind(","))]
         thousands_separator = "." if decimal_separator == "," else ","
-        return [Decimal(token.replace(thousands_separator, "").replace(decimal_separator, "."))]
+        return [Decimal(token.replace(thousands_separator, "").replace(decimal_separator, ".")) * sign]
     parts = token.split(separators[0])
     whole, rest = parts[0], parts[1:]
     is_grouped = 1 <= len(whole) <= 3 and whole != "0" and all(len(part) == 3 for part in rest)
     if is_grouped:
-        return [Decimal("".join(parts))]
+        return [Decimal("".join(parts)) * sign]
     if len(parts) == 2:
-        return [Decimal(f"{whole}.{rest[0]}")]
-    return [Decimal(part) for part in parts]
+        return [Decimal(f"{whole}.{rest[0]}") * sign]
+    return [Decimal(part) * sign for part in parts]
 
 
 def _evaluate_words(words: Sequence[str]) -> Decimal:
@@ -122,19 +124,20 @@ def normalize_numbers(text: str) -> list[Decimal]:
     index = 0
     while index < len(tokens):
         token = tokens[index]
+        spoken_sign = -1 if index and tokens[index - 1].text == "menos" and adjacent(index - 1, index) else 1
         if token.is_number:
             values = parse_digits(token.text)
             index += 1
             if len(values) == 1:
                 multiplier, index = _digit_multiplier(tokens, index, adjacent)
                 values = [values[0] * multiplier]
-            numbers += values
+            numbers += [value * spoken_sign for value in values]
         elif token.text == "ciento" and index and tokens[index - 1].text == "por":
             index += 1  # "por ciento" is a percent sign, not a hundred
         elif _is_number_word(token.text):
             words, index = _word_run(tokens, index, adjacent)
             if words not in (["un"], ["uno"], ["una"]):
-                numbers.append(_evaluate_words(words))
+                numbers.append(_evaluate_words(words) * spoken_sign)
         else:
             index += 1
     return numbers
