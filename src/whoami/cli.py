@@ -11,6 +11,8 @@
     whoami pipeline [--vectors PATH] [--sin-llm] [--modelo-llm MODEL]
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
                                         --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
+    whoami contexto-oficial             relabel the context links and refresh the official evidence in data/processed,
+                                        keeping the groups as they are (offline)
     whoami imagenes [--top N]           photo (og:image) of the news of the first N agenda topics to
                                         data/processed/imagenes.json and vendors a resized copy of each (network)
     whoami imagenes-locales             vendor the photos already in imagenes.json (idempotent; network only for new ones)
@@ -71,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     run.add_arguments(commands.add_parser("generar"))
 
+    commands.add_parser("contexto-oficial")
+
     images_command = commands.add_parser("imagenes")
     images_command.add_argument("--top", type=int, default=40, help="photos for the news of the first N topics of the agenda")
 
@@ -104,6 +108,15 @@ def main(argv: list[str] | None = None) -> int:
         except (pipeline.PipelineInputError, LLMError) as error:
             parser.error(str(error))
         print(format_summary(output, llm.counts() if llm else None))
+        return 0
+
+    if args.command == "contexto-oficial":
+        from whoami.pipeline.evidence import load_official_evidence
+        from whoami.pipeline.official import refresh_official
+
+        official = load_official_evidence()
+        refresh_official(official)
+        print(f"{len(official)} evidencias oficiales y etiquetas de contexto actualizadas en data/processed")
         return 0
 
     if args.command == "imagenes":
