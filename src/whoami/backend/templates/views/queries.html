@@ -1,4 +1,11 @@
 <div class="page-card">
+  <form class="query-form" action="/queries" method="get">
+    <label class="field" for="query">Pregunta sobre la agenda</label>
+    <div class="query-form__row">
+      <input id="query" name="q" type="search" required maxlength="2000" autocomplete="off" placeholder="Por ejemplo: ¿A cuántos tránsitos diarios se limitará el Canal?" value="{{ query_text or '' }}">
+      <button class="btn btn--primary" type="submit">Consultar</button>
+    </div>
+  </form>
   {% if query_status == "no_precomputed" %}
   <div class="answer answer--abstain">
     <p class="answer__state">No hay una respuesta precalculada para esta consulta</p>
@@ -6,26 +13,30 @@
   </div>
   {% elif query_status == "unavailable" %}
   <div class="answer answer--offline">
-    <p class="answer__state" role="alert">La consulta no pudo completarse. Intenta de nuevo o elige una consulta precalculada.</p>
+    <p class="answer__state" role="alert">La consulta no pudo completarse</p>
+    <p>Gemini no respondió o se alcanzó su límite de uso, así que «{{ query_text }}» quedó sin respuesta. No se guardó nada.</p>
+    <p>Puedes <a class="link" href="/queries?q={{ query_text|urlencode }}">reintentar</a> en un momento o elegir una consulta precalculada de la lista.</p>
   </div>
   {% elif answer %}
   {% set sources = [] %}
   {% for citation in answer.citas %}{% if citation.id_evidencia not in sources %}{% set _ = sources.append(citation.id_evidencia) %}{% endif %}{% endfor %}
   {% for version in answer.versiones %}{% if version.id_evidencia not in sources %}{% set _ = sources.append(version.id_evidencia) %}{% endif %}{% endfor %}
+  {% set shown = [] %}
   <h2 class="case__title" data-estado="{{ answer.estado }}">{{ answer.consulta }}</h2>
   {% if answer.estado == "respondida" %}
   <div class="answer">
     <p class="answer__state">Respuesta con evidencia</p>
     <p class="answer__text">{{ answer.respuesta }}
-      <span class="cites">{% for citation in answer.citas %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(citation.id_evidencia) + 1 }}">{{ sources.index(citation.id_evidencia) + 1 }}</a>{% endfor %}</span>
+      <span class="cites">{% for citation in answer.citas %}{% if citation.id_evidencia not in shown %}{% set _ = shown.append(citation.id_evidencia) %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(citation.id_evidencia) + 1 }}">{{ sources.index(citation.id_evidencia) + 1 }}</a>{% endif %}{% endfor %}</span>
     </p>
   </div>
   {% elif answer.estado == "abstencion" %}
   <div class="answer answer--abstain">
     <p class="answer__state">No hay evidencia suficiente para responder</p>
-    <p>{{ answer.motivo_abstencion }}</p>
+    {% set copy = abstention_copy(answer) %}
+    <p>{{ copy.reason }}</p>
     <h3 class="h2">Qué se necesitaría</h3>
-    <p>{{ answer.faltante }}</p>
+    <p>{{ copy.next_step }}</p>
   </div>
   {% else %}
   <div class="answer answer--contradiction">
@@ -53,7 +64,7 @@
   {% else %}
   <div class="empty">
     <p>Pregunta sobre la agenda.</p>
-    <p class="muted">Usa el buscador de arriba o elige una consulta precalculada.</p>
+    <p class="muted">{% if offline %}Sin conexión, solo se responden las consultas precalculadas de la lista.{% else %}Escribe tu pregunta arriba o elige una consulta precalculada de la lista.{% endif %}</p>
   </div>
   {% endif %}
   <section class="mt-12" aria-label="Consultas disponibles">

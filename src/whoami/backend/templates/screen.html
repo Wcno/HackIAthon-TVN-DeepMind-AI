@@ -18,7 +18,7 @@
 {% macro open_href(group) -%}
 {{ ("/cases/" ~ group.id_caso|urlencode) if group.id_caso else ("/groups/" ~ group.id_grupo|urlencode) }}{{ filter_query }}
 {%- endmacro %}
-{% set nav = [("/inbox", "Temas", "inbox"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
+{% set nav = [("/inbox", "Temas", "inbox"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
 {% if target == "case" %}{% include 'views/pane.html' %}
 {% elif target == "desk" %}{% include 'views/desk.html' %}
 {% else %}
