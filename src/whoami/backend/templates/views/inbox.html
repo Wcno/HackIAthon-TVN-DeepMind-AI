@@ -1,7 +1,43 @@
-<form method="get"><label>Tema <select name="topic"><option value="">Todos</option>{% for slug, label in topics.items() %}<option value="{{ slug }}">{{ label }}</option>{% endfor %}</select></label><button>Filtrar</button></form>
-  {% for group in groups %}<article><h2><a href="/groups/{{ group.id_grupo|urlencode }}">{{ group.titulo }}</a></h2>
-  <p>{{ group.tema_etiqueta }} · Prioridad {{ group.puntaje.valor }} ({{ group.puntaje.rango }}) · Evidencia {{ group.estado_evidencia }} · {{ group.estado_revision }}</p>
-  <p>{{ group.n_noticias }} noticias · {{ group.n_medios }} medios · {{ group.n_procedencias }} procedencias</p>
-  <p>{{ group.cobertura_tvn.razon }}</p>
-  <dl>{% for name, value in group.puntaje.componentes.items() %}<dt>{{ name }}: {{ value }}</dt><dd>{{ group.puntaje.justificaciones[name] }}</dd>{% endfor %}</dl>
-  <p>Reglas: {{ group.puntaje.version_reglas }}</p>{% if group.id_caso %}<a href="/cases/{{ group.id_caso|urlencode }}">Abrir ficha</a>{% endif %}</article>{% else %}<p>No hay grupos para este filtro.</p>{% endfor %}
+{# Master list: filters and ranked rows. Needs rows, total, rank, selected, topic, estado, cobertura, topic_search, filter_query, base_path. #}
+<section class="inbox" id="inbox" aria-label="Temas priorizados">
+  <form class="filters" method="get" action="{{ base_path }}" role="group" aria-label="Filtrar temas"
+        hx-get="{{ base_path }}" hx-trigger="change" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">
+    <label class="select">
+      <span class="select__label">Tema</span>
+      <select name="topic">
+        <option value="">Todos los temas</option>
+        {% for slug in topic_options %}<option value="{{ slug }}"{% if slug == topic %} selected{% endif %}>{{ topics.get(slug, slug) }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    <label class="select">
+      <span class="select__label">Estado</span>
+      <select name="estado">
+        <option value="">Todos los estados</option>
+        {% for key, label in file_states.items() %}<option value="{{ key }}"{% if key == estado %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    <label class="select">
+      <span class="select__label">Cobertura TVN</span>
+      <select name="cobertura">
+        {% for key, label in coverage_filters.items() %}<option value="{{ key }}"{% if key == cobertura %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    {% if topic_search %}<input type="hidden" name="q" value="{{ topic_search }}">{% endif %}
+    <noscript><button class="btn btn--small" type="submit">Filtrar</button></noscript>
+    <span class="count">{{ total|number }} {{ "tema" if total == 1 else "temas" }}</span>
+  </form>
+
+  {% if total %}
+  <ol class="rows">
+{% include 'views/rows.html' %}
+  </ol>
+  {% else %}
+  <div class="empty">
+    <p>No hay temas con estos filtros.</p>
+    <a class="btn" href="{{ base_path }}">Quitar filtros</a>
+  </div>
+  {% endif %}
+</section>

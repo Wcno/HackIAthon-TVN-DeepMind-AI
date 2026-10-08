@@ -1,2 +1,183 @@
-<p>Informes del corpus de entrada. La agenda de demostración se presenta por separado.</p>
-  {% include 'quality.html' %}
+{% from "views/_report_icons.html" import report_icon %}
+{% set news = quality.news %}{% set official = quality.official %}{% set snapshot = quality.snapshot %}
+<div class="report">
+  <p class="lede">Qué entró en este corte, qué quedó fuera y por qué. Los valores que una fuente no publica se conservan vacíos: nunca se rellenan con cero ni se estiman.</p>
+  {% if snapshot %}
+  <p class="snapshot">
+    <span>Corte <strong>{{ snapshot.cutoff }}</strong> (hora de Panamá)</span>
+    <span>Versión <strong>{{ snapshot.version }}</strong></span>
+    <span><strong>{{ snapshot.downloads|number }}</strong> descargas registradas</span>
+  </p>
+  {% else %}<p class="snapshot"><span>Manifiesto no disponible.</span></p>{% endif %}
+
+  <section class="section" aria-labelledby="noticias">
+    <h2 class="section__title" id="noticias">Noticias</h2>
+    {% if not news %}<p class="section__lede">Reporte no disponible.</p>{% else %}
+    <p class="section__lede">{{ news.window }} (hora de Panamá). Se deduplica por URL canónica y se excluye lo publicado fuera de la ventana.</p>
+
+    <div class="tally">
+      <p><strong>{{ news.tally.read|number }}</strong>registros leídos</p>
+      <p><strong>{{ news.tally.unique|number }}</strong>noticias únicas</p>
+      <p><strong>{{ news.tally.kept|number }}</strong>incluidas en el corte</p>
+      <p><strong>{{ news.tally.excluded|number }}</strong>excluidas</p>
+    </div>
+
+    <figure class="flow" aria-labelledby="flow-caption">
+      <figcaption id="flow-caption" class="mb-4 text-[15px] font-semibold text-navy">De {{ news.tally.read|number }} registros leídos a {{ news.tally.kept|number }} noticias incluidas</figcaption>
+      <div class="flow__bar" aria-hidden="true">{% for segment in news.segments %}<span class="flow__seg--{{ segment.kind }}" style="width: {{ segment.width }}"></span>{% endfor %}</div>
+      <ul class="flow__legend">
+        {% for segment in news.segments %}
+        <li><span class="flow__seg--{{ segment.kind }}"></span><span><b>{{ segment.count|number }}</b> {{ segment.label }}</span>
+          <small>{% if segment.reason %}Excluidas: {{ segment.label }}. Quedan registradas con su motivo para poder revisarlas.{% else %}{{ segment.note }}{% endif %}</small></li>
+        {% endfor %}
+      </ul>
+    </figure>
+
+    {% if news.thresholds %}
+    <div class="checks" aria-label="Umbrales mínimos de calidad">
+      {% for check in news.thresholds %}<span class="check">{{ report_icon("check") }}{{ "Cumple" if check.passed else "No cumple" }} {{ check.label }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    <h3 class="h3">Cobertura por fuente</h3>
+    {% set coverage = news.coverage %}
+    <p class="muted max-w-[64ch]">{% if coverage.has_days %}Cada barra es un día de la ventana (días calendario en hora de Panamá, del {{ coverage.first }} al {{ coverage.last }}). Azul: hubo al menos una noticia incluida. Gris: ninguna.{% else %}El detalle por día no está disponible en este corte.{% endif %}</p>
+    <div class="coverage" id="coverage">
+      {% if coverage.has_days %}<div class="coverage__axis" aria-hidden="true"><span>Fuente</span><span><span>{{ coverage.first }}</span><span>{{ coverage.last }}</span></span><span>Incluidas</span></div>{% endif %}
+      {% for group in coverage.groups %}
+      <p class="group-label">{{ group.label }}</p>
+      {% for source in group.sources %}
+      <div class="source{% if not source.included %} is-empty{% endif %}">
+        <p class="source__name">{{ source.name }}<span class="source__kind">{{ source.kind }}</span></p>
+        {% if source.days %}<div class="days" role="img" aria-label="{{ source.active }} de {{ source.total }} días con noticias">{% for on in source.days %}<span class="day{% if on %} is-on{% endif %}"></span>{% endfor %}</div>{% else %}<div></div>{% endif %}
+        <p class="source__count"><b>{{ source.included|number }}</b><span>incluidas</span></p>
+        <p class="source__range">{{ source.range }}</p>
+      </div>
+      {% endfor %}{% endfor %}
+    </div>
+
+    {% if news.notice %}
+    <div class="notice" role="note">{{ report_icon("note") }}<p><strong>{{ news.notice.headline }}</strong> {{ news.notice.body }}</p></div>
+    {% endif %}
+
+    {% if news.origins %}
+    <h3 class="h3">De dónde sale la fecha de publicación</h3>
+    <p class="muted max-w-[64ch]">Se usa la fuente más confiable disponible. La fecha de detección de GDELT no es fecha de publicación; se usa solo cuando falta la otra.</p>
+    <ul class="bars">
+      {% for origin in news.origins %}
+      <li><span class="bars__label">{{ origin.label }}</span><span class="bars__value">{{ origin.count|number }}</span><span class="bars__track"><span class="bars__fill" style="width: {{ origin.width }}"></span></span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endif %}
+  </section>
+
+  <section class="section" aria-labelledby="oficiales">
+    <h2 class="section__title" id="oficiales">Cifras oficiales</h2>
+    <p class="section__lede">Series del Banco Mundial e INEC y sismos del catálogo USGS. Describen el período indicado, no la situación de hoy.</p>
+
+    <div class="official">
+      <article>
+        <div class="official__head"><h3 class="official__name">Banco Mundial</h3>{% if official.worldbank %}<span class="muted">{{ official.worldbank.period }}</span>{% endif %}</div>
+        {% if official.worldbank %}{% set wb = official.worldbank %}
+        <dl>
+          <div><dt>Filas esperadas</dt><dd>{{ wb.filas_esperadas|number }}</dd></div>
+          <div><dt>Con valor</dt><dd>{{ wb.filas_con_valor|number }}</dd></div>
+          <div><dt>Nulas en la fuente</dt><dd{% if not wb.filas_nulas_en_fuente %} class="is-zero"{% endif %}>{{ wb.filas_nulas_en_fuente|number }}</dd></div>
+          <div><dt>Faltantes agregadas</dt><dd{% if not wb.filas_faltantes_agregadas %} class="is-zero"{% endif %}>{{ wb.filas_faltantes_agregadas|number }}</dd></div>
+        </dl>
+        {% if wb.grid %}<p>{{ wb.grid }}</p>{% endif %}
+        {% else %}<p>Reporte no disponible.</p>{% endif %}
+      </article>
+      <article>
+        <div class="official__head"><h3 class="official__name">INEC</h3>{% if official.inec %}<span class="muted">desde {{ official.inec.from_year }}</span>{% endif %}</div>
+        {% if official.inec %}{% set inec = official.inec %}
+        <dl>
+          <div><dt>Filas</dt><dd>{{ inec.filas|number }}</dd></div>
+          <div><dt>Con valor</dt><dd>{{ inec.filas_con_valor|number }}</dd></div>
+          <div><dt>Nulos conservados</dt><dd{% if not inec.filas_nulas %} class="is-zero"{% endif %}>{{ inec.filas_nulas|number }}</dd></div>
+          <div><dt>Períodos excluidos</dt><dd{% if not inec.excluded %} class="is-zero"{% endif %}>{{ inec.excluded|number }}</dd></div>
+        </dl>
+        <p>{{ inec.summary }}</p>
+        {% else %}<p>Reporte no disponible.</p>{% endif %}
+      </article>
+      <article>
+        <div class="official__head"><h3 class="official__name">USGS</h3><span class="muted">sismos</span></div>
+        {% if official.usgs %}{% set usgs = official.usgs %}
+        <dl>
+          <div><dt>Eventos leídos</dt><dd>{{ usgs.eventos_leidos|number }}</dd></div>
+          <div><dt>Incluidos</dt><dd>{{ usgs.incluidos|number }}</dd></div>
+          <div><dt>Excluidos</dt><dd{% if not usgs.excluded %} class="is-zero"{% endif %}>{{ usgs.excluded|number }}</dd></div>
+          <div><dt>Magnitud</dt><dd>{{ usgs.magnitude }}</dd></div>
+        </dl>
+        <p>Primer evento el {{ usgs.first }}, último el {{ usgs.last }}. Confirma hora, lugar y magnitud; no mide daños ni afectados.</p>
+        {% else %}<p>Reporte no disponible.</p>{% endif %}
+      </article>
+    </div>
+
+    {% if official.nulls is not none %}
+    <div class="nulls" id="nulos">
+      <h3 class="nulls__title">Nulos conservados y períodos excluidos</h3>
+      <p class="nulls__lede">Un nulo es un período que existe en la serie pero no tiene valor: se muestra vacío. Un excluido es un período que no entra al corte, siempre con su motivo.</p>
+      {% if official.nulls %}
+      <table class="table">
+        <thead><tr><th>Serie</th><th>Períodos</th><th>Qué pasó</th></tr></thead>
+        <tbody>
+          {% for row in official.nulls %}
+          <tr>
+            <td>{{ row.series }}</td>
+            <td><span class="pills">{% for period in row.periods %}<span class="pill pill--{{ row.kind }}">{{ period }}</span>{% endfor %}</span></td>
+            <td>{{ row.what }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="muted mt-4">No hay nulos ni períodos excluidos en este corte.</p>{% endif %}
+
+      <table class="table">
+        <thead><tr><th>Serie INEC</th><th>Filas</th><th>Desde</th><th>Hasta</th><th>Nulos</th></tr></thead>
+        <tbody>
+          {% for series in official.inec_series %}
+          <tr><td>{{ series.name }}</td><td>{{ series.filas|number }}</td><td>{{ series.desde }}</td><td>{{ series.hasta }}</td>
+            <td>{% if series.nulls %}<span class="pill pill--null">{{ series.nulls }} {{ "nulo" if series.nulls == 1 else "nulos" }}</span>{% else %}<span class="pill pill--ok">Ninguno</span>{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="section" aria-labelledby="procedencia">
+    <h2 class="section__title" id="procedencia">Procedencia del corte</h2>
+    <p class="section__lede">Cada archivo descargado queda registrado en el manifiesto con su URL, su fecha de descarga y su huella SHA-256, para poder repetir y comprobar el corte.</p>
+
+    {% if quality.provenance %}
+    <div class="prov">
+      <div class="prov__row prov__head" aria-hidden="true"><span>Fuente</span><span>Archivos</span><span>Descarga (Panamá)</span><span>Condiciones de uso</span></div>
+      {% for row in quality.provenance %}
+      <div class="prov__row"><p class="prov__name">{{ row.name }}<a href="{{ row.url|safe_url }}">{{ row.text }}</a></p><p class="prov__files">{{ row.files|number }}</p><p class="prov__when">{{ row.when }}</p><p class="prov__license">{{ row.licence }}</p></div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="muted mt-6">Manifiesto no disponible.</p>{% endif %}
+
+    {% if quality.steps %}
+    <h3 class="h3">Qué se hizo con los datos</h3>
+    <ul class="steps">{% for step in quality.steps %}<li><b>{{ step.title }}.</b> {{ step.text }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if quality.hashes %}
+    {% set integrity = quality.integrity %}{% set integrity_status = {"verified": "verificada", "incomplete": "incompleta", "invalid": "con diferencias"}[integrity.status] %}
+    <details class="hashes">
+      <summary>Ver huellas SHA-256 de los archivos procesados {{ report_icon("chevron") }}</summary>
+      <p class="muted mt-4">Integridad: {{ integrity_status }} · {{ integrity.expected }} archivos comprobados contra su huella SHA-256.</p>
+      {% for name in integrity.missing %}<p class="muted">Archivo ausente: {{ name }}</p>{% endfor %}
+      {% for name in integrity.mismatches %}<p class="muted">Contenido distinto del registrado: {{ name }}</p>{% endfor %}
+      {% for name in integrity.unsafe_paths %}<p class="muted">Ruta fuera del snapshot: {{ name }}</p>{% endfor %}
+      <ul>{% for file in quality.hashes %}<li><span>{{ file.name }}</span><span class="n">{% if file.count is not none %}{{ file.count|number }}{% endif %}</span><code>{{ file.sha256 }}</code></li>{% endfor %}</ul>
+    </details>
+    {% if integrity.status != "verified" %}
+    <div class="notice" role="alert">{{ report_icon("note") }}<p><strong>El corte no pasó la comprobación de integridad ({{ integrity_status }}).</strong> Revisa las huellas antes de confiar en estas cifras.</p></div>
+    {% endif %}
+    {% endif %}
+  </section>
+</div>

@@ -195,6 +195,9 @@ MODALITY: Final = "editorial_tvn"
 #: §3 editorial package limits.
 BRIEF_MAX_WORDS: Final = 250
 COPY_MAX_WORDS: Final = 80
+#: Spoken script: target duration range in seconds and the pace used to estimate it.
+SCRIPT_SECONDS: Final = (45, 60)
+SPOKEN_WORDS_PER_SECOND: Final = 2.5
 RESEARCH_QUESTIONS: Final = 3
 
 #: Outcome of a query box answer: answered with citations, abstained, or showing both versions.

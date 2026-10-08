@@ -63,3 +63,38 @@ Si una sección `01`-`12` contradice este archivo, **prevalece este archivo**.
 - La fecha de publicación de TVN sale del `lastmod` del sitemap, salvo los artículos antiguos reeditados, que se fechan desde su página.
   La columna `origen_fecha_publicacion` indica el origen (`feed`, `pagina` o `lastmod`).
   Evidencia: `docs/research/tvn-fecha-publicacion.md`.
+
+## D-05 · Notion fuera de la app
+
+- **Qué dice el reto:** el §5 exige Notion como espacio de trabajo, registro y presentación (ver [05-notion.md](05-notion.md)).
+- **Decisión:** la app no se integra con Notion: no hay enlaces "Ver en Notion" ni sincronización.
+- **Alcance:** solo la app.
+  El equipo mantiene el espacio Notion para el jurado, el registro de decisiones y el pitch, como pide el §5.
+
+### Cómo aplicar esta decisión
+
+- La revisión humana se guarda en el backend (`outputs/revisiones.jsonl`), no en Notion.
+- La evidencia que pide Notion (pruebas, decisiones, aprobaciones) se copia a mano desde la app y el repositorio.
+
+## D-06 · Fotos de noticias incluidas en el repositorio
+
+- **Qué dice el reto:** D-03 permite añadir fuentes si se registran los derechos y las condiciones de reutilización de cada una.
+  D-01 exige que la demo funcione sin internet.
+- **Decisión:** la app incluye una copia reducida (WebP de 800 px) de la foto principal (`og:image`) de 54 noticias, en `src/whoami/backend/static/img/news/`.
+  La app sirve solo esa copia, nunca el servidor del medio.
+- **Origen (según los créditos de `data/processed/imagenes.json`):** TVN 34, Ministerio de Comercio e Industrias 7, Ministerio de Economía y Finanzas 6, Autoridad Marítima de Panamá 4, Autoridad del Canal de Panamá 2 y Autoridad de Turismo de Panamá 1.
+  Ninguna foto está marcada como ilustrativa.
+- **Crédito y enlace:** cada foto se muestra con el crédito "Foto: <medio>" enlazado a la noticia original (`credito` y `enlace` en `imagenes.json`).
+- **Condiciones de uso conocidas:** `src/whoami/ingest/news/sources.py` registra las condiciones por fuente, pero solo para titulares, URL, fechas y extractos, no para fotos.
+  TVN no publica condiciones de reutilización.
+  Las entidades públicas no declaran condiciones de reutilización.
+  Los términos del sitio de la ACP restringen la copia de su contenido.
+  Para las demás fuentes no hay ningún permiso escrito de uso de fotos.
+- **Pendiente:** el permiso para reutilizar las fotos no está confirmado con ningún medio ni entidad.
+  Si algún titular lo pide o no se confirma, se retira la copia local y la ficha queda sin foto.
+
+### Cómo aplicar esta decisión
+
+- Las fotos se descargan una vez con `whoami imagenes` y `whoami imagenes-locales` (ver `src/whoami/ingest/images.py`).
+- No se añade ninguna foto sin crédito ni enlace a la noticia original.
+- Antes de publicar fuera de la demo, confirmar los permisos de las fotos de TVN y de la ACP.

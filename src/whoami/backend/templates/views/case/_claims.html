@@ -1,0 +1,15 @@
+{# Claims grouped by type, each with numbered source chips. Needs `case`. #}
+{% for type, title in [("hecho", "Hechos"), ("declaracion", "Declaraciones"), ("inferencia", "Inferencias"), ("hipotesis", "Hipótesis")] %}
+{% set claims = case.afirmaciones|selectattr("tipo", "equalto", type)|list %}
+{% if claims %}
+<section class="claims claims--{{ type }}">
+  <h2 class="h2">{{ title }}</h2>
+  <ul>{% for claim in claims %}
+    <li class="claim"><p>{{ claim.texto }}
+      <span class="cites">{% for citation in claim.citas %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" hx-get="/evidence/{{ citation.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML" title="{{ citation.pasaje }}" aria-label="Ver fuente: {{ citation.pasaje }}">{{ case.ids_fuente.index(citation.id_evidencia) + 1 if citation.id_evidencia in case.ids_fuente else '?' }}</a>{% endfor %}</span></p>
+      {% if claim.atribuida_a %}<p class="claim__by">Según {{ claim.atribuida_a }}</p>{% endif %}
+    </li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endfor %}

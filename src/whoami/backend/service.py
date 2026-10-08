@@ -1,7 +1,8 @@
 """Screen projections over the persistent repository, independent of HTTP."""
 
-import json
 import hashlib
+import json
+import unicodedata
 from pathlib import Path
 
 from whoami.backend.gemini import GenerationUnavailable
@@ -12,9 +13,16 @@ from whoami.schemas import Evidence
 from whoami.pipeline.tvn_coverage import assess_legacy_groups
 
 
+def comparable(question: str) -> str:
+    """A question without case, accents, inverted marks or spacing differences, to match it with a precalculated one."""
+    plain = "".join(c for c in unicodedata.normalize("NFD", question) if not unicodedata.combining(c))
+    return " ".join(plain.replace("¿", " ").replace("?", " ").split()).casefold()
+
+
 class EditorialService:
-    def __init__(self, repository: EditorialRepository):
+    def __init__(self, repository: EditorialRepository, images: dict[str, dict] | None = None):
         self.repository = repository
+        self.images = images or {}
         self._coverage_key = None
         self._coverage_groups = {}
 
@@ -29,10 +37,10 @@ class EditorialService:
             self._coverage_key = key
         return self._coverage_groups
 
-    def inbox(self, *, topic: str | None = None, include_covered: bool = False) -> list[dict]:
-        groups = list(self._assessed_groups().values())
-        if not include_covered:
-            groups = [g for g in groups if g.cobertura_tvn.estado != "cubierto"]
+    def inbox(self, *, topic: str | None = None, include_covered: bool = False, covered_only: bool = False) -> list[dict]:
+        """Ranked topics. By default those TVN already covered stay out; `include_covered` adds them, `covered_only` lists just them."""
+        groups = [g for g in self._assessed_groups().values()
+                  if include_covered or (g.cobertura_tvn.estado == "cubierto") == covered_only]
         if topic:
             groups = [group for group in groups if group.tema == topic]
         return [self._project_group(group) for group in sort_inbox(groups)]
@@ -48,11 +56,14 @@ class EditorialService:
         members = group["miembros"]
         group.update(n_noticias=len(members), n_medios=len({member["medio"] for member in members}),
                      n_procedencias=len({member["procedencia"] for member in members}),
-                     tema_etiqueta=TOPIC_LABELS.get(group["tema"], group["tema"]))
+                     tema_etiqueta=TOPIC_LABELS.get(group["tema"], group["tema"]),
+                     imagen=next((self.images[member["id_noticia"]] for member in members
+                                  if member["id_noticia"] in self.images), None))
         group["estado_revision"] = self.repository.case(group["id_caso"])["estado_revision"] if group.get("id_caso") else "nuevo"
         for context in group["contexto"]:
             fields = self.repository.record("evidence", context["id_evidencia"])["campos"]
-            context.update(periodo=fields["periodo"], unidad=fields["unidad"], valor=fields["valor"] or None)
+            context.update(periodo=fields["periodo"], unidad=fields["unidad"], valor=fields["valor"] or None,
+                           base=fields.get("base"), frecuencia=fields.get("frecuencia"))
         return group
 
     def case(self, case_id: str) -> dict:
@@ -62,9 +73,9 @@ class EditorialService:
                        "cobertura_tvn": group["cobertura_tvn"]}
 
     def query(self, query: str) -> dict:
-        normalized = " ".join(query.split()).casefold()
+        normalized = comparable(query)
         for answer in self.repository.records("answer"):
-            if " ".join(answer["consulta"].split()).casefold() == normalized:
+            if comparable(answer["consulta"]) == normalized:
                 return answer
         raise GenerationUnavailable("sin conexión: solo consultas precalculadas; esta consulta no está disponible")
 

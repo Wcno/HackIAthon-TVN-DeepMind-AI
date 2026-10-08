@@ -54,6 +54,12 @@ D = Decimal
         ("tres medios, cuatro agencias", [D(3), D(4)]),
         ("una reducción de tránsitos", []),
         ("sin cifras", []),
+        ("Millones en juego y tensión", []),
+        ("Miles de familias y cientos de empresas", []),
+        ("Miles de millones en juego", []),
+        ("mil", [D(1000)]),
+        ("94 millones", [D(94_000_000)]),
+        ("mil millones", [D(1_000_000_000)]),
     ],
 )
 def test_normalize_numbers(text, expected):

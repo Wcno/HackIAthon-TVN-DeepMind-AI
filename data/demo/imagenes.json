@@ -1,0 +1,51 @@
+{
+ "N-0f7c1a26d5ed": {
+  "url": "/static/img/demo/casco-viejo-cinta-costera.jpg",
+  "alt": "Casco Viejo y la Cinta Costera",
+  "credito": "Imagen ilustrativa · MusikAnimal · CC BY-SA 4.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Old_building_in_Casco_Viejo,_Panama_with_Cinta_Costera_and_Panama_Bay.JPG",
+  "ilustrativa": true
+ },
+ "N-2491ad97ee36": {
+  "url": "/static/img/demo/sede-idaan.jpg",
+  "alt": "Sede del IDAAN, Instituto de Acueductos y Alcantarillados Nacionales",
+  "credito": "Imagen ilustrativa · Virpana · CC0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Sede_del_Instituto_Nacional_de_Acueductos_y_Alcantarillados_Nacionales_(IDAAN)_de_Panam%C3%A1.jpg",
+  "ilustrativa": true
+ },
+ "N-2cf673d2b74a": {
+  "url": "/static/img/demo/canal-agua-clara.jpg",
+  "alt": "Esclusas de Agua Clara, Canal de Panamá",
+  "credito": "Imagen ilustrativa · Mariordo (Mario Roberto Durán Ortiz) · CC BY-SA 4.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Agua_Clara_Locks_09_2019_0698.jpg",
+  "ilustrativa": true
+ },
+ "N-414e1be5622c": {
+  "url": "/static/img/demo/estudio-concursos.jpg",
+  "alt": "Estudio de un programa de concursos",
+  "credito": "Imagen ilustrativa · NMdUnsl · CC BY-SA 4.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:A_todo_o_nada_Chile_Studio_(20200130_194157).jpg",
+  "ilustrativa": true
+ },
+ "N-5a85a8d35030": {
+  "url": "/static/img/demo/punta-burica.jpg",
+  "alt": "Costa de Punta Burica, Chiriquí",
+  "credito": "Imagen ilustrativa · Ariel Rodriguez-Vargas · CC BY-SA 4.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Punta_Burica,_levantamiento_geol%C3%B3gico_al_nivel_de_la_costa.jpg",
+  "ilustrativa": true
+ },
+ "N-e0d7e73e44fc": {
+  "url": "/static/img/demo/grua-construccion.jpg",
+  "alt": "Grúa en una obra de construcción",
+  "credito": "Imagen ilustrativa · Nicolas Leboeuf · CC BY-SA 3.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Grue_(224277685).jpeg",
+  "ilustrativa": true
+ },
+ "N-ff2911fe7429": {
+  "url": "/static/img/demo/mercado-el-valle.jpg",
+  "alt": "Puesto de frutas y verduras en el mercado de El Valle",
+  "credito": "Imagen ilustrativa · Ayaita · CC BY-SA 3.0",
+  "enlace": "https://commons.wikimedia.org/wiki/File:Mercado_EL_Valle_Panama.JPG",
+  "ilustrativa": true
+ }
+}

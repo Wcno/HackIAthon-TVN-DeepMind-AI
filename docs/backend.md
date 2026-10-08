@@ -11,13 +11,16 @@ uv sync --locked --link-mode copy
 uv run --locked uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-Open http://127.0.0.1:8000/inbox. The app defaults to synthetic news and offline
-precomputed queries. No API key is needed for this workflow. `--link-mode copy`
-avoids incompatible hardlinks in a OneDrive checkout.
+Open http://127.0.0.1:8000/inbox.
+The app defaults to the real processed corpus and generated cases in `outputs`.
+Without a Gemini key it uses offline cached/precomputed answers; an available key enables online generation unless `WHOAMI_OFFLINE=1`.
+Set `WHOAMI_DEMO=1 WHOAMI_OFFLINE=1` for the independent synthetic workflow.
+`--link-mode copy` avoids incompatible hardlinks in a OneDrive checkout.
 
-Environment variables are optional. To use `.env.example`, copy it to `.env`
-and start with `uv run --env-file .env uvicorn ...`; the app does not load files
-implicitly. Never commit `.env`.
+Environment variables are optional.
+The app reads the existing `.env` without overriding explicit environment variables.
+Never commit `.env`.
+See [the connected G6 editor](g6-editor.md) for editable drafts, assistant endpoints, local retrieval, quota reservations and human-draft export semantics.
 
 ## G6 screen contract
 

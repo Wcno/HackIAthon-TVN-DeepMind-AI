@@ -7,23 +7,20 @@ from whoami.backend.service import quality_report
 from whoami.contracts import PROCESSED
 
 
-def test_quality_screen_reports_all_missing_days_without_counting_a_string():
-    from jinja2 import Environment, FileSystemLoader
-    from whoami.backend.app import panama_time
-    from pathlib import Path
-    env = Environment(loader=FileSystemLoader(Path(__file__).parents[1] / "src/whoami/backend/templates"))
-    env.filters["panama_time"] = panama_time
-    reports = {name: {"available": False} for name in ["calidad_indicadores.json", "calidad_inec.json", "calidad_eventos.json", "manifest"]}
-    reports["calidad_noticias.json"] = {"registros_leidos": 0, "incluidas": 0, "ventana": None,
-        "excluidas_por_motivo": {}, "cobertura_por_fuente": {
-            "missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"},
-            "partial": {"incluidas": 3, "dias_con_noticias": 28, "dias_sin_noticias": ["2026-10-01", "2026-10-02"]},
-            "complete": {"incluidas": 30, "dias_con_noticias": 30, "dias_sin_noticias": []}}}
-    html = env.get_template("quality.html").render(reports=reports)
-    assert "5 días sin noticias" not in html
-    assert "todos los días de la ventana sin noticias" in html
-    assert "partial: 3 incluidas · 28 días con noticias · 2 días sin noticias" in html
-    assert "complete: 30 incluidas · 30 días con noticias · 0 días sin noticias" in html
+def test_a_source_without_news_reports_every_day_of_the_window_without_news(tmp_path):
+    from whoami.backend.reports import quality_view
+    processed = tmp_path / "processed"
+    processed.mkdir()
+    news = {"ventana": {"desde": "2026-10-01T03:00:00Z", "hasta": "2026-10-04T03:00:00Z"}, "registros_leidos": 5,
+            "noticias_unicas": 5, "incluidas": 0, "excluidas_por_motivo": {"fuera_de_ventana": 5}, "incluidas_por_origen_fecha": {},
+            "cobertura_por_fuente": {"missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"}}}
+    (processed / "calidad_noticias.json").write_text(json.dumps(news), encoding="utf-8")
+    sources = [{"id_fuente": "missing", "medio": "Sin datos", "dominio": "example.test", "tipo": "medio",
+                "canales": [{"canal": "rss", "url": "https://example.test/rss"}], "licencia": "n/a", "condiciones_reutilizacion": "n/a"}]
+    (processed / "fuentes.json").write_text(json.dumps({"fuentes": sources}), encoding="utf-8")
+    source = quality_view(processed)["news"]["coverage"]["groups"][0]["sources"][0]
+    assert source["range"] == "Todos los días de la ventana sin noticias"
+    assert "5 días" not in source["range"]
 
 
 def test_snapshot_integrity_distinguishes_verified_missing_and_changed(tmp_path):

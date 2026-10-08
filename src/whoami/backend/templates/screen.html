@@ -1,10 +1,64 @@
+{% macro icon(name, cls="icon") -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+{%- if name == "search" %}<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>
+{%- elif name == "chevron" %}<path d="m6 9 6 6 6-6"/>
+{%- elif name == "alert" %}<path d="M12 4 3 20h18L12 4Z"/><path d="M12 10v4M12 17.5v.01"/>
+{%- elif name == "back" %}<path d="M19 12H5M11 6l-6 6 6 6"/>
+{%- elif name == "arrow" %}<path d="M5 12h14M13 6l6 6-6 6"/>
+{%- elif name == "spark" %}<path d="M12 4.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5Z"/>{% endif -%}
+</svg>
+{%- endmacro %}
+{# A topic's photo. Larger renditions carry the credit; list thumbnails are decorative beside their title.
+   The lead card keeps its credit out of the tab order so Tab reaches the topic link first; the same attribution is a normal tab stop in the opened topic's header. #}
+{% macro photo(group, cls, credit=true, credit_link_in_tab_order=true) -%}
+{% if group.imagen %}{% set image = group.imagen %}
+<figure class="photo {{ cls }}"><img src="{{ (image.local or image.url)|image_src }}" alt="{{ (image.alt or 'Foto: ' ~ group.titulo) if credit else '' }}" loading="lazy" referrerpolicy="no-referrer">
+  {%- if credit %}<figcaption class="photo__credit"><a href="{{ image.enlace|safe_url }}" target="_blank" rel="noopener"{% if not credit_link_in_tab_order %} tabindex="-1"{% endif %}>{{ image.credito }}</a></figcaption>{% endif %}</figure>
+{%- endif %}
+{%- endmacro %}
+{% macro open_href(group) -%}
+{{ ("/cases/" ~ group.id_caso|urlencode) if group.id_caso else ("/groups/" ~ group.id_grupo|urlencode) }}{{ filter_query }}
+{%- endmacro %}
+{% set nav = [("/inbox", "Temas", "inbox"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
+{% if target == "case" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/pane.html' %}
+{% elif target == "desk" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/desk.html' %}
+{% elif target == "more-rows" %}{% include 'views/rows.html' %}
+{% else %}
 {% if not fragment %}
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} · TVN DataMind AI</title></head><body>
-<header><a href="/inbox">TVN DataMind AI</a><nav><a href="/quality">Calidad de datos</a> · <a href="/inbox">Agenda</a> · <a href="/queries">Consultas</a></nav></header>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ document_title or title }} · TVN DeepMind AI</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/shell.js" defer></script>
+  <script src="/static/editor.js" defer></script>
+</head>
+<body hx-boost="false"{% if workspace %} class="body--desk"{% endif %}>
+  <a class="skip-link" href="#screen">Saltar al contenido</a>
+  <header class="strap">
+    <a class="brand" href="/inbox">
+      <span class="brand__bug" aria-hidden="true"></span>
+      <span class="brand__name">TVN DeepMind AI</span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </nav>
+    {% include 'views/search.html' %}
+    {% if offline %}<p class="offline-flag" role="status" title="Esta instancia trabaja con datos y respuestas precalculados">Sin conexión</p>{% endif %}
+    {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
+  </header>
+  {% if demo %}<p class="synthetic" role="status">Demostración con datos sintéticos: las noticias son inventadas; las cifras oficiales son reales.</p>{% endif %}
 {% endif %}
-<main id="screen">
-{% if demo %}<p role="status">Demostración: las noticias son sintéticas; no describen hechos reales.</p>{% endif %}
-<h1>{{ title }}</h1>
-{% include 'views/' ~ screen ~ '.html' %}
+<main id="screen" tabindex="-1" class="{{ 'workspace' if workspace else 'screen' }}">
+  <h1 class="screen__title{% if workspace or screen == 'evidence' %} sr-only{% endif %}">{{ title }}</h1>
+  {% include 'views/' ~ ('workspace' if workspace else screen) ~ '.html' %}
 </main>
-{% if not fragment %}</body></html>{% endif %}
+{% if fragment and workspace %}{% set oob = true %}{% include 'views/search.html' %}{% endif %}
+{% if not fragment %}
+</body>
+</html>
+{% endif %}
+{% endif %}

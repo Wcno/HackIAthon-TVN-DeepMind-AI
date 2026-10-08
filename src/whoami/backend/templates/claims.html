@@ -1,6 +1,0 @@
-{% for claim in case.afirmaciones %}
-<article><h2>{{ claim.tipo }}</h2><p>{{ claim.texto }}</p>
-{% if claim.atribuida_a %}<p>Atribuida a: {{ claim.atribuida_a }}</p>{% endif %}
-{% for citation in claim.citas %}<blockquote>{{ citation.pasaje }} <a href="/evidence/{{ citation.id_evidencia|urlencode }}">Ver evidencia</a></blockquote>{% endfor %}
-</article>
-{% endfor %}

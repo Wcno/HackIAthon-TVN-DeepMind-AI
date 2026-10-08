@@ -5,8 +5,9 @@ texts alone, so nothing the verifier dropped can leak into the draft.
 Only verified claims reach the case file, and a case with none is not generated.
 """
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from itertools import islice
 from typing import Protocol
 
 from pydantic import ValidationError
@@ -227,8 +228,38 @@ class TwoStepGenerator:
 
 
 # ---------------------------------------------------------------------------------------------------------
-# The whole output
+# One group and the whole output
 # ---------------------------------------------------------------------------------------------------------
+
+
+def generate_case_file(generator: CaseGenerator, group: Group, evidences: Mapping[str, Evidence]) -> CaseFile:
+    """The case file of one group, through the same generator and verification as the batch.
+
+    Raises `NoGroundedClaims` when no claim of the group survives verification."""
+    id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
+    case_file, _, _ = generator.generate(group, evidences, id_caso)
+    return case_file
+
+
+def _case_files(generator: CaseGenerator, groups: Iterable[Group], evidences: Mapping[str, Evidence]) -> Iterator[CaseFile]:
+    """Lazily, so a caller that needs only the first few case files stops calling the model."""
+    for group in groups:
+        try:
+            yield generate_case_file(generator, group, evidences)
+        except NoGroundedClaims:
+            continue
+
+
+def select_case_groups(groups: Iterable[Group], top_n: int, skip_insufficient: bool) -> tuple[list[Group], list[Group]]:
+    """The inbox groups that take a case-file slot, and the fallback candidates in rank order.
+
+    Topics TVN already covered take no slot. With `skip_insufficient`, `insuficiente` groups take none either, and
+    the fallback is the insufficient groups regardless of coverage: abstention is the point of that case file."""
+    inbox = sort_inbox(groups)
+    novel = [g for g in inbox if g.cobertura_tvn.estado != "cubierto"]
+    if not skip_insufficient:
+        return novel[:top_n], []
+    return [g for g in novel if g.estado_evidencia != "insuficiente"][:top_n], [g for g in inbox if g.estado_evidencia == "insuficiente"]
 
 
 def build_outputs(
@@ -243,24 +274,18 @@ def build_outputs(
     top_n: int = 5,
     skip_insufficient: bool = False,
 ) -> OutputSet:
-    """Case files for the `top_n` groups of the inbox (not counting `insuficiente` ones when `skip_insufficient`)
-    and answers for the queries, validated with `verify`.
+    """Case files for the `top_n` groups of the inbox and answers for the queries, validated with `verify`.
+
+    Topics TVN covered are skipped. With `skip_insufficient`, `insuficiente` groups take no slot of the top, but the best
+    one that yields a case file is added, covered or not: the output keeps a case without enough evidence (challenge requirement).
 
     Groups, evidence and the review history come from `output_set_in`; groups without a case file end with
     `id_caso=None` and reviews of cases that were not generated are left out.
     """
     evidences = output_set_in.evidencias
-    case_files: list[CaseFile] = []
     assessed = assess_legacy_groups(output_set_in.grupos, evidences)
-    inbox = [g for g in sort_inbox(assessed) if g.cobertura_tvn.estado != "cubierto"
-             and not (skip_insufficient and g.estado_evidencia == "insuficiente")]
-    for group in inbox[:top_n]:
-        id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
-        try:
-            case_file, _, _ = generator.generate(group, evidences, id_caso)
-        except NoGroundedClaims:
-            continue
-        case_files.append(case_file)
+    top, fallback = select_case_groups(assessed, top_n, skip_insufficient)
+    case_files = [*_case_files(generator, top, evidences), *islice(_case_files(generator, fallback, evidences), 1)]
 
     case_ids = {case_file.id_grupo: case_file.id_caso for case_file in case_files}
     regenerated = {case.id_caso: case for case in case_files}

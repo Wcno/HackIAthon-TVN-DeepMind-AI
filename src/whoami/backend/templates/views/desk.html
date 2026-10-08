@@ -1,0 +1,8 @@
+{# Master/detail body: ranked list on the left, open case workspace on the right. #}
+<div class="desk" id="desk">
+  {% include 'views/inbox.html' %}
+  <section class="case is-entering" id="case" aria-label="Tema abierto"
+           hx-on::response-error="if (event.detail.target.id === 'source-body') { event.detail.target.textContent = 'Fuente no disponible'; event.detail.target.setAttribute('role', 'alert'); document.getElementById('source-panel').classList.add('is-open') }">
+    {% include 'views/pane.html' %}
+  </section>
+</div>

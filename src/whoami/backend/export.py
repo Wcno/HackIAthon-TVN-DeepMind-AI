@@ -12,7 +12,7 @@ from whoami.store import REVIEW_ARCHIVE_FILE, REVIEW_BINDINGS_FILE, case_file_to
 
 
 def export_backend(repository: EditorialRepository, directory: Path) -> dict[str, int]:
-    bundle = repository.snapshot_bundle()
+    bundle, editorial_drafts = repository.snapshot_export()
     output = OutputSet.model_validate({
         "grupos": bundle.groups,
         "evidencias": {item["id_evidencia"]: item for item in bundle.evidence},
@@ -32,6 +32,9 @@ def export_backend(repository: EditorialRepository, directory: Path) -> dict[str
         REVIEW_BINDINGS_FILE: [snapshot.model_dump(mode="json") for snapshot in output.revisiones_vinculadas],
         QUERIES_FILE: [answer.model_dump(mode="json") for answer in output.consultas],
     }
+    companion = "borradores_editoriales.jsonl"
+    if editorial_drafts:
+        records[companion] = list(editorial_drafts)
     if bundle.review_archives or (directory / REVIEW_ARCHIVE_FILE).exists():
         records[REVIEW_ARCHIVE_FILE] = list(bundle.review_archives)
     # Stop the server before exporting into a shared delivery directory. Each
@@ -42,4 +45,6 @@ def export_backend(repository: EditorialRepository, directory: Path) -> dict[str
             write_jsonl(staging / name, rows)
         for name in records:
             os.replace(staging / name, directory / name)
+        if not editorial_drafts:
+            (directory / companion).unlink(missing_ok=True)
     return {name: len(rows) for name, rows in records.items()}

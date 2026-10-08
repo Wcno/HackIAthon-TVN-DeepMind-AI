@@ -20,6 +20,7 @@ from whoami.generation.entailment import EntailmentChecker
 from whoami.generation.evidence_index import Embedder, LocalEmbedder, default_retrievers
 from whoami.generation.prompting import CosineGate
 from whoami.generation.verifier import VerificationReport
+from whoami.ingest import manifest
 from whoami.llm import default_llm
 from whoami.schemas import CaseFile, Evidence, Group, OutputSet
 from whoami.store import REVIEW_ARCHIVE_FILE, REVIEW_BINDINGS_FILE, case_file_from_record, read_jsonl, write
@@ -171,5 +172,6 @@ def generar(config: RunConfig, llm, embedder: Embedder, data: Path, outputs: Pat
 
 def main(args: argparse.Namespace) -> int:
     summary = generar(config_from(args), default_llm(), LocalEmbedder(), PROCESSED, OUTPUTS)
+    manifest.refresh([PROCESSED / GROUPS_FILE, PROCESSED / EVIDENCE_FILE])
     print(summary.render())
     return 0

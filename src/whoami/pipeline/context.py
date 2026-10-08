@@ -201,7 +201,7 @@ DEFAULT_RULES: tuple[ContextRule, ...] = (
 )
 
 
-def _label(evidence: Evidence) -> str:
+def context_label(evidence: Evidence) -> str:
     match evidence.tipo:
         case "indicador":
             return evidence.campos["indicador"]
@@ -247,7 +247,7 @@ def link_context(
             evidence.id_evidencia,
             ContextLink(
                 id_evidencia=evidence.id_evidencia,
-                etiqueta=_label(evidence),
+                etiqueta=context_label(evidence),
                 pais=COUNTRY,
                 limitaciones=_limitations(evidence),
                 razon=f"{rule.razon} Coincide con «{keyword}».",

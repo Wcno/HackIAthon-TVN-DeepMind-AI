@@ -155,7 +155,8 @@ def _number_spans(text: str) -> list[tuple[int, int, list[Decimal]]]:
             index += 1  # "por ciento" is a percent sign, not a hundred
         elif _is_number_word(token.text):
             words, index = _word_run(tokens, index, adjacent)
-            if words not in (["un"], ["uno"], ["una"]):
+            is_bare_scale = all(word in _MILLION for word in words)  # "millones en juego" names no figure
+            if words not in (["un"], ["uno"], ["una"]) and not is_bare_scale:
                 numbers.append((start, tokens[index - 1].end, [_evaluate_words(words) * spoken_sign]))
         else:
             index += 1
