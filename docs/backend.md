@@ -84,12 +84,33 @@ uv run --locked whoami export-backend --output outputs
 ```
 
 `--database PATH` selects another SQLite database. This command writes
-`fichas.jsonl`, `revisiones.jsonl` and the persisted `consultas.jsonl`; the output
+`fichas.jsonl`, `revisiones.jsonl`, `revisiones_vinculadas.jsonl` and the persisted `consultas.jsonl`; the output
 round-trips through G2's loader using the matching group/evidence inputs. Every
 record and cross-record rule is validated before writing. Human decisions from
 earlier content versions remain in SQLite history and are omitted from the active
-delivery cycle. Files are replaced individually, so concurrent readers/writers
+delivery cycle. Their full reviewed snapshots are exported separately in
+`revisiones_historicas.jsonl`, so a fresh database can display historical decisions
+without applying them to new content. Before replacing inputs, SQLite captures
+the previous case, group, related evidence and current human cycle atomically.
+Files are replaced individually, so concurrent readers/writers
 must be stopped during export. Export does not rewrite group/evidence inputs.
+
+File-based review bindings use SHA-256 over the complete case, group and related
+sources, including TVN coverage references. Loading changed inputs retires a
+bound cycle to the archive; regeneration preserves decisions only when the saved
+snapshot is identical. Legacy JSONL remains readable, but unbound legacy decisions
+cannot authorize regenerated content. No machine-generated invalidation is
+presented as a human decision.
+
+The main inbox excludes TVN-only and exact external replicas of covered stories.
+`cobertura_tvn` records coverage, cited potential updates, absence of a semantic
+match in the loaded snapshot, or unverified novelty. Unverified and covered groups
+receive `N=0`; potential numeric updates cap `N` at 0.75 and require editorial
+verification. External copies do not gain novelty by repetition. The assessment
+is bound to the news snapshot; source changes invalidate it. Legacy data without
+vectors uses conservative literal/title matching and reports uncertainty rather
+than claiming exhaustive coverage of TVN. Direct group/case URLs remain available
+for reviewing existing material.
 
 `backend/pipeline.py` adapts
 the final Pydantic contract merged by G2's developer in PR #32. Cases reference

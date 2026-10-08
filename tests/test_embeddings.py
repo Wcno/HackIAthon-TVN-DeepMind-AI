@@ -84,6 +84,29 @@ def test_model_setup_has_an_explicit_offline_mode(tmp_path):
         fetch_model(tmp_path / "empty", download=lambda *a, **k: pytest.fail("network"), offline=True)
 
 
+def test_incomplete_model_download_can_resume_without_replacing_completed_files(tmp_path):
+    target = tmp_path / "model"
+    fixture = tmp_path / "download"
+    fixture.write_bytes(b"complete model bytes")
+    calls = []
+    def download(repo, filename, **options):
+        calls.append(filename)
+        if len(calls) == 2:
+            raise TimeoutError("interrupted")
+        return str(fixture)
+    with pytest.raises(TimeoutError):
+        fetch_model(target, download=download)
+    assert (target / "onnx/model.onnx").read_bytes() == fixture.read_bytes()
+    assert not (target / "onnx/model_q4.onnx_data").exists()
+    with pytest.raises(FileNotFoundError, match="incomplete"):
+        fetch_model(target, download=download, offline=True)
+    fetch_model(target, download=download)
+    assert calls.count("onnx/model_q4.onnx") == 1
+    assert calls.count("onnx/model_q4.onnx_data") == 2
+    assert not list(target.rglob("*.part"))
+    fetch_model(target, download=lambda *a, **k: pytest.fail("network"), offline=True)
+
+
 def test_cli_downloads_the_pinned_model_before_offline_use(tmp_path, monkeypatch):
     from whoami.cli import main
     import huggingface_hub

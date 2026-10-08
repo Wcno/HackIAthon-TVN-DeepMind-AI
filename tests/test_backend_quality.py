@@ -15,10 +15,15 @@ def test_quality_screen_reports_all_missing_days_without_counting_a_string():
     env.filters["panama_time"] = panama_time
     reports = {name: {"available": False} for name in ["calidad_indicadores.json", "calidad_inec.json", "calidad_eventos.json", "manifest"]}
     reports["calidad_noticias.json"] = {"registros_leidos": 0, "incluidas": 0, "ventana": None,
-        "excluidas_por_motivo": {}, "cobertura_por_fuente": {"missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"}}}
+        "excluidas_por_motivo": {}, "cobertura_por_fuente": {
+            "missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"},
+            "partial": {"incluidas": 3, "dias_con_noticias": 28, "dias_sin_noticias": ["2026-10-01", "2026-10-02"]},
+            "complete": {"incluidas": 30, "dias_con_noticias": 30, "dias_sin_noticias": []}}}
     html = env.get_template("quality.html").render(reports=reports)
     assert "5 días sin noticias" not in html
     assert "todos los días de la ventana sin noticias" in html
+    assert "partial: 3 incluidas · 28 días con noticias · 2 días sin noticias" in html
+    assert "complete: 30 incluidas · 30 días con noticias · 0 días sin noticias" in html
 
 
 def test_snapshot_integrity_distinguishes_verified_missing_and_changed(tmp_path):

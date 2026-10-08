@@ -23,13 +23,20 @@ def version_citations_valid(version: ContradictionVersion, evidence: Mapping[str
     return value_numbers | set(normalize_numbers(version.alcance)) <= cited_numbers
 
 
-def support_version(version: ContradictionVersion, evidence: Mapping[str, Evidence]) -> ContradictionVersion | None:
+def support_version(version: ContradictionVersion, evidence: Mapping[str, Evidence], *, require_scope: bool = False) -> ContradictionVersion | None:
     source = evidence.get(version.id_evidencia)
     if source is None:
         return None
     value_numbers = set(normalize_numbers(version.valor))
     required = value_numbers | set(normalize_numbers(version.alcance))
     selected = []
+    if require_scope:
+        scope_fields = [(field, text) for field, text in source.campos.items() if _contains_value(version.alcance, text)]
+        if not scope_fields:
+            return None
+        field, text = min(scope_fields, key=lambda item: (len(item[1]), item[0]))
+        selected.append(Citation(id_evidencia=source.id_evidencia, campo=field, pasaje=text))
+        required -= set(normalize_numbers(text))
     if not value_numbers:
         literal_fields = [(field, text) for field, text in source.campos.items() if _contains_value(version.valor, text)]
         if not literal_fields:
@@ -49,7 +56,7 @@ def support_version(version: ContradictionVersion, evidence: Mapping[str, Eviden
                 break
         if remaining:
             return None
-    return version.model_copy(update={"citas": tuple(selected)})
+    return version.model_copy(update={"citas": tuple(dict.fromkeys(selected))})
 
 
 def enrich_version_citations(answer: Answer, evidence: Mapping[str, Evidence]) -> Answer:

@@ -50,6 +50,8 @@ def test_identical_vectors_more_than_72_hours_apart_stay_apart():
 
     assert group_agglomerative(vectors, [at(100), at(10)]) == [[0], [1]]
     assert group_agglomerative(vectors, [at(75), at(4)]) == [[0, 1]]
+    assert group_agglomerative(vectors, [at(72), at(0)]) == [[0, 1]]
+    assert group_agglomerative(vectors, [at(72 + 1/3600), at(0)]) == [[0], [1]]
 
 
 def test_average_linkage_does_not_chain_a_story_that_drifts():

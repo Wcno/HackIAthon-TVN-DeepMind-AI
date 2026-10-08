@@ -34,13 +34,16 @@ datos reales. Las pruebas T07 y T10 en vivo siguen pendientes de ensayo manual.
 
 ## Métricas (§9.1)
 
-Las cifras de esta tabla vienen del análisis G7 en `feat/g7-evaluation`, que todavía no
-está integrado en `prod`. Son provisionales: las etiquetas humanas no se han revisado.
+G7 está integrado en `prod` mediante [PR #37](https://github.com/Wcno/hackiaton-whoamisfc/pull/37),
+commit `957c3642e7143f1ab6a2c134e5e2e1ed93b9f8b7`. Las cifras siguientes corresponden
+a la captura `outputs/evaluation/g7-structured-live` y su replay `g7-final`, anteriores
+a las correcciones de #40. Las etiquetas de temas, pares y benchmark siguen siendo
+propuestas de IA; las diez revisiones humanas de afirmaciones sí están registradas.
 
 | Métrica | Meta | Resultado (G7, provisional) | n |
 | --- | --- | --- | --- |
-| Cobertura de citas | 100 % de afirmaciones factuales con evidencia identificable | 41/41 afirmaciones estructuradas; 21/21 respuestas | 41 + 21 |
-| Validez de sustento | ≥ 90 % según revisión humana de ≥ 30 afirmaciones | **No medida: 0 afirmaciones revisadas por humanos** | 0 de 30 |
+| Cobertura de citas | 100 % de afirmaciones factuales con evidencia identificable | 41/41 afirmaciones de fichas; 33/33 afirmaciones/versiones de consultas (23 + 10); 21/21 respuestas con referencias | 41 + 33; referencias no equivalen a sustento semántico |
+| Validez de sustento | Referencia original: ≥ 90 % sobre ≥ 30 afirmaciones | **8 sustentadas y 2 dudosas: 80 %**, en la muestra de diez acordada con el dueño del proyecto | 10 revisadas; requisito original de 30 documentado por separado |
 | Abstención correcta | ≥ 80 % de consultas sin respuesta | 7/7 | 7 |
 | Abstención incorrecta | Registrar en preguntas respondibles | 1/27 respondibles rechazada (0/20 entre las sustentadas) | 27 |
 | Corrección de consultas | Sin meta declarada | 37/40 (92,5 %); 6/6 en seguridad adversarial | 40 |
@@ -54,8 +57,10 @@ Lectura honesta: BM25 ya recupera casi toda la evidencia esperada y es mucho má
 Los embeddings ganan en clasificación y en agrupación, pero también generan más falsas
 agrupaciones. Los resultados no justifican usar IA en cada tarea.
 
-**Cifra de corpus:** las métricas G7 usan 2.941 noticias; el manifest actual tiene 3.176
-incluidas. No deben citarse juntas hasta conciliarlas (ver `03-catalogo-de-datos.md`).
+**Cifra de corpus:** las métricas G7 usan el snapshot congelado de 2.941 noticias;
+el manifest más reciente de G1 tiene 3.176 incluidas. Son capturas distintas y se
+citan con su procedencia; nunca se mezclan las posiciones del CSV nuevo con los
+vectores de la captura anterior (ver `03-catalogo-de-datos.md`).
 
 ## Baselines (§8)
 
@@ -66,8 +71,11 @@ Dónde la IA no ayuda: BM25 gana en cifras exactas y siglas, y en velocidad.
 
 ## Pendientes antes de citar cifras ante el jurado
 
-- Revisión humana de al menos 30 afirmaciones (sustento ≥ 90 %).
+- La revisión manual acordada de diez afirmaciones está terminada: ocho sustentadas
+  y dos dudosas. Sus veredictos se conservan en `outputs/evaluation/human-reviews/claims.jsonl`.
+  El 80 % no cumple la referencia original de ≥ 90 % sobre ≥ 30; no se solicitaron
+  veinte revisiones adicionales ni se considera G7 completamente cumplido.
 - Revisión de las etiquetas de tema y de pares.
-- P@5 con el criterio de una persona editora, no de un agente.
-- Integrar `feat/g7-evaluation` en `prod`, o citar solo lo que esté en `prod`.
-- Conciliar 3.176 noticias incluidas con 2.941 de la evidencia.
+- Revisión humana de las expectativas del benchmark y evaluación reservada en #25.
+- P@5 editorial es exploratorio y está fuera del alcance acordado de #25 y #40.
+- Citar por separado las capturas históricas y los resultados posteriores a #40.

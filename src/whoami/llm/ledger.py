@@ -39,9 +39,10 @@ def _percentile(values: list[float], percent: int) -> float:
 
 
 class Ledger:
-    def __init__(self, path: Path, clock: Callable[[], datetime]) -> None:
+    def __init__(self, path: Path, clock: Callable[[], datetime], *, provider_id: str | None = None) -> None:
         self._path = path
         self._clock = clock
+        self._provider_id = provider_id
 
     def record(
         self,
@@ -68,6 +69,8 @@ class Ledger:
             "total_tokens": total_tokens,
             "n_texts": n_texts,
         }
+        if self._provider_id is not None:
+            entry["provider_id"] = self._provider_id
         self._path.parent.mkdir(parents=True, exist_ok=True)
         with self._path.open("a", encoding="utf-8") as file:
             file.write(json.dumps(entry, ensure_ascii=False) + "\n")

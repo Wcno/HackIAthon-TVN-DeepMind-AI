@@ -74,7 +74,7 @@ expectations remain provisional until a human reviews them.
 | --- | --- |
 | Retrieval | BM25, embeddings and RRF fusion on identical sources and questions; macro/micro recall@8 and failed IDs. |
 | Classification | Keywords versus embedding logistic regression; 5 stratified folds, seed 7, without training on the evaluated fold. Seven-class macro-F1, per-class scores and correct/total. |
-| Grouping | Near-identical titles/time window versus production average linkage/72-hour embeddings, without new live LLM overrides. Precision, recall and F1 on all 345 pairs. Label 2 is positive; 0 and 1 are negative, never discarded. |
+| Grouping | Near-identical titles/time window versus average-linkage embedding candidates partitioned by hard 72-hour/cannot-link membership constraints, without new live LLM overrides. Precision, recall and F1 on all 345 pairs. Label 2 is positive; 0 and 1 are negative, never discarded. |
 | Answers | Expected state, factual anchors and adversarial checks; correct/total including missing outputs. Bare numeric anchors match written coefficients: 32 matches 32 million, while 4 does not match 5.4. |
 | Abstention | Correct refusals on unanswerable cases; false refusals on every case whose accepted states exclude abstention, including contradictions. Supported-only false refusals are reported separately. |
 | Citations | Literal-reference coverage per structured case-file claim, answer-level references and contradiction-version references. These are distinct from semantic support. |
@@ -145,3 +145,26 @@ does not receive citation credit. This adaptation makes no model calls and can
 enrich captured answers while preserving the original generation timings and
 provider token usage. Literal reference coverage remains distinct from human
 semantic support, which still requires review.
+
+## Corrections after the G7 capture (#40)
+
+Historical captures remain unchanged. A replay scores their recorded generation;
+it does not prove that the current generator produced their draft or reproduce
+the current TVN discovery ranking. Save post-correction runs in a separate output
+directory and state whether answers were replayed or generated anew.
+
+New editorial generation returns only accepted claim IDs, an editorial focus and
+investigation-question codes. Code renders all factual fields with the claims'
+types and attribution, stores `borrador.respaldo`, and checks the composition at
+the shared loading boundary. `metodo_generacion=seleccion-afirmaciones-v1` requires
+those references; removing them cannot turn a new draft into a legacy package.
+Over-limit compositions are retried and then become an explicit draft gap while
+valid claims remain. Historical packages stay readable without being retroactively
+declared grounded. This constraint does not measure headline appeal or substitute
+for human semantic review of the accepted claims.
+
+New query contradictions require a literal source passage for each proposed scope,
+as well as support for each value. Historical enrichment remains a reference
+adapter and does not add this new generation-time scope guarantee to old answers.
+TVN discovery filtering is assessed against the loaded news snapshot and clearly
+reports missing coverage; it is not a search of all TVN publications on the web.

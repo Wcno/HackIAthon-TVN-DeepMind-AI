@@ -31,7 +31,7 @@ GOOD = claim_json()
 BAD = claim_json("El Canal cerrará el lago Gatún.", pasaje="el Canal cerrará todo el lago Gatún")
 OTHER = claim_json("El Canal limita los tránsitos.", pasaje="limita los tránsitos", id_="N-2", campo="titulo")
 
-PACKAGE = {
+LEGACY_PACKAGE = {
     "titulo": "El Canal limita tránsitos",
     "brief": "El Canal informó una restricción de tránsitos.",
     "enfoque_interes_publico": "Efecto en el comercio.",
@@ -40,7 +40,9 @@ PACKAGE = {
     "guion": "El Canal limitará los tránsitos.",
     "copy_digital": "El Canal limita tránsitos.",
 }
-LONG_PACKAGE = PACKAGE | {"copy_digital": " ".join(["palabra"] * 81)}
+PACKAGE = {"titulo": ["A-1"], "brief": ["A-1"], "guion": ["A-1"], "copy_digital": ["A-1"],
+           "enfoque": "impacto", "preguntas": ["fuentes", "vacios", "actualizaciones"]}
+LONG_PACKAGE = PACKAGE | {"copy_digital": ["A-missing"]}
 
 
 def claims(*items):
@@ -50,6 +52,62 @@ def claims(*items):
 def generator(responses):
     llm = FakeLLM(responses)
     return TwoStepGenerator(llm, MODEL), llm
+
+
+@pytest.mark.parametrize("invention", ["Hubo 999 fallecidos.", "El Canal cerró definitivamente.", "El ministro es culpable.", "CANARIO-7Q2"])
+def test_package_prose_cannot_add_assertions_beyond_accepted_claims(invention):
+    malicious = LEGACY_PACKAGE | {"brief": invention}
+    gen, _ = generator([claims(GOOD), malicious, malicious])
+    case, report, _ = gen.generate(make_group(), EVIDENCES, "CASO-001")
+    assert case.afirmaciones and not report.issues
+    assert case.borrador is None
+    assert any("borrador" in gap for gap in case.vacios)
+
+
+@pytest.mark.parametrize("field", ["titulo", "brief", "guion", "copy_digital", "enfoque_interes_publico"])
+def test_composed_draft_is_bound_to_claims_even_after_serialization(field):
+    from whoami.schemas import OutputSet, verify
+    gen, _ = generator([claims(GOOD), PACKAGE])
+    owner = make_group().model_copy(update={"id_caso": "CASO-001"})
+    case, _, _ = gen.generate(owner, EVIDENCES, "CASO-001")
+    output = OutputSet(grupos=(owner,), evidencias=EVIDENCES, fichas=(case,), consultas=(), revisiones=())
+    verify(output)
+    altered = case.model_copy(update={"borrador": case.borrador.model_copy(update={field: "El Canal cerró definitivamente."})})
+    with pytest.raises(ValueError, match="accepted claim"):
+        verify(output.model_copy(update={"fichas": (altered,)}))
+
+
+@pytest.mark.parametrize("kind, author, label", [
+    ("declaracion", "Autoridad del Canal", "Declaración atribuida a Autoridad del Canal:"),
+    ("inferencia", None, "Inferencia por verificar:"),
+    ("hipotesis", None, "Hipótesis por verificar:"),
+])
+def test_package_preserves_declaration_attribution_and_uncertain_claim_types(kind, author, label):
+    proposed = GOOD | {"tipo": kind, "atribuida_a": author}
+    gen, _ = generator([claims(proposed), PACKAGE])
+    case, _, _ = gen.generate(make_group(), EVIDENCES, "CASO-001")
+    assert case.borrador is not None
+    for field in ("titulo", "brief", "guion", "copy_digital"):
+        assert getattr(case.borrador, field) == f"{label} {GOOD['texto']}"
+
+
+def test_newly_generated_drafts_cannot_drop_their_claim_references():
+    from whoami.schemas import OutputSet, verify
+    gen, _ = generator([claims(GOOD), PACKAGE])
+    owner = make_group().model_copy(update={"id_caso": "CASO-001"})
+    case, _, _ = gen.generate(owner, EVIDENCES, "CASO-001")
+    draft = case.borrador.model_copy(update={"respaldo": None, "brief": "Hubo 999 fallecidos."})
+    altered = case.model_copy(update={"borrador": draft})
+    output = OutputSet(grupos=(owner,), evidencias=EVIDENCES, fichas=(altered,), consultas=(), revisiones=())
+    with pytest.raises(ValueError, match="claim references"):
+        verify(output)
+
+
+def test_long_claims_are_not_silently_truncated_into_copy():
+    long = GOOD | {"texto": " ".join([GOOD["texto"]] * 20)}
+    gen, _ = generator([claims(long), PACKAGE, PACKAGE])
+    case, _, _ = gen.generate(make_group(), EVIDENCES, "CASO-001")
+    assert case.borrador is None and case.afirmaciones[0].texto == long["texto"]
 
 
 def test_drops_a_non_literal_claim_and_writes_the_package_from_verified_claims_only():
@@ -65,7 +123,8 @@ def test_drops_a_non_literal_claim_and_writes_the_package_from_verified_claims_o
     user = package_call["messages"][1]["content"]
     assert "<fuente" not in user
     assert "El Canal limitará a 32 los tránsitos diarios." in user and "cerrará el lago" not in user
-    assert case_file.borrador.titulo == PACKAGE["titulo"]
+    assert case_file.borrador.titulo == GOOD["texto"]
+    assert case_file.borrador.respaldo["titulo"] == ("A-1",)
 
 
 def test_fills_gaps_and_action_in_code():

@@ -7,7 +7,7 @@ from whoami.generation.jsonschemas import answer_schema, response_format, to_ans
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import check_citations, check_claim, normalize_numbers, unsupported_numbers
-from whoami.generation.version_citations import enrich_version_citations, support_version
+from whoami.generation.version_citations import support_version
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
@@ -22,7 +22,8 @@ TASK = (
     "estado=respondida: respuesta breve con citas literales. "
     "estado=abstencion: si las fuentes no responden, con motivo_abstencion y faltante. "
     "estado=contradiccion: si dos fuentes dan valores distintos para lo mismo, con una versión por fuente "
-    "(valor, alcance, id_evidencia). Deja en null o vacío lo que no corresponda al estado."
+    "(valor, alcance, id_evidencia). Copia el alcance literalmente de un campo de esa fuente. "
+    "Deja en null o vacío lo que no corresponda al estado."
 )
 STRUCTURED_TASK = (
     TASK + " Para estado=respondida, escribe solo afirmaciones atómicas en afirmaciones: "
@@ -50,7 +51,7 @@ def _distinct_versions(
     value and of each evidence."""
     versions: list[ContradictionVersion] = []
     for item in raw:
-        version = support_version(ContradictionVersion.model_validate(item), evidences)
+        version = support_version(ContradictionVersion.model_validate(item), evidences, require_scope=True)
         if (
             version is not None and version.id_evidencia in allowed
             and all(version.valor != v.valor and version.id_evidencia != v.id_evidencia for v in versions)
@@ -132,6 +133,6 @@ def answer_query(
         if cleaned["estado"] == "abstencion":
             return _abstention(id_consulta, consulta, cleaned["motivo_abstencion"], cleaned["faltante"])
         answer = to_answer(cleaned, id_consulta, consulta)
-        return enrich_version_citations(answer, evidences) if structured else answer
+        return answer
     except (LLMError, ValueError, KeyError, TypeError, AttributeError):
         return _abstention(id_consulta, consulta, INVALID_ANSWER_REASON)

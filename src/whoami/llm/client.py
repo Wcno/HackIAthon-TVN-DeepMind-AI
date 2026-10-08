@@ -1,6 +1,7 @@
 """Shared LLM facade: cached, ledgered, capped and rate-limited chat and embedding calls."""
 
 import json
+import hashlib
 import os
 import random
 import time
@@ -92,7 +93,8 @@ class LLM:
         self._jitter = jitter
         self._max_retries = max_retries
         self._cache = ResponseCache(settings.cache_dir)
-        self._ledger = Ledger(settings.ledger_path, clock)
+        provider_id = hashlib.sha256(settings.base_url.rstrip("/").encode("utf-8")).hexdigest()
+        self._ledger = Ledger(settings.ledger_path, clock, provider_id=provider_id)
         self._clock = clock
         self._limiters: dict[str, RateLimiter] = {}
 

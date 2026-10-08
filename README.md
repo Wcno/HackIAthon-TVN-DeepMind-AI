@@ -133,6 +133,19 @@ minutos ante respuestas HTTP 429; los fallos se conservan en
 `data/raw/news/gdelt/doc/`. Ver [el cierre de G1](docs/g1-completion.md) para
 la cobertura y los límites del corpus.
 
+Para instalar la revisión fijada de EmbeddingGemma desde una máquina nueva:
+
+```powershell
+uv run --locked whoami download-model
+uv run --locked whoami download-model --offline
+```
+
+El segundo comando comprueba que los tres archivos están disponibles sin usar
+la red. `--directory RUTA` permite elegir el directorio; para utilizarlo al
+procesar datos, definir `WHOAMI_EMBEDDING_MODEL_DIR` con esa misma ruta. Una
+descarga incompleta puede reanudarse; cada archivo se instala tras copiarse por
+completo.
+
 El comando `whoami embed` construye los vectores locales y
 `whoami pipeline --sin-llm` procesa el corpus sin llamadas al modelo generativo.
 La primera descarga de EmbeddingGemma requiere conexión; después puede
@@ -140,6 +153,19 @@ reutilizarse el modelo en caché. `whoami generar` produce fichas y respuestas
 con el modelo configurado y requiere preparar sus entradas y credenciales.
 Consultar las opciones con `uv run --locked whoami --help` y
 `uv run --locked whoami generar --help`.
+
+La comparación de cobertura distingue eventos ya cubiertos por TVN, posibles
+actualizaciones externas con datos nuevos citados, eventos sin coincidencia en
+el snapshot y novedad no comprobada. Los grupos ya cubiertos se excluyen de la
+bandeja principal y de nuevas fichas. Una ausencia en el snapshot no demuestra
+que TVN nunca haya publicado el evento; la cobertura incompleta se muestra al
+editor. Las actualizaciones requieren verificar el alcance del dato nuevo.
+
+Para escribir borradores, el modelo selecciona y ordena afirmaciones aceptadas.
+El código conserva sus textos, tipos y atribuciones en título, brief, guion y
+copy, y comprueba sus referencias al cargar el paquete. El registro de revisiones
+exporta también el contenido revisado y el historial de versiones retiradas;
+cambiar la ficha, el grupo o sus fuentes abre un nuevo ciclo de revisión.
 
 ## Validación y exportación
 

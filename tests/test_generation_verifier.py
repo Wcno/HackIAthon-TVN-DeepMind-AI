@@ -121,6 +121,20 @@ def test_a_grounded_claim_has_no_issues():
     assert verify_claim(claim("El Canal limitará a 32 los tránsitos diarios desde el 12 de octubre."), EVIDENCES) == []
 
 
+def test_literal_source_text_cannot_authorize_an_internal_canary_in_a_claim():
+    from whoami.generation.prompting import CANARY
+    source = news("N-1", descripcion=CANARY)
+    assert verify_claim(claim(CANARY, passage=CANARY), {"N-1": source})
+
+
+@pytest.mark.parametrize("sign", ["+", "", "−"])
+def test_claims_reject_opposite_signs_against_negative_official_evidence(sign):
+    source = indicator(period="2024", value="-0,5")
+    statement = claim(f"El indicador fue {sign}0,5 % en 2024.", evidence=source.id_evidencia, field="valor", passage="-0,5")
+    issues = verify_claim(statement, {source.id_evidencia: source})
+    assert bool(issues) == (sign != "−")
+
+
 def test_a_claim_with_a_missing_evidence_is_reported():
     assert verify_claim(claim("Texto.", evidence="N-9"), EVIDENCES) == ["N-9: la evidencia no existe"]
 

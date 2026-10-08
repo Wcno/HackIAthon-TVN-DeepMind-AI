@@ -1,4 +1,6 @@
 <p>{{ group.n_medios }} medios, {{ group.n_procedencias }} procedencias independientes. Repetición no significa corroboración.</p>
+<p>Cobertura TVN: {{ group.cobertura_tvn.razon }}</p>
+{% for citation in group.cobertura_tvn.pasajes_nuevos %}<p><a href="/evidence/{{ citation.id_evidencia|urlencode }}">Posible actualización</a>: {{ citation.pasaje }}</p>{% endfor %}
   <a href="/groups/{{ group.id_grupo|urlencode }}/context">Contexto oficial</a>
   {% if group.id_caso %} · <a href="/cases/{{ group.id_caso|urlencode }}">Ficha de evidencia</a>{% endif %}
   {% for member in group.miembros %}<article><h2><a href="{{ member.url|safe_url }}">{{ member.titulo }}</a></h2><p>{{ member.medio }} · Procedencia {{ member.procedencia }}</p><p>Publicación original: {{ member.fecha_publicacion|panama_time }} (Panamá)</p>{% if member.recirculada_en %}<p>Recirculada: {{ member.recirculada_en|panama_time }} (Panamá)</p>{% endif %}<p>{{ member.alcance_texto }}</p></article>{% endfor %}

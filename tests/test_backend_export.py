@@ -46,6 +46,10 @@ def test_changed_content_exports_only_its_current_review_cycle(tmp_path):
     assert output.review_state("CASO-005") == "nuevo"
     assert not any(review.id_caso == "CASO-005" for review in output.revisiones)
     assert any(review["estado"] == "aprobado_como_borrador" for review in repository.review_history("CASO-005"))
+    fresh = EditorialRepository(tmp_path / "fresh.sqlite3")
+    fresh.import_bundle(load_pipeline(settings.data_directory, destination))
+    assert fresh.case("CASO-005")["estado_revision"] == "nuevo"
+    assert any(review["estado"] == "aprobado_como_borrador" for review in fresh.review_history("CASO-005"))
 
 
 def test_two_concurrent_reviewers_cannot_overwrite_each_other(tmp_path):

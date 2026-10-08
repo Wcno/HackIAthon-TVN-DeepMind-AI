@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -78,8 +79,20 @@ class Embedder:
     `session` and `tokenizer` are injectable so tests never load the real model.
     """
 
+    dimensions = DIMENSIONS
+
     def __init__(self, directory: Path | None = None, *, session: Any = None, tokenizer: Any = None) -> None:
         directory = directory or model_dir()
+        if session is None and tokenizer is None:
+            self.cache_identity = hashlib.sha256(json.dumps({
+                "model": MODEL_REPO, "revision": MODEL_REVISION,
+                "files": {name: _sha256(directory / _LAYOUT[name]) for name in MODEL_FILES},
+                "document_prefix": DOCUMENT_PREFIX, "query_prefix": QUERY_PREFIX,
+                "max_tokens": MAX_TOKENS,
+            }, sort_keys=True).encode("utf-8")).hexdigest()
+        else:
+            # Injected sessions have no persistent model identity. Do not alias a real model.
+            self.cache_identity = f"injected:{uuid.uuid4()}"
         self._session = session or self._load_session(directory / "onnx" / "model.onnx")
         self._tokenizer = tokenizer or self._load_tokenizer(directory / "tokenizer.json")
 

@@ -344,11 +344,14 @@ class ClaimCheck:
 
 
 def check_claim(claim: Claim, evidences: Mapping[str, Evidence]) -> ClaimCheck:
+    from whoami.generation.prompting import leaks_canary
     citations = check_citations(claim.citas, evidences)
     repairs = tuple(
         RepairedCitation(r.original, r.repaired, id_afirmacion=claim.id_afirmacion) for r in citations.repaired
     )
     issues = list(citations.errors)
+    if leaks_canary(claim.model_dump_json()):
+        issues.append("internal canary in generated claim")
     repaired_claim = claim.model_copy(update={"citas": citations.valid}) if not issues else claim
     issues += [
         f"cifra no respaldada: {format(number.normalize(), 'f')}"

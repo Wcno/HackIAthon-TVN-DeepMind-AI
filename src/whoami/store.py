@@ -18,6 +18,10 @@ from whoami.contracts import (
     REVIEWS_FILE,
 )
 from whoami.schemas import CaseFile, Group, OutputSet, ReviewState, verify
+from whoami.reviews import bind_reviews, reconcile_reviews
+
+REVIEW_ARCHIVE_FILE = "revisiones_historicas.jsonl"
+REVIEW_BINDINGS_FILE = "revisiones_vinculadas.jsonl"
 
 #: Fields of a `fichas.jsonl` record that are copies, added when exporting and ignored when loading.
 _EXPORT_ONLY = (
@@ -84,6 +88,7 @@ def case_file_from_record(record: dict) -> CaseFile:
 def write(output: OutputSet, data: Path = PROCESSED, outputs: Path = OUTPUTS) -> None:
     """Validates the whole set, then writes groups and evidence to `data` and the rest to `outputs`."""
     verify(output)
+    output = bind_reviews(output)
     groups = {group.id_grupo: group for group in output.grupos}
     write_jsonl(data / GROUPS_FILE, [group.model_dump(mode="json") for group in output.grupos])
     write_jsonl(data / EVIDENCE_FILE, [evidence.model_dump(mode="json") for evidence in output.evidencias.values()])
@@ -96,6 +101,9 @@ def write(output: OutputSet, data: Path = PROCESSED, outputs: Path = OUTPUTS) ->
     )
     write_jsonl(outputs / QUERIES_FILE, [answer.model_dump(mode="json") for answer in output.consultas])
     write_jsonl(outputs / REVIEWS_FILE, [record.model_dump(mode="json") for record in output.revisiones])
+    write_jsonl(outputs / REVIEW_BINDINGS_FILE, [record.model_dump(mode="json") for record in output.revisiones_vinculadas])
+    if output.historial_revisiones or (outputs / REVIEW_ARCHIVE_FILE).exists():
+        write_jsonl(outputs / REVIEW_ARCHIVE_FILE, [record.model_dump(mode="json") for record in output.historial_revisiones])
 
 
 def load(data: Path = PROCESSED, outputs: Path = OUTPUTS) -> OutputSet:
@@ -107,8 +115,11 @@ def load(data: Path = PROCESSED, outputs: Path = OUTPUTS) -> OutputSet:
             "fichas": [case_file_from_record(record).model_dump() for record in read_jsonl(outputs / FICHAS_FILE)],
             "consultas": read_jsonl(outputs / QUERIES_FILE),
             "revisiones": read_jsonl(outputs / REVIEWS_FILE),
+            "historial_revisiones": read_jsonl(outputs / REVIEW_ARCHIVE_FILE) if (outputs / REVIEW_ARCHIVE_FILE).exists() else [],
+            "revisiones_vinculadas": read_jsonl(outputs / REVIEW_BINDINGS_FILE) if (outputs / REVIEW_BINDINGS_FILE).exists() else [],
         }
     )
+    output = reconcile_reviews(output)
     verify(output)
     return output
 

@@ -79,6 +79,9 @@ def test_quake_text_is_a_sentence_with_magnitude_and_place():
 class CountingEmbedder:
     """Deterministic fake: a vector per text from its length, so equal texts give equal vectors."""
 
+    cache_identity = "test-length-and-codepoints-v1"
+    dimensions = 3
+
     def __init__(self) -> None:
         self.documents: list[str] = []
         self.queries: list[str] = []
@@ -134,6 +137,45 @@ def test_build_index_rebuilds_same_ids_when_content_or_model_changes(tmp_path):
     build_index(sources, embedder.embed_documents, cache)
     build_index([news("N-1", titulo="Hospital")], embedder.embed_documents, cache)
     assert embedder.documents == ["Canal", "Hospital"]
+
+
+def test_model_change_and_corrupt_cache_are_rebuilt(tmp_path):
+    embedder = CountingEmbedder()
+    cache = tmp_path / "vectors.npy"
+    sources = [news("N-1", titulo="Canal")]
+    build_index(sources, embedder.embed_documents, cache, model_identity="model-a")
+    build_index(sources, embedder.embed_documents, cache, model_identity="model-b")
+    assert len(embedder.documents) == 2
+    cache.write_bytes(b"")
+    build_index(sources, embedder.embed_documents, cache, model_identity="model-b")
+    assert len(embedder.documents) == 3
+
+
+def test_default_retrievers_use_the_actual_encoder_identity(tmp_path):
+    first, second = CountingEmbedder(), CountingEmbedder()
+    second.cache_identity = "test-replacement-encoder-v2"
+    cache = tmp_path / "vectors.npy"
+    default_retrievers(EVIDENCES.values(), first, cache)
+    default_retrievers(EVIDENCES.values(), second, cache)
+    assert second.documents == ["Canal de Panamá", "Sismo en Chiriquí"]
+
+
+def test_encoder_dimension_change_invalidates_the_cached_matrix(tmp_path):
+    encoder = CountingEmbedder()
+    cache = tmp_path / "vectors.npy"
+    build_index(EVIDENCES.values(), encoder.embed_documents, cache)
+    encoder.dimensions = 2
+    encoder.embed_documents = lambda texts: np.ones((len(texts), 2))
+    _, vectors = build_index(EVIDENCES.values(), encoder.embed_documents, cache,
+                             model_identity=encoder.cache_identity, expected_dimensions=2)
+    assert vectors.shape == (2, 2)
+
+
+def test_opaque_encoders_cannot_silently_reuse_another_encoders_vectors(tmp_path):
+    cache = tmp_path / "vectors.npy"
+    build_index(EVIDENCES.values(), lambda texts: np.ones((len(texts), 2)), cache)
+    _, vectors = build_index(EVIDENCES.values(), lambda texts: np.zeros((len(texts), 2)), cache)
+    assert not vectors.any()
 
 
 def test_default_retrievers_offers_bm25_embeddings_and_hybrid(tmp_path):

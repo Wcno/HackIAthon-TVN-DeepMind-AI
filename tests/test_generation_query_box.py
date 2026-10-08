@@ -14,6 +14,20 @@ def test_qualitative_contradictions_require_actual_source_support(structured):
                           evidence, FakeLLM([raw]), MODEL, structured=structured)
     assert answer.estado == "abstencion"
 
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_contradictions_cannot_change_the_location_or_scope_of_supported_values(structured):
+    evidence = by_id(news("N-1", titulo="Hospital abierto en David"), news("N-2", titulo="Hospital cerrado en David"))
+    class Hits:
+        def search(self, query, k):
+            return [("N-1", 1.0), ("N-2", .9)][:k]
+    raw = model_answer(estado="contradiccion", respuesta=None, citas=[], afirmaciones=[], versiones=[
+        {"valor": "abierto", "alcance": "en Bogotá", "id_evidencia": "N-1"},
+        {"valor": "cerrado", "alcance": "en Bogotá", "id_evidencia": "N-2"}])
+    answer = answer_query("Q-1", "Hospital", Hits(), CosineGate(Hits(), min_cosine=.5),
+                          evidence, FakeLLM([raw]), MODEL, structured=structured)
+    assert answer.estado == "abstencion"
+
 from generation_fakes import FakeLLM, LLMError, by_id, indicator, news
 from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import UNVERIFIABLE_REASON, INVALID_ANSWER_REASON, answer_query
@@ -126,7 +140,7 @@ def test_an_answer_with_a_figure_the_sources_do_not_support_abstains():
 
 def test_a_contradiction_needs_two_distinct_values_from_distinct_evidences():
     versions = [
-        {"valor": "1,1 %", "alcance": "analistas citados por TVN", "id_evidencia": "N-2"},
+        {"valor": "1,1 %", "alcance": "inflación anual de 1,1 % en septiembre", "id_evidencia": "N-2"},
         {"valor": "2,3 %", "alcance": "informe privado", "id_evidencia": "N-3"},
     ]
     llm = FakeLLM([model_answer(estado="contradiccion", respuesta=None, citas=[], versiones=versions)])
@@ -198,8 +212,8 @@ def test_a_contradiction_version_with_a_figure_its_record_lacks_is_dropped():
 
     evidences = {"N-a": news("N-a", "Metro transportó 9 millones"), "N-b": news("N-b", "Metro transportó 11 millones")}
     raw = [
-        {"valor": "9 millones", "alcance": "A", "id_evidencia": "N-a"},
-        {"valor": "15 millones", "alcance": "B", "id_evidencia": "N-b"},
+        {"valor": "9 millones", "alcance": "Metro transportó", "id_evidencia": "N-a"},
+        {"valor": "15 millones", "alcance": "Metro transportó", "id_evidencia": "N-b"},
     ]
     assert [v.valor for v in _distinct_versions(raw, {"N-a", "N-b"}, evidences)] == ["9 millones"]
 
@@ -222,5 +236,5 @@ def test_two_verified_versions_make_a_contradiction_even_if_the_model_says_answe
     evidences = {"N-a": item("N-a", "Más de 80 denuncias"), "N-b": item("N-b", "Más de 70 denuncias")}
     data = {"estado": "respondida", "respuesta": "Hay dos cifras: 80 y 70.",
             "citas": [{"id_evidencia": "N-a", "campo": "titulo", "pasaje": "Más de 80 denuncias"}],
-            "versiones": [{"valor": "más de 80", "alcance": "A", "id_evidencia": "N-a"}, {"valor": "más de 70", "alcance": "B", "id_evidencia": "N-b"}]}
+            "versiones": [{"valor": "más de 80", "alcance": "denuncias", "id_evidencia": "N-a"}, {"valor": "más de 70", "alcance": "denuncias", "id_evidencia": "N-b"}]}
     assert _verified(data, "¿Cuántas?", evidences, {"N-a", "N-b"})["estado"] == "contradiccion"
