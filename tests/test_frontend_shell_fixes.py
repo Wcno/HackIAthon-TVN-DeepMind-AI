@@ -46,11 +46,15 @@ def test_lead_photo_credit_is_not_a_tab_stop_before_the_card_link(client):
     assert all('tabindex="-1"' in link for link in credit)
 
 
-@pytest.mark.parametrize("path, subject", [("/groups/G-nope", "tema"), ("/cases/CASO-nope", "ficha"), ("/evidence/NOPE", "fuente")])
-def test_unknown_records_get_a_spanish_page_with_chrome_and_a_way_back(client, path, subject):
+@pytest.mark.parametrize("path, heading, message", [
+    ("/groups/G-nope", "Tema no encontrado", "No encontramos este tema"),
+    ("/cases/CASO-nope", "Ficha no encontrada", "No encontramos esta ficha"),
+    ("/evidence/NOPE", "Fuente no encontrada", "No encontramos esta fuente"),
+])
+def test_unknown_records_get_a_spanish_page_with_chrome_and_a_way_back(client, path, heading, message):
     response = client.get(path)
     assert response.status_code == 404
-    assert f"No encontramos este {subject}" in response.text
+    assert heading in response.text and message in response.text
     assert "Unknown" not in response.text and 'class="strap"' in response.text and 'href="/inbox"' in response.text
 
 
@@ -143,3 +147,27 @@ def test_justifications_use_decimal_commas_in_popover_and_methodology(client):
 
 def test_api_title_names_the_product_correctly(client):
     assert client.app.title == "TVN DeepMind AI"
+
+
+def reviewer_field(html):
+    return re.search(r'<input name="actor"[^>]*value="([^"]*)"', html).group(1)
+
+
+def decide(client, name, version=None):
+    case = client.app.state.repository.case("CASO-001")
+    state = "descartado" if case["estado_revision"] != "descartado" else "en_revision"
+    return client.post("/cases/CASO-001/review", data={"state": state, "actor": name, "note": "Verificar fuentes",
+                                                      "expected_version": version or case["version"]})
+
+
+def test_the_reviewer_stays_in_the_form_right_after_a_decision(client):
+    first = decide(client, "Ana Pérez")
+    assert first.status_code == 200 and reviewer_field(first.text) == "Ana Pérez"
+    changed = decide(client, "Luis Mora")
+    assert changed.status_code == 200 and reviewer_field(changed.text) == "Luis Mora"
+    assert reviewer_field(client.get("/cases/CASO-001/review").text) == "Luis Mora"
+
+
+def test_a_rejected_decision_keeps_the_entered_reviewer(client):
+    rejected = decide(client, "Ana Pérez", 999)
+    assert rejected.status_code == 409 and reviewer_field(rejected.text) == "Ana Pérez"
