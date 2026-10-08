@@ -8,12 +8,13 @@
 ## Backlog
 
 Estados: `hecho` · `en curso` · `pendiente` · `bloqueado`.
-Responsables: _por asignar_ (ver `01-inicio-del-reto.md`). La cronología es el historial de commits.
+Responsables: _por asignar_ (ver `01-inicio-del-reto.md`). La cronología, por ahora, es el
+historial de commits; falta una tabla de fechas por tarea.
 
 | # | Tarea | Responsable | Estado | Evidencia |
 | --- | --- | --- | --- | --- |
 | 1 | Corpus de noticias: TVN, GDELT DOC y GKG, Prensa, Telemetro, Panamá América | _por asignar_ | hecho | PR #35 (`cde4dff`) |
-| 2 | Contrato de datos compartido y revisión de la fase de datos | _por asignar_ | hecho | PR #32 · `docs/review-g5.md` |
+| 2 | Contrato de datos compartido y revisión de la fase de datos | _por asignar_ | hecho | PR #32 (`bcc0fba`) |
 | 3 | Agrupación, clasificación temática y puntaje (G3) | _por asignar_ | hecho | PR #34 (`77474db`) |
 | 4 | Generación con citas verificadas y consultas precalculadas (G4) | _por asignar_ | hecho | PR #34 |
 | 5 | Backend editorial, persistencia y exportación (G5) | _por asignar_ | hecho | `92359ec` · `docs/review-g5.md` |
@@ -52,6 +53,13 @@ literalmente en el campo citado, y cualquier cifra debe estar en la evidencia tr
 normalizar el formato numérico en español. Si una afirmación falla, se marca como «sin
 sustento» y no se oculta. Así se cumple el §7 y la meta de cobertura de citas, y el jurado
 puede comprobarlo en pantalla.
+
+### DP-04 · Ventana de noticias de 30 días previos al corte
+
+Las noticias usan los 30 días previos al corte (D-04 del equipo), dentro del límite exterior
+de 2025-10-02 (D-02). Los 30 días dan 3.176 noticias incluidas. Los indicadores del Banco
+Mundial conservan 2010-2024 por ser series anuales. Los sismos del USGS usan la ventana
+desde 2025-10-02 (D-02).
 
 ## Hallazgos que corrigieron el plan
 

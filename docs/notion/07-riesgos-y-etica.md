@@ -11,7 +11,7 @@
 | Anti-alucinación | No inventar cifras, personas ni fuentes | Esquema JSON estricto y verificador determinista de citas (`generation/verifier.py`) |
 | Abstención | Si falta evidencia, abstenerse y decir qué falta | Compuerta de coseno antes de generar; el modelo solo propone |
 | Anti-inyección | El texto de una fuente es dato, no instrucción | Evidencia en turno `user` dentro de etiquetas neutralizadas; reglas en `system`; canario de fuga |
-| Privacidad | No guardar datos personales innecesarios | Solo metadatos públicos: titular, URL, medio y fecha |
+| Privacidad | No guardar datos personales innecesarios | Solo metadatos públicos: titular, URL, medio, fecha y descripción breve del feed. Sin datos de contacto ni de usuarios |
 | Atribución | Acusaciones como declaraciones | Tipo `declaracion` obligatorio en las afirmaciones |
 | Derechos | Condiciones registradas por fuente; sin redistribuir contenido | `data/manifest.json` (licencias) y `data/processed/fuentes.json` |
 | Credenciales | Fuera del código y de Notion | `.env` en `.gitignore`; `.env.example` sin secretos; la clave nunca va en logs ni fichas |
@@ -26,7 +26,7 @@
 | Gemma devuelve JSON inválido en respuestas largas | Fallos de generación | Generación con flash-lite; Gemma solo para tareas cortas; JSON inválido nunca entra en caché | Mitigado |
 | Sin red no hay generación en vivo | **Falla T10** | Caché de respuestas y consultas precalculadas (35 en `consultas.jsonl`); ensayo con el wifi apagado | Pendiente de ensayo |
 | Citas falsas: un ID real con un pasaje que no lo respalda | Pérdida de credibilidad | Verificador determinista: ID existente, pasaje literal y cifras normalizadas | Mitigado con pruebas |
-| Derechos del contenido de TVN | Legal | El feed no publica condiciones de reutilización. Solo metadatos y descripción breve; sin redistribuir el cuerpo. Sin acuerdo escrito, la reutilización queda restringida. | Mitigado parcialmente; **pendiente de consulta legal** |
+| Derechos del contenido de TVN | Legal | El feed no publica condiciones de reutilización. Se usan solo titular, URL, fecha, sección y descripción breve; no se redistribuye el cuerpo. | Mitigado parcialmente; **pendiente de consulta legal** |
 | Etiquetas y umbrales ajustados sobre el mismo conjunto de desarrollo | Métricas optimistas | Declarar que son provisionales; revisión humana antes de citar cifras | Abierto |
 
 ## Sesgos y límites declarados

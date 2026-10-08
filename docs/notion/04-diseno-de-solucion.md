@@ -42,7 +42,7 @@ Definido en `src/whoami/contracts.py` y validado con Pydantic en `src/whoami/sch
 | `fuentes.json` | Catálogo por medio: dominio, tipo (`medio` u `oficial`), canales, licencia, condiciones y fecha de consulta | `id_fuente` |
 | `manifest.json` | Versión, corte, consultas, cantidades, licencias, SHA-256 | — |
 | `outputs/fichas.jsonl` | Fichas con afirmaciones y citas | `CASO-<hash>` |
-| `outputs/consultas.jsonl` | Consultas precalculadas y su estado | `D-A…`, `D-C…` |
+| `outputs/consultas.jsonl` | Consultas precalculadas y su estado | `D-<letra><nn>` (por ejemplo `D-A01`) |
 
 ## Stack y versiones
 
@@ -62,7 +62,7 @@ Definido en `src/whoami/contracts.py` y validado con Pydantic en `src/whoami/sch
 
 | Uso | Modelo | Parámetros | Prompts (código) | Costo medido |
 | --- | --- | --- | --- | --- |
-| Respuestas (800 tokens), fichas (2.000), paquetes y verificación de implicación (200) | `gemini-3.5-flash-lite` | JSON estricto; topes de tokens por llamada en `generation/`; timeout de 90 s en el cliente `llm/`; el backend limita la consulta a 20 s y 3 intentos (`WHOAMI_GENERATION_*`) | `src/whoami/generation/prompting.py`, `query_box.py`, `case_files.py`, `entailment.py` | Corrida final de G7: 70 completions (30 de red y 40 de caché), 46.280 tokens de red |
+| Respuestas (800 tokens), paquetes de ficha (2.000) y verificación de implicación (200) | `gemini-3.5-flash-lite` | JSON estricto; topes de tokens por llamada en `generation/`; timeout de 90 s en el cliente `llm/`; el backend limita la consulta a 20 s y 3 intentos (`WHOAMI_GENERATION_*`) | `src/whoami/generation/prompting.py`, `query_box.py`, `case_files.py`, `entailment.py` | Corrida final de G7: 70 completions (30 de red y 40 de caché), 46.280 tokens de red |
 | Temas (60 tokens), agrupación (30) y contradicciones (300) | `gemma-4-26b-a4b-it` | JSON estricto; topes de tokens; timeout de 90 s; JSON inválido nunca se guarda | `src/whoami/pipeline/topics.py`, `grouping.py`, `generation/contradictions.py` | 3.484 llamadas en una noche de ejecución |
 | Embeddings | `embeddinggemma-300m` (ONNX q4), propuesto | 768 dimensiones; prefijos de documento y consulta | `src/whoami/embeddings.py` | 587 MB de memoria pico y 30 ms por consulta en 2 CPU |
 
@@ -88,8 +88,9 @@ si la similitud de recuperación queda bajo 0,62, no se llama al modelo para gen
 
 ## Prompts y control del modelo
 
-- La evidencia viaja codificada en JSON dentro de un mensaje `user`. La política de contenido
-  no confiable va en el `system`. Las instrucciones propias van en un turno posterior.
+- Las fuentes y la consulta van en un mensaje `user`, dentro de etiquetas `<fuente>` y `<consulta>`,
+  con los corchetes angulares neutralizados dentro del contenido. Las reglas van en el `system`
+  (`src/whoami/generation/prompting.py`). Un canario interno detecta cualquier fuga del prompt.
 - El agente no tiene herramientas con efecto: no publica, no escribe en Notion y no ve secretos.
 - Los límites de palabras del brief (250) y del copy (80) se validan en código.
 - Cada llamada tiene un tope de tokens, de modo que una salida degenerada falle rápido.

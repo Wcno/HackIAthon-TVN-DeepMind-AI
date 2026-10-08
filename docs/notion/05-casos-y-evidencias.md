@@ -13,6 +13,9 @@
 | CU-03 | Titulares repetidos | Una agencia replicada cuenta como una procedencia | Implementado; sin marcador de agencia en el corpus actual |
 | CU-04 | Pregunta sin respuesta o con contradicción | Abstención explícita o ambas versiones con su verificación pendiente | Implementado |
 
+Glosario: **CU-xx** es un caso de uso del reto; **CASO-…** es el ID de una ficha; **G-…** es un
+grupo de noticias (`grupos.jsonl`), que puede o no tener ficha.
+
 ## Fichas
 
 Fichas generadas en `outputs/fichas.jsonl` (5 casos):

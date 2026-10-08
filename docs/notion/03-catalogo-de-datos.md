@@ -8,7 +8,7 @@
 
 | Fuente | URL consultada | Extracción (UTC) |
 | --- | --- | --- |
-| TVN | `https://www.tvn-2.com/rss/` y sitemaps mensuales `tvn_sitemap_contents_*.xml` | 2026-10-07 03:32 a 04:00 |
+| TVN | `https://www.tvn-2.com/rss/` y sitemaps mensuales `tvn_sitemap_contents_AAAA_MM.xml` | 2026-10-07 03:32 a 04:00 |
 | GDELT DOC 2.0 | `https://api.gdeltproject.org/api/v2/doc/doc` (consultas por país, PM) | 2026-10-08 00:43 a 00:51 |
 | GDELT GKG | `https://data.gdeltproject.org/gdeltv2/` (seis lotes horarios, 18:00 a 23:00 del 7 de octubre) | 2026-10-08 00:47 |
 | Prensa | `https://www.prensa.com/arc/outboundfeeds/news-sitemap/?outputType=xml` | 2026-10-08 00:43 |
@@ -72,3 +72,6 @@ No usada. La modalidad bancaria quedó fuera (ver DP-01 en `02-plan-y-decisiones
 `data/manifest.json` guarda la versión, la fecha de corte, las consultas exactas, las
 cantidades, las licencias y el SHA-256 de cada archivo procesado. Las pruebas comparan los
 bytes contra esos hashes (`tests/test_backend_quality.py`).
+
+**Pendiente:** el manifest no tiene un hash único del snapshot completo, que pide el §5. Decidir
+si se calcula un hash agregado a partir de los SHA-256 por archivo.

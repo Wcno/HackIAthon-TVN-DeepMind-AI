@@ -12,7 +12,7 @@ guarda solo la estructura de tiempos (§11) y la lista de verificación.
 | --- | --- | --- |
 | 1 min | Problema, usuario y por qué importa a TVN Media | _por asignar_ |
 | 1 min | Solución, alcance y datos públicos usados | _por asignar_ |
-| 4 min | Demo en vivo: una consulta útil, una ficha con citas, un borrador y un caso de abstención | _por asignar_ |
+| 4 min | Demo en vivo (contenido a cargo del equipo; debe cubrir los casos de `05-casos-y-evidencias.md`) | _por asignar_ |
 | 2 min | Arquitectura, uso de IA, baseline y métricas observadas | _por asignar_ |
 | 1 min | Valor operativo medido o hipótesis identificada | _por asignar_ |
 | 1 min | Riesgos, límites y próximos pasos | _por asignar_ |
