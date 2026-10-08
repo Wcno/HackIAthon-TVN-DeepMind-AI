@@ -26,6 +26,7 @@ from whoami.backend.reports import methodology_view, quality_view, score_compone
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
 from whoami.contracts import PROCESSED, REVIEW_STATES, REVIEW_TRANSITIONS, TOPIC_LABELS, ReviewState
+from whoami.ingest import images as news_images
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,11 @@ def percent(value: float | int | None, decimals: int = 2) -> str:
     return "-" if value is None else f"{number(value, decimals)} %"
 
 
+def image_src(value: str) -> str:
+    """An article photo (http/https) or one of the app's own static images; anything else is dropped."""
+    return value if value.startswith("/static/") or safe_url(value) != "#" else ""
+
+
 def safe_url(value: str) -> str:
     try:
         return value if urlsplit(value).scheme in ("https", "http") else "#"
@@ -97,7 +103,7 @@ QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dic
 def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None, gemini_transport=None) -> FastAPI:
     settings = settings or Settings.from_environment()
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, number=number, percent=percent,
+    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, percent=percent,
                             short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
     templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components)
 
@@ -107,7 +113,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         repository.import_bundle(load_pipeline(settings.data_directory, settings.output_directory))
         app.state.repository = repository
         app.state.synthetic = any(group.get("sintetico", False) for group in repository.records("group"))
-        app.state.editorial = EditorialService(repository)
+        app.state.editorial = EditorialService(repository, images=news_images.load(settings.data_directory))
         app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
         app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
         app.state.assistant = DraftAssistant(repository, None if settings.demo else settings.data_directory / "embeddings")

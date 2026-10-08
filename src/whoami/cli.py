@@ -11,6 +11,8 @@
     whoami pipeline [--vectors PATH] [--sin-llm] [--modelo-llm MODEL]
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
                                         --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
+    whoami imagenes [--top N]           photo (og:image) of the news of the first N agenda topics to
+                                        data/processed/imagenes.json (network)
     whoami export-backend               export persisted case files and human reviews (offline)
 """
 
@@ -68,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     run.add_arguments(commands.add_parser("generar"))
 
+    images_command = commands.add_parser("imagenes")
+    images_command.add_argument("--top", type=int, default=40, help="photos for the news of the first N topics of the agenda")
+
     export_command = commands.add_parser("export-backend")
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
@@ -96,6 +101,18 @@ def main(argv: list[str] | None = None) -> int:
         except (pipeline.PipelineInputError, LLMError) as error:
             parser.error(str(error))
         print(format_summary(output, llm.counts() if llm else None))
+        return 0
+
+    if args.command == "imagenes":
+        from whoami.contracts import PROCESSED
+        from whoami.ingest import images
+        from whoami.schemas import Group, sort_inbox
+
+        groups = sort_inbox([Group.model_validate_json(line) for line in
+                             (PROCESSED / "grupos.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()])
+        found = images.collect([group.model_dump(mode="json") for group in groups], images.fetch_html, limit=args.top)
+        path = images.write(PROCESSED, found)
+        print(f"{path}: {len(found)} fotos de {sum(len(group.miembros) for group in groups[:args.top])} noticias")
         return 0
 
     if args.command == "export-backend":

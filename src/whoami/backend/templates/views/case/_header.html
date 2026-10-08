@@ -2,6 +2,7 @@
 {% set score = group.puntaje %}
 {% set gid = group.id_grupo|urlencode %}
 <header class="case__head">
+  {{ photo(group, "case__photo") }}
   <p class="meta"><span class="topic">{{ group.tema_etiqueta }}</span></p>
   <p class="case__title" role="heading" aria-level="2">{{ group.titulo }}</p>
   <div class="case__facts" id="case-badges">

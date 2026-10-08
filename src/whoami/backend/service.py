@@ -11,8 +11,9 @@ from whoami.schemas import Group, sort_inbox
 
 
 class EditorialService:
-    def __init__(self, repository: EditorialRepository):
+    def __init__(self, repository: EditorialRepository, images: dict[str, dict] | None = None):
         self.repository = repository
+        self.images = images or {}
 
     def inbox(self, *, topic: str | None = None) -> list[dict]:
         groups = [Group.model_validate(group) for group in self.repository.records("group")]
@@ -25,7 +26,9 @@ class EditorialService:
         members = group["miembros"]
         group.update(n_noticias=len(members), n_medios=len({member["medio"] for member in members}),
                      n_procedencias=len({member["procedencia"] for member in members}),
-                     tema_etiqueta=TOPIC_LABELS.get(group["tema"], group["tema"]))
+                     tema_etiqueta=TOPIC_LABELS.get(group["tema"], group["tema"]),
+                     imagen=next((self.images[member["id_noticia"]] for member in members
+                                  if member["id_noticia"] in self.images), None))
         group["estado_revision"] = self.repository.case(group["id_caso"])["estado_revision"] if group.get("id_caso") else "nuevo"
         for context in group["contexto"]:
             fields = self.repository.record("evidence", context["id_evidencia"])["campos"]

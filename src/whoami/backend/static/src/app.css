@@ -292,6 +292,43 @@
   .pop__pts { @apply py-2.5 pr-3 align-top text-[15px] font-semibold whitespace-nowrap; }
   .pop__why { @apply py-2.5 text-sm text-ink-3; }
 
+  /* photos: the article's own (credited to its outlet) or, in the demo, a labelled illustrative one */
+  .photo { @apply relative m-0 overflow-hidden bg-line; }
+  .photo img { @apply block size-full object-cover; }
+  .photo__credit { @apply absolute inset-x-0 bottom-0 truncate bg-ink/75 px-3 py-1 text-[11px] leading-5; }
+  .photo__credit a { @apply text-white no-underline hover:underline; }
+  .lead__photo { @apply hidden; }
+  .row__hit { grid-template-areas: "rank photo main score"; grid-template-columns: 2.25rem 3.5rem minmax(0, 1fr) auto; }
+  .row__rank { grid-area: rank; } .row__main { grid-area: main; } .row__score { grid-area: score; }
+  .row__photo { @apply size-14 self-start rounded-xl; grid-area: photo; }
+  .case__photo { @apply mb-7 aspect-[16/5] w-full rounded-2xl; }
+  .body--desk:has([data-editor]) :is(.lead__photo, .row__photo, .case__photo) { @apply hidden; }
+  .body--desk:has([data-editor]) .row__hit { grid-template-areas: "rank main score"; grid-template-columns: 2.25rem minmax(0, 1fr) auto; }
+
+  /* Diseño A · Portada (desktop, outside the draft editor): the page reads like a front page. The lead opens it
+     with its photo; below, the list scrolls with the page while the open case stays pinned at full height. */
+  @media (min-width: 961px) {
+    .body--desk:not(:has([data-editor])) { @apply h-auto; }
+    .body--desk:not(:has([data-editor])) .workspace { @apply block; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) { @apply grid-cols-[minmax(0,40%)_auto_minmax(0,1fr)] items-stretch overflow-hidden py-0 pr-10 pl-0; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .lead__photo { @apply block min-h-72; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .lead__rank { @apply self-center; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .lead__body { @apply self-center py-8; grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "meta" "why" "facts" "go"; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .btn--primary { @apply justify-self-start; }
+    .body--desk:not(:has([data-editor])) .desk { @apply items-start; grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); grid-template-rows: auto; }
+    .body--desk:not(:has([data-editor])) .inbox { @apply overflow-visible pb-16; }
+    .body--desk:not(:has([data-editor])) .case { @apply sticky top-0 h-dvh; }
+  }
+  @media (min-width: 961px) and (max-width: 1180px) {
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) { @apply grid-cols-[minmax(0,38%)_minmax(0,1fr)]; }
+    .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .lead__rank { @apply hidden; }
+  }
+  @media (max-width: 960px) {
+    .case__facts { @apply ml-0; }
+    .lead:has(.lead__photo) { @apply overflow-hidden pt-0; }
+    .lead:has(.lead__photo) .lead__photo { @apply -mx-6 block aspect-[16/9]; }
+  }
+
   /* motion: the case title wipes in like a lower third, once per case */
   .case.is-entering .case__head { animation: wipe 480ms var(--ease-out-expo) both; }
   .case.is-entering .panel { animation: rise 360ms var(--ease-out-expo) 80ms both; }

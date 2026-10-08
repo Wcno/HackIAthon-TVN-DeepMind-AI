@@ -31,6 +31,7 @@
     <li class="row{% if group.id_grupo == selected %} is-selected{% endif %}">
       <a class="row__hit" href="{{ open_href(group) }}" hx-get="{{ open_href(group) }}" hx-target="#desk" hx-swap="outerHTML" hx-push-url="true"{% if group.id_grupo == selected %} aria-current="true"{% endif %}>
         <span class="row__rank">{{ rank[group.id_grupo] }}</span>
+        {{ photo(group, "row__photo", false) }}
         <span class="row__main">
           <span class="row__title">{{ group.titulo }}</span>
           <span class="meta">
