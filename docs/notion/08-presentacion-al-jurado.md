@@ -33,5 +33,5 @@ Las cuatro preguntas tienen respuesta y pantalla preparadas en `05-casos-y-evide
 - [ ] Matriz T01-T10 con resultado observado (ver `06-pruebas-y-metricas.md`)
 - [ ] Métricas de la ejecución final, con numerador y denominador
 - [ ] Ensayo completo con el wifi apagado (T10)
-- [ ] Caché y modelos listos en la máquina del pitch
+- [ ] Paquete offline verificado y dependencias instaladas en la máquina del pitch (`offline-demo serve`; sin modelos locales durante la demo)
 - [ ] Despliegue publicado y probado (cuando exista)

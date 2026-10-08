@@ -31,6 +31,15 @@ five drafts, or missing answered/abstained queries. The 22 news records without 
 publication date stay in the corpus but are excluded from pipeline vectors, as
 required by G1/G3's publication-date contract.
 
+The committed refresh reuses 2,844 vectors from G3 commit f7a1dd2 only when the
+news ID and exact embedded text match and the model revision, files, prefixes,
+recipe and vector hash are identical. It computes 310 changed/new documents;
+the ordered text fingerprint and refresh provenance are recorded in the new
+embedding manifest. This one-time preparation is reproducible with
+scripts/refresh_g10_vectors.py in a checkout containing that historical commit
+and the pinned installed model. Neither Git history nor the model is required
+to run an already prepared delivery.
+
 For a changed corpus, finish "whoami download-model", "whoami embed",
 "whoami pipeline" and "whoami generar" before packaging. Those preparation
 commands follow G3/G4's provider configuration and quotas. G10 never runs them

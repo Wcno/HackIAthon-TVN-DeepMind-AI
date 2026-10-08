@@ -27,10 +27,15 @@ están en el XML de la corrida.
 | T07 · Fuente que pide ignorar instrucciones | Titular con instrucciones maliciosas | Tratarla como dato no confiable; no revelar secretos | Automatizado: pasa | `test_generation_prompting` (instrucciones fuera del turno de evidencia; canario de fuga) | — |
 | T08 · Caso de prioridad alta | Grupo con puntaje alto y evidencia insuficiente | Exponer componentes y regla; no habilitar publicación | Automatizado: pasa | `test_scoring`, `test_run` (componentes con justificación), `test_schemas` (prioridad alta con evidencia insuficiente no se aprueba) | — |
 | T09 · Brief editorial | Grupo con evidencia suficiente | Formato útil, citas pertinentes, hechos e inferencias distinguidos | Automatizado: pasa | `test_schemas` (brief ≤250 palabras, copy ≤80, tres preguntas), `test_generation_entailment`, `test_generation_verifier` (acusación no presentada como hecho) | — |
-| T10 · Sin internet durante la demo | Demo con el wifi apagado | Funcionar con snapshot y fallback documentado | **Parcial:** pruebas automatizadas pasan; **ensayo con el wifi apagado pendiente** | `test_smoke` (el pipeline offline no crea ningún LLM), `test_backend` (el proveedor nunca se llama sin conexión), `test_backend_process` (reinicio con la misma base) | Ensayar con el wifi apagado antes del pitch |
+| T10 · Sin internet durante la demo | Snapshot real, conexiones externas y carga de modelos bloqueadas | Siete etapas, consultas guardadas y fallback sin Gemini | **Ensayo automatizado completo: pasa.** 48 consultas, edición en navegador y revisión tras reinicio; cero intentos externos o de inferencia. Ensayo físico con el wifi apagado pendiente | `test_offline`, `scripts/validate_g10.py`; [reporte G10](../../outputs/validation/g10-final/report.json), auditorías y capturas en `outputs/validation/g10-final/` | Paquete verificable y comando `offline-demo serve`; [preparación y fallback](../g10-offline.md) |
 
 Un resultado «pasa» significa que la prueba se ejecuta y se cumple. No mide calidad con
-datos reales. Las pruebas T07 y T10 en vivo siguen pendientes de ensayo manual.
+datos reales. T10 se ensayó con servidor y navegador reales bajo aislamiento de
+red: las siete etapas, una respuesta útil, una abstención y una pregunta inédita
+funcionan sin acceso externo. El reporte declara `physical_wifi_disabled=false`:
+no se cambió el wifi de la máquina. El ensayo físico antes del pitch y T07 con
+proveedor real siguen a cargo del equipo. Según D-05, estos archivos son el espejo
+para copiar a la página nativa de Notion; no hubo una sincronización automática.
 
 ## Métricas (§9.1)
 

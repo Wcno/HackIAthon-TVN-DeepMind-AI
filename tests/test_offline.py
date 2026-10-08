@@ -64,6 +64,28 @@ def test_manifest_cannot_skip_required_files_or_escape_the_bundle(bundle):
         verify(bundle)
 
 
+def test_a_refreshed_data_manifest_does_not_hide_stale_embeddings(bundle, tmp_path):
+    import csv
+    import hashlib
+
+    path = bundle / "data/processed/noticias.csv"
+    with path.open(encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source)
+        columns, rows = reader.fieldnames, list(reader)
+    next(row for row in rows if row["fecha_publicacion"])["titulo"] = "Un evento distinto después del cálculo de vectores"
+    with path.open("w", encoding="utf-8", newline="") as target:
+        writer = csv.DictWriter(target, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    manifest_path = bundle / "data/manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["sha256"]["processed/noticias.csv"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="Stale or incompatible"):
+        prepare(tmp_path / "new-package", bundle / "data/processed", bundle / "outputs")
+    assert not (tmp_path / "new-package").exists()
+
+
 def test_offline_app_ignores_online_settings_and_never_runs_a_model(bundle, monkeypatch, tmp_path):
     import httpx
     from fastapi.testclient import TestClient
