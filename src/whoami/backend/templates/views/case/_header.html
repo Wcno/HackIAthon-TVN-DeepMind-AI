@@ -12,7 +12,7 @@
         <span class="score__range">Prioridad {{ score.rango|capitalize }}</span>
         {% include 'views/case/_scorebar.html' %}
       </summary>
-      <div class="popover absolute top-full left-0 mt-2 w-[min(440px,calc(100vw-2rem))]">
+      <div class="popover absolute top-full left-0 mt-2 w-[min(440px,100cqw)]">
         <p class="pop__title">Cómo se calcula el puntaje</p>
         <p class="pop__formula">Suma ponderada de cinco componentes. Reglas {{ score.version_reglas }}.</p>
         <table class="pop__table">

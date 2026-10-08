@@ -14,6 +14,7 @@ from whoami.backend.editor import AssistantRequest
 from whoami.backend.gemini import GenerationUnavailable, InvalidGeneration
 from whoami.backend.repository import EditorialRepository, MissingRecord
 from whoami.backend.retrieval import CorpusRetriever
+from whoami.backend.service import comparable
 from whoami.generation.jsonschemas import citation_schema, response_format
 from whoami.generation.retrieval import tokenize
 from whoami.generation.verifier import repair_passage, unsupported_numbers
@@ -131,6 +132,11 @@ MIN_SHARED_TOPIC_TERMS = 2
 CASE_TOPIC_MIN_COSINE = 0.38
 
 
+# Questions the suggested chips send as an action; typed word for word they must give the same reply.
+CHIP_QUESTIONS = {"gaps": "¿Qué falta verificar antes de publicar?", "contradictions": "¿Hay contradicciones entre las fuentes?"}
+CHIP_ACTIONS = {comparable(text): action for action, text in CHIP_QUESTIONS.items()}
+
+
 class DraftAssistant:
     def __init__(self, repository: EditorialRepository, embeddings_directory: Path | None = None):
         self.repository = repository
@@ -184,9 +190,15 @@ class DraftAssistant:
         return {"kind": "articles", "text": "Noticias del corpus cargado, fuera de las fuentes de la ficha.", "articles": articles}
 
     async def respond(self, case_id: str, request: AssistantRequest, client) -> dict:
+        """The reply, tagged with what produced it: the loaded corpus and saved answers, or Gemini."""
+        return {"origin": "corpus"} | await self.reply(case_id, request, client)
+
+    async def reply(self, case_id: str, request: AssistantRequest, client) -> dict:
         case = self.repository.case(case_id)
         if any(source_id not in self.evidence for source_id in request.source_ids):
             raise MissingRecord("Una fuente seleccionada ya no está en el corpus cargado.")
+        if request.action == "ask" and comparable(request.question) in CHIP_ACTIONS:
+            request = request.model_copy(update={"action": CHIP_ACTIONS[comparable(request.question)]})
         if request.action == "articles":
             return await asyncio.to_thread(self.search, case, request.question)
         if request.action == "gaps":
@@ -200,9 +212,9 @@ class DraftAssistant:
             return {"kind": "answer", "text": "La ficha no registra contradicciones entre sus fuentes. Compara fuentes independientes antes de concluir que coinciden.",
                     "citations": [citation for claim in case["afirmaciones"] for citation in claim["citas"]]}
         if request.action == "ask":
-            normalized = " ".join(request.question.split()).casefold()
+            normalized = comparable(request.question)
             for answer in self.repository.records("answer"):
-                if " ".join(answer["consulta"].split()).casefold() == normalized:
+                if comparable(answer["consulta"]) == normalized:
                     if answer["estado"] == "abstencion":
                         return abstention(answer["motivo_abstencion"], answer["faltante"])
                     if answer["estado"] == "respondida":
@@ -327,7 +339,7 @@ class DraftAssistant:
                 async with asyncio.timeout(remaining if rejection else None):
                     result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-5",
                                                    response_format=structured_format, max_tokens=1200)
-                return result.content | {"cached": result.cached, "warnings": [], "option_warnings": []}
+                return result.content | {"origin": "gemini", "cached": result.cached, "warnings": [], "option_warnings": []}
             except InvalidGeneration as error:
                 rejection = error.cause if isinstance(error.cause, ReplyRejected) else ReplyRejected(
                     "reply_shape", ["Devuelve únicamente un objeto JSON con el formato pedido."])
@@ -340,5 +352,5 @@ class DraftAssistant:
                 logger.warning("Co-News retry %d/%d unavailable after a rejection: %s", attempt, MAX_ATTEMPTS, error)
                 break
         if rejection.is_soft:
-            return rejection.reply | {"cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
-        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"cached": False, "warnings": [], "option_warnings": []}
+            return rejection.reply | {"origin": "gemini", "cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
+        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"origin": "gemini", "cached": False, "warnings": [], "option_warnings": []}

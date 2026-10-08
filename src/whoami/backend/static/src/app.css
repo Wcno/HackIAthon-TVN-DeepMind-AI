@@ -91,6 +91,7 @@
   .inbox { @apply min-h-0 overflow-y-auto pb-10; }
   .case { @apply min-h-0 overflow-y-auto rounded-t-3xl bg-white px-12 pt-10 pb-20 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
   .case > * { @apply max-w-3xl; }
+  .case { container-type: inline-size; }
 
   .meta { @apply mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-3; }
   .priority { @apply rounded-md px-2 py-px text-xs font-bold tracking-wider uppercase; }
@@ -290,6 +291,7 @@
   .page-card { @apply rounded-3xl bg-white px-6 py-6 shadow-[0_1px_3px_rgb(0_70_111/0.06)] sm:px-10 sm:py-8; }
   .case-link { @apply mt-1 inline-flex; }
   .suggest-list { @apply grid list-none gap-2; }
+  .suggest-list--probes code { @apply font-mono text-sm break-words whitespace-pre-wrap text-ink-2; }
 
   .drawer { @apply fixed inset-y-3 right-3 z-40 w-[min(440px,calc(100vw-1.5rem))] translate-x-[110%] overflow-y-auto rounded-3xl bg-white px-8 pt-6 pb-10 shadow-[0_24px_64px_-12px_rgb(0_70_111/0.35)] transition-transform duration-300 ease-out-expo; }
   .drawer.is-open { @apply translate-x-0; }
@@ -313,7 +315,8 @@
   .pop__key--N { @apply bg-[#8cc6ec] text-navy; } .pop__key--E { @apply bg-[#cfe6f6] text-navy; }
   .pop__pts { @apply py-2.5 pr-3 align-top text-[15px] font-semibold whitespace-nowrap; }
   .pop__why { @apply py-2.5 text-sm text-ink-3; }
-  @media (max-width: 640px) {
+  /* The table stacks whenever its own panel is too narrow for three columns, whatever the window width. */
+  @container (max-width: 520px) {
     .pop__table, .pop__table tbody, .pop__table tr, .pop__table th, .pop__table td { @apply block; }
     .pop__table th, .pop__table td { @apply pr-0 whitespace-normal; }
   }
@@ -377,6 +380,11 @@
     .lead__body { @apply grid-cols-1; grid-template-areas: "title" "meta" "why" "facts" "go"; }
     .lead .btn--primary { @apply justify-self-start; }
     .lead__badges { @apply flex-row flex-wrap; }
+  }
+  /* The strap wraps before it can push the page wider than the window: the nav drops to its own row. */
+  @media (max-width: 1180px) {
+    .strap { @apply flex-wrap gap-y-2 py-3; }
+    .nav { @apply order-3 w-full flex-wrap; }
   }
   @media (max-width: 960px) {
     .strap { @apply flex-wrap gap-x-4 gap-y-2 px-4 py-3; }

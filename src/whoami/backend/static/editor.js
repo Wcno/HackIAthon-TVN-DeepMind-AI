@@ -260,6 +260,7 @@
     function renderReply(row, result, snapshot) {
       const names = {answer: 'Respuesta con evidencia', suggestion: 'Edición sugerida', articles: 'Artículos relacionados', abstention: 'Abstención', contradiction: 'Contradicción'};
       row.append(element('p', `reply__state reply__state--${result.kind}`, names[result.kind]), element('p', '', result.text));
+      row.append(element('p', 'reply__origin', result.origin === 'gemini' ? 'Respondido por Gemini' : 'Respondido con el corpus cargado, sin Gemini'));
       if (result.cached) row.append(element('p', 'reply__state reply__state--cached', 'Respuesta guardada'));
       const warn = text => element('p', 'reply__warn', `⚠ Verifica antes de aplicar: ${text}`);
       if (result.kind !== 'suggestion') for (const warning of result.warnings || []) row.append(warn(warning));

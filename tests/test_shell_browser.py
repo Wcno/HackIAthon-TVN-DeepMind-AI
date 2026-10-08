@@ -113,3 +113,28 @@ def test_skip_link_is_reachable_first_and_phone_popover_fits(browser_page, serve
     box = page.locator(".popover").bounding_box()
     assert box["x"] >= 0 and box["x"] + box["width"] <= 390
     page.close()
+
+
+@pytest.mark.parametrize("width", [390, 641, 800, 961, 972, 1100, 1280])
+def test_score_popover_stays_inside_the_viewport_and_its_box(browser_page, server, width):
+    page = browser_page.new_page(viewport={"width": width, "height": 900})
+    page.goto(f"{server}/cases/CASO-001")
+    page.locator("details.relative summary").first.click()
+    box = page.locator(".popover").first.bounding_box()
+    assert box["x"] >= 0 and box["x"] + box["width"] <= width
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
+    case = page.locator(".case").first.bounding_box()
+    assert box["x"] + box["width"] <= case["x"] + case["width"]
+    assert page.evaluate("[...document.querySelectorAll('.popover *')].every(e => e.getBoundingClientRect().right <= document.querySelector('.popover').getBoundingClientRect().right + 1)")
+    page.close()
+
+
+@pytest.mark.parametrize("width", [320, 390, 600, 972, 1100])
+def test_every_nav_item_is_reachable_without_page_overflow(browser_page, server, width):
+    page = browser_page.new_page(viewport={"width": width, "height": 800})
+    page.goto(f"{server}/inbox")
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
+    for link in page.locator("nav.nav a").all():
+        box = link.bounding_box()
+        assert box["x"] >= 0 and box["x"] + box["width"] <= width, link.inner_text()
+    page.close()

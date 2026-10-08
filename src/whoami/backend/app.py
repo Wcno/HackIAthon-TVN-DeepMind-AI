@@ -29,8 +29,8 @@ from whoami.backend.repository import (
 )
 from whoami.backend.panama_time import panama_time, short_date
 from whoami.backend.presentation import (
-    NO_CASE_FILE, abstention_copy, draft_budgets, evidence_card, field_label, file_state, latest_date, needs_investigation, pluralize,
-    review_timeline, snapshot_view, source_line,
+    NO_CASE_FILE, abstention_copy, case_questions, draft_budgets, evidence_card, field_label, file_state, latest_date, needs_investigation, pluralize,
+    review_timeline, snapshot_view, source_line, split_queries,
 )
 from whoami.backend.reports import methodology_view, quality_view, score_components, spanish_decimals
 from whoami.backend.service import EditorialService
@@ -211,7 +211,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
             "target": request.headers.get("HX-Target") if request.headers.get("HX-Request") == "true" else None,
             "workspace": screen == "workspace", "filter_query": "", "base_path": request.url.path,
-            "snapshot": request.app.state.snapshot, "examples_nav": request.app.state.repository.records("answer"), "review_states": REVIEW_STATES, "transitions": REVIEW_TRANSITIONS, **context,
+            "snapshot": request.app.state.snapshot, "review_states": REVIEW_STATES, "transitions": REVIEW_TRANSITIONS, **context,
         }, status_code=status_code)
 
     def desk(request: Request, title: str, pane: str | None = None, *, group: dict | None = None, case: dict | None = None,
@@ -388,7 +388,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.get("/cases/{case_id}/draft", response_class=HTMLResponse)
     def draft(request: Request, case_id: str):
-        return case_screen(request, case_id, "draft", "Borrador")
+        assistant = request.app.state.assistant
+        questions = case_questions(request.app.state.repository.records("answer"), assistant.sources(request.app.state.repository.case(case_id)))
+        return case_screen(request, case_id, "draft", "Borrador", case_questions=questions)
 
     def editor_record(case: dict) -> dict:
         return {"draft": case["borrador"], "source_ids": case["ids_fuente"], "version": case["version"],
@@ -439,7 +441,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/queries", response_class=HTMLResponse)
     async def queries(request: Request, q: Annotated[str | None, Query(max_length=QUERY_MAX_LENGTH)] = None):
         answer = None
-        examples = request.app.state.repository.records("answer")
+        examples, probes = split_queries(request.app.state.repository.records("answer"))
         try:
             if q and q.strip():
                 try:
@@ -451,12 +453,12 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         except (GenerationUnavailable, CompletionUnavailable) as error:
             if settings.offline:
                 # Offline, a question outside the precomputed set is an honest abstention, not a server fault.
-                return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples,
+                return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples, probes=probes,
                               query_status="no_precomputed", query_text=q)
             logger.warning("Query unavailable: %s", error)
-            return render(request, "queries", "Consulta con evidencia", status_code=503, answer=None, examples=examples,
+            return render(request, "queries", "Consulta con evidencia", status_code=503, answer=None, examples=examples, probes=probes,
                           query_status="unavailable", query_text=q)
-        return render(request, "queries", "Consulta con evidencia", answer=answer, examples=examples, query_text=q)
+        return render(request, "queries", "Consulta con evidencia", answer=answer, examples=examples, probes=probes, query_text=q)
 
     async def live_answer(request: Request, question: str) -> dict:
         provider = query_provider or (lambda text, gemini, repository: request.app.state.live_queries.answer(text))
