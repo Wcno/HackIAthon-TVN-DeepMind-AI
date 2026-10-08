@@ -17,6 +17,7 @@ from whoami.generation.verifier import fold, normalize_numbers
 from whoami.schemas import Citation, Components, Evidence, Group, Score, TVNCoverage
 
 MATCH_COSINE = .90
+COVERAGE_METHOD = "tvn-snapshot-v2"
 
 
 def is_tvn(row: Mapping[str, str]) -> bool:
@@ -56,7 +57,7 @@ class CoverageIndex:
                                                         sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
     def assess(self, indices: Sequence[int]) -> TVNCoverage:
-        return self._assess(indices).model_copy(update={"snapshot_sha256": self.snapshot_sha256})
+        return self._assess(indices).model_copy(update={"snapshot_sha256": self.snapshot_sha256, "metodo": COVERAGE_METHOD})
 
     def _assess(self, indices: Sequence[int]) -> TVNCoverage:
         external = [i for i in indices if not is_tvn(self.rows[i])]
@@ -73,7 +74,10 @@ class CoverageIndex:
             if exact:
                 matches.update(self.rows[i]["id_noticia"] for i in exact)
                 continue
-            if self.vectors is not None:
+            same_title = [i for i in self.tvn if self.titles[index] and self.titles[index] == self.titles[i]]
+            if same_title:
+                candidates = same_title
+            elif self.vectors is not None:
                 candidates = [i for i in self.tvn if float(self.vectors[index] @ self.vectors[i]) >= MATCH_COSINE]
             else:
                 candidates = [i for i in self.tvn if len(self.words[index] & self.words[i]) / max(len(self.words[index] | self.words[i]), 1) >= .8
@@ -86,6 +90,8 @@ class CoverageIndex:
                              for field, value in fields if _figures(value) - known]
                 if additions:
                     new.extend(additions)
+                elif same_title:
+                    continue  # The core headline is already covered, even when descriptions differ.
                 else:
                     uncertain = True
             else:
@@ -125,6 +131,6 @@ def assess_legacy_groups(groups: Sequence[Group], evidence: Mapping[str, Evidenc
     for group in groups:
         cached = group.cobertura_tvn
         assessment = cached if (cached and cached.snapshot_sha256 == index.snapshot_sha256
-                                and cached.metodo == "tvn-snapshot-v1") else index.assess([positions[m.id_noticia] for m in group.miembros])
+                                and cached.metodo == COVERAGE_METHOD) else index.assess([positions[m.id_noticia] for m in group.miembros])
         result.append(group.model_copy(update={"cobertura_tvn": assessment, "puntaje": coverage_score(group.puntaje, assessment)}))
     return result

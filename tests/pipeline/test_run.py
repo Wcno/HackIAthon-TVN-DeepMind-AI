@@ -101,6 +101,17 @@ def test_tvn_coverage_prevents_own_stories_and_external_replicas_being_novel():
     assert all(g.cobertura_tvn.estado == "cubierto" for g in output.grupos)
 
 
+def test_identical_tvn_headline_is_covered_despite_different_descriptions_and_vectors():
+    title = "Mulino llega a Vietnam para fortalecer alianzas comerciales y estratégicas con Panamá"
+    rows = [news("N-tvn", title, "TVN", at(3), "El presidente inició su gira oficial."),
+            news("N-copy", title, "Telemetro", at(2), "La visita busca fortalecer relaciones bilaterales.", source="telemetro")]
+    output = build(rows, np.array([[1., 0.], [0., 1.]]), classify_by_keywords,
+                   lambda vectors, dates: [[0], [1]], CUTOFF, official={})
+    external = group_with(output, "N-copy")
+    assert external.cobertura_tvn.estado == "cubierto"
+    assert external.puntaje.componentes.N == 0
+
+
 def test_inbox_refresh_rechecks_coverage_when_tvn_adds_the_external_story(tmp_path):
     from dataclasses import replace
     from whoami.backend.pipeline import load_pipeline
