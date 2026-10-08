@@ -1,4 +1,4 @@
-{# Master list: filters and ranked rows. Needs rows, total, rank, selected, topic, estado, topic_search, filter_query, base_path. #}
+{# Master list: filters and ranked rows. Needs rows, total, rank, selected, topic, estado, cobertura, topic_search, filter_query, base_path. #}
 <section class="inbox" id="inbox" aria-label="Temas priorizados">
   <form class="filters" method="get" action="{{ base_path }}" role="group" aria-label="Filtrar temas"
         hx-get="{{ base_path }}" hx-trigger="change" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">
@@ -15,6 +15,13 @@
       <select name="estado">
         <option value="">Todos los estados</option>
         {% for key, label in file_states.items() %}<option value="{{ key }}"{% if key == estado %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    <label class="select">
+      <span class="select__label">Cobertura TVN</span>
+      <select name="cobertura">
+        {% for key, label in coverage_filters.items() %}<option value="{{ key }}"{% if key == cobertura %} selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
       {{ icon("chevron", "icon select__chevron") }}
     </label>

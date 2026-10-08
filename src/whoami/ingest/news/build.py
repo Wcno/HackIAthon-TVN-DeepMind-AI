@@ -28,12 +28,13 @@ from whoami.contracts import (
 from whoami.ingest.news import channels
 from whoami.ingest.news.channels import gdelt, gdelt_gkg
 from whoami.ingest.news.article import Article
-from whoami.ingest.news.parsing import canonical_url
+from whoami.ingest.news.parsing import canonical_url, valid_http_url
 from whoami.ingest.news.sources import GDELT_FEED, GDELT_GKG_FEED, SOURCES, Channel, Source
 from whoami.ingest.output import iso, write_csv, write_json
 
 
 class Exclusion(StrEnum):
+    INVALID_URL = "url_invalida"
     NO_TITLE = "sin_titulo"
     NO_DATE = "sin_fecha"
     OUT_OF_WINDOW = "fuera_de_ventana"
@@ -100,6 +101,8 @@ def merge(articles: Iterable[Article]) -> list[NewsItem]:
 
 
 def exclusion(item: NewsItem, cutoff: datetime) -> Exclusion | None:
+    if not valid_http_url(item.url):
+        return Exclusion.INVALID_URL
     if not item.title:
         return Exclusion.NO_TITLE
     if item.window_date is None:

@@ -56,7 +56,7 @@ _MILLION = ("millon", "millones")
 _ARTICLES = ("un", "uno", "una")
 _CONNECTABLE_UNITS = {word for word, value in _UNITS.items() if 1 <= value <= 9}
 
-_TOKEN = re.compile(r"\d+(?:[.,]\d+)*|[a-z]+")
+_TOKEN = re.compile(r"(?<!\w)[+−-]?\d+(?:[.,]\d+)*|\d+(?:[.,]\d+)*|[a-z]+")
 
 
 @dataclass(frozen=True)
@@ -67,26 +67,28 @@ class _Token:
 
     @property
     def is_number(self) -> bool:
-        return self.text[0].isdigit()
+        return self.text.lstrip("+−-")[0].isdigit()
 
 
 def parse_digits(token: str) -> list[Decimal]:
     """`1.500` and `1,500` are 1500; `1,5` and `1.5` are 1.5; `1.234,56` and `1,234.56` are 1234.56."""
+    sign = -1 if token.startswith(("-", "−")) else 1
+    token = token.lstrip("+−-")
     separators = re.findall(r"[.,]", token)
     if not separators:
-        return [Decimal(token)]
+        return [Decimal(token) * sign]
     if len(set(separators)) == 2:
         decimal_separator = token[max(token.rfind("."), token.rfind(","))]
         thousands_separator = "." if decimal_separator == "," else ","
-        return [Decimal(token.replace(thousands_separator, "").replace(decimal_separator, "."))]
+        return [Decimal(token.replace(thousands_separator, "").replace(decimal_separator, ".")) * sign]
     parts = token.split(separators[0])
     whole, rest = parts[0], parts[1:]
     is_grouped = 1 <= len(whole) <= 3 and whole != "0" and all(len(part) == 3 for part in rest)
     if is_grouped:
-        return [Decimal("".join(parts))]
+        return [Decimal("".join(parts)) * sign]
     if len(parts) == 2:
-        return [Decimal(f"{whole}.{rest[0]}")]
-    return [Decimal(part) for part in parts]
+        return [Decimal(f"{whole}.{rest[0]}") * sign]
+    return [Decimal(part) * sign for part in parts]
 
 
 def _evaluate_words(words: Sequence[str]) -> Decimal:
@@ -112,30 +114,50 @@ def normalize_numbers(text: str) -> list[Decimal]:
 
     Percent signs and currency symbols do not change the value; years are numbers too.
     """
+    return [value for _, _, values in _number_spans(text) for value in values]
+
+
+def numeric_value_key(text: str) -> tuple[tuple[Decimal, ...], tuple[str, ...]]:
+    """Equivalent written coefficients share a key; units and qualitative words stay distinct."""
+    folded = fold(text)
+    spans = _number_spans(text)
+    parts, start = [], 0
+    for left, right, _ in spans:
+        parts.append(folded[start:left])
+        start = right
+    parts.append(folded[start:])
+    lexical = "".join(parts).replace("por ciento", "%")
+    return (tuple(value for _, _, values in spans for value in values),
+            tuple(re.findall(r"[a-z]+|[%$]", lexical)))
+
+
+def _number_spans(text: str) -> list[tuple[int, int, list[Decimal]]]:
     folded = fold(text)
     tokens = [_Token(m.group(), m.start(), m.end()) for m in _TOKEN.finditer(folded)]
 
     def adjacent(left: int, right: int) -> bool:
         return right < len(tokens) and not folded[tokens[left].end : tokens[right].start].strip()
 
-    numbers: list[Decimal] = []
+    numbers = []
     index = 0
     while index < len(tokens):
         token = tokens[index]
+        spoken_sign = -1 if index and tokens[index - 1].text == "menos" and adjacent(index - 1, index) else 1
+        start = tokens[index - 1].start if spoken_sign == -1 else token.start
         if token.is_number:
             values = parse_digits(token.text)
             index += 1
             if len(values) == 1:
                 multiplier, index = _digit_multiplier(tokens, index, adjacent)
                 values = [values[0] * multiplier]
-            numbers += values
+            numbers.append((start, tokens[index - 1].end, [value * spoken_sign for value in values]))
         elif token.text == "ciento" and index and tokens[index - 1].text == "por":
             index += 1  # "por ciento" is a percent sign, not a hundred
         elif _is_number_word(token.text):
             words, index = _word_run(tokens, index, adjacent)
             is_bare_scale = all(word in _MILLION for word in words)  # "millones en juego" names no figure
             if words not in (["un"], ["uno"], ["una"]) and not is_bare_scale:
-                numbers.append(_evaluate_words(words))
+                numbers.append((start, tokens[index - 1].end, [_evaluate_words(words) * spoken_sign]))
         else:
             index += 1
     return numbers
@@ -342,11 +364,14 @@ class ClaimCheck:
 
 
 def check_claim(claim: Claim, evidences: Mapping[str, Evidence]) -> ClaimCheck:
+    from whoami.generation.prompting import leaks_canary
     citations = check_citations(claim.citas, evidences)
     repairs = tuple(
         RepairedCitation(r.original, r.repaired, id_afirmacion=claim.id_afirmacion) for r in citations.repaired
     )
     issues = list(citations.errors)
+    if leaks_canary(claim.model_dump_json()):
+        issues.append("internal canary in generated claim")
     repaired_claim = claim.model_copy(update={"citas": citations.valid}) if not issues else claim
     issues += [
         f"cifra no respaldada: {format(number.normalize(), 'f')}"

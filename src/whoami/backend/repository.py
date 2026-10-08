@@ -7,7 +7,7 @@ Each review uses an immediate transaction and an expected version.
 import hashlib
 import json
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -15,6 +15,8 @@ from pathlib import Path
 
 from whoami.backend.pipeline import PipelineBundle
 from whoami.contracts import REVIEW_STATES, REVIEW_TRANSITIONS
+from whoami.pipeline.tvn_coverage import tvn_evidence_ids
+from whoami.schemas import Evidence, Group, ReviewArchive
 
 REVIEW_LABELS = {
     "nuevo": "Nuevo", "en_revision": "En revisión", "requiere_evidencia": "Requiere evidencia",
@@ -60,6 +62,25 @@ def cited_ids(case: dict) -> list[str]:
     return list(dict.fromkeys(citation["id_evidencia"] for claim in case["afirmaciones"] for citation in claim["citas"]))
 
 
+def case_content_hash(case: dict, group: dict, evidence_of: Callable[[str], dict], tvn_ids: set[str]) -> str:
+    source_ids = set(cited_ids(case))
+    source_ids.update(member["id_noticia"] for member in group["miembros"])
+    source_ids.update(context["id_evidencia"] for context in group["contexto"])
+    source_ids.update((group.get("cobertura_tvn") or {}).get("ids_tvn", []))
+    source_ids.update(tvn_ids)
+    source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
+                      for version in contradiction["versiones"])
+    return content_hash({"case": {key: value for key, value in case.items() if key != "estado_revision"},
+                         "group": {key: value for key, value in group.items() if key != "estado_revision"},
+                         "evidence": {key: evidence_of(key) for key in source_ids}})
+
+
+def tvn_ids_of(groups: Iterable[dict], evidence: dict[str, dict]) -> set[str]:
+    """Every TVN story: coverage of any group depends on all of them."""
+    return tvn_evidence_ids([Group.model_validate(group) for group in groups],
+                            {identity: Evidence.model_validate(source) for identity, source in evidence.items()})
+
+
 class EditorialRepository:
     def __init__(self, database: Path):
         self.database = database
@@ -87,6 +108,9 @@ class EditorialRepository:
                     content_version INTEGER NOT NULL DEFAULT 1
                 );
                 CREATE INDEX IF NOT EXISTS review_history ON reviews(case_id, timestamp, id);
+                CREATE TABLE IF NOT EXISTS review_archives (
+                    id TEXT PRIMARY KEY, body TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS generation_cache (
                     key TEXT PRIMARY KEY, body TEXT NOT NULL, created_at TEXT NOT NULL
                 );
@@ -121,8 +145,17 @@ class EditorialRepository:
             bundle = self._with_generated_cases(connection, bundle)
             groups = {group["id_grupo"]: group for group in bundle.groups}
             evidence = {item["id_evidencia"]: item for item in bundle.evidence}
+            tvn_ids = tvn_ids_of(bundle.groups, evidence)
+            for archive in bundle.review_archives:
+                validated = ReviewArchive.model_validate(archive).model_dump(mode="json")
+                connection.execute("INSERT OR IGNORE INTO review_archives VALUES (?, ?)",
+                                   (content_hash(validated), canonical_json(validated)))
             incoming_cases = {case["id_caso"] for case in bundle.cases}
+            incoming_hashes = {case["id_caso"]: case_content_hash(case, groups[case["id_grupo"]], evidence.__getitem__, tvn_ids)
+                               for case in bundle.cases}
             for previous in connection.execute("SELECT * FROM cases WHERE active = 1").fetchall():
+                if incoming_hashes.get(previous["id"]) != previous["content_hash"]:
+                    self._archive_reviewed_case(connection, previous)
                 if previous["id"] not in incoming_cases:
                     version = previous["version"] + 1
                     content_version = previous["content_version"] + 1
@@ -139,7 +172,7 @@ class EditorialRepository:
                     body = {key: value for key, value in row.items() if key != "estado_revision"}
                     connection.execute("INSERT INTO records VALUES (?, ?, ?)", (kind, row[id_field], canonical_json(body)))
             for case in bundle.cases:
-                self._import_case(connection, case, groups[case["id_grupo"]], evidence.__getitem__, bundle.reviews)
+                self._import_case(connection, case, incoming_hashes[case["id_caso"]], bundle.reviews)
 
     @staticmethod
     def _with_generated_cases(connection, bundle: PipelineBundle) -> PipelineBundle:
@@ -174,25 +207,15 @@ class EditorialRepository:
             group["id_caso"] = case["id_caso"]
             connection.execute("UPDATE records SET body = ? WHERE kind = 'group' AND id = ?", (canonical_json(group), case["id_grupo"]))
 
-            def evidence_of(evidence_id: str) -> dict:
-                found = connection.execute("SELECT body FROM records WHERE kind = 'evidence' AND id = ?", (evidence_id,)).fetchone()
-                if found is None:
-                    raise MissingRecord(f"Unknown evidence: {evidence_id}")
-                return json.loads(found["body"])
-
-            self._import_case(connection, case, group, evidence_of, ())
+            groups = [json.loads(record["body"]) for record in connection.execute("SELECT body FROM records WHERE kind = 'group'")]
+            evidence = {record["id"]: json.loads(record["body"]) for record in connection.execute(
+                "SELECT id, body FROM records WHERE kind = 'evidence'")}
+            digest = case_content_hash(case, group, evidence.__getitem__, tvn_ids_of(groups, evidence))
+            self._import_case(connection, case, digest, ())
         return case["id_caso"]
 
-    def _import_case(self, connection, case: dict, group: dict, evidence_of: Callable[[str], dict], reviews) -> None:
+    def _import_case(self, connection, case: dict, digest: str, reviews) -> None:
         body = {key: value for key, value in case.items() if key != "estado_revision"}
-        dependency = {key: value for key, value in group.items() if key != "estado_revision"}
-        source_ids = set(cited_ids(case))
-        source_ids.update(member["id_noticia"] for member in group["miembros"])
-        source_ids.update(context["id_evidencia"] for context in group["contexto"])
-        source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
-                          for version in contradiction["versiones"])
-        digest = content_hash({"case": body, "group": dependency,
-                               "evidence": {key: evidence_of(key) for key in source_ids}})
         existing = connection.execute("SELECT * FROM cases WHERE id = ?", (case["id_caso"],)).fetchone()
         if existing is None:
             connection.execute("INSERT INTO cases(id, body, content_hash, version) VALUES (?, ?, ?, 1)",
@@ -255,6 +278,8 @@ class EditorialRepository:
         """The seed case with the human-edited draft and the sources it cites applied."""
         edited = connection.execute("SELECT * FROM edited_drafts WHERE case_id = ?", (case["id_caso"],)).fetchone()
         extra_sources = []
+        if case["borrador"] is not None:  # the claim references prove generated text, not what a person edits
+            case = case | {"borrador": {key: value for key, value in case["borrador"].items() if key != "respaldo"}}
         if edited is not None:
             case = case | {"borrador": json.loads(edited["body"])}
             extra_sources = json.loads(edited["source_ids"])
@@ -301,10 +326,43 @@ class EditorialRepository:
     def review_history(self, case_id: str) -> list[dict]:
         self.case(case_id)
         with self.connection() as connection:
-            return [{"id_caso": row["case_id"], "estado": row["state"], "responsable": row["actor"],
+            active = [{"id_caso": row["case_id"], "estado": row["state"], "responsable": row["actor"],
                      "fecha": row["timestamp"], "nota": row["note"], "version": row["version"],
                      "content_version": row["content_version"]}
                     for row in connection.execute("SELECT * FROM reviews WHERE case_id = ? ORDER BY version, timestamp, id", (case_id,))]
+            historic = []
+            for row in connection.execute("SELECT body FROM review_archives ORDER BY id"):
+                archive = json.loads(row["body"])
+                if archive["ficha"]["id_caso"] == case_id:
+                    historic.extend(review | {"version": 0, "content_version": 0,
+                        "nota": (review["nota"] or "") + f" [Archived content {archive['contenido_sha256']}]"}
+                        for review in archive["decisiones"]
+                        if not any(datetime.fromisoformat(native["fecha"]) == datetime.fromisoformat(review["fecha"])
+                                   and all(native[key] == value for key, value in review.items() if key != "fecha")
+                                   for native in active))
+            return sorted(historic + active, key=lambda review: (review["content_version"], review["fecha"]))
+
+    @staticmethod
+    def _archive_reviewed_case(connection, row) -> None:
+        """Capture old inputs before an import replaces the group's evidence."""
+        from whoami.reviews import review_snapshots
+        from whoami.schemas import OutputSet
+        decisions = tuple({"id_caso": review["case_id"], "estado": review["state"],
+                           "responsable": review["actor"], "fecha": review["timestamp"], "nota": review["note"]}
+                          for review in connection.execute(
+                              "SELECT * FROM reviews WHERE case_id = ? AND content_version = ? ORDER BY timestamp, id",
+                              (row["id"], row["content_version"])))
+        if not decisions:
+            return
+        case = json.loads(row["body"])
+        groups = [json.loads(record["body"]) for record in connection.execute("SELECT body FROM records WHERE kind = 'group'")]
+        evidence = {record["id"]: json.loads(record["body"]) for record in connection.execute(
+            "SELECT id, body FROM records WHERE kind = 'evidence'")}
+        output = OutputSet.model_validate({"grupos": groups, "fichas": [case], "evidencias": evidence,
+                                          "consultas": [], "revisiones": decisions})
+        archive = review_snapshots(output)[row["id"]].model_dump(mode="json")
+        connection.execute("INSERT OR IGNORE INTO review_archives VALUES (?, ?)",
+                           (content_hash(archive), canonical_json(archive)))
 
     def current_review_records(self, case_id: str) -> list[dict]:
         """G2-compatible human history for the current content version only."""
@@ -402,8 +460,9 @@ class EditorialRepository:
             seed_reviews = tuple({key: value for key, value in review.items()
                                   if key not in ("version", "content_version")}
                                  for review in current_reviews if review["id_caso"] not in edited_ids)
+            archives = tuple(json.loads(row["body"]) for row in connection.execute("SELECT body FROM review_archives ORDER BY id"))
             return (PipelineBundle(records["group"], records["evidence"], cases,
-                                   records["answer"], seed_reviews), tuple(overlays))
+                                   records["answer"], seed_reviews, archives), tuple(overlays))
 
     def snapshot_bundle(self) -> PipelineBundle:
         """Read current pipeline content and matching human decisions atomically."""
@@ -421,4 +480,5 @@ class EditorialRepository:
                                 WHERE cases.active = 1 AND reviews.content_version = cases.content_version
                                 ORDER BY reviews.timestamp, reviews.id
                             """))
-            return PipelineBundle(records["group"], records["evidence"], cases, records["answer"], reviews)
+            archives = tuple(json.loads(row["body"]) for row in connection.execute("SELECT body FROM review_archives ORDER BY id"))
+            return PipelineBundle(records["group"], records["evidence"], cases, records["answer"], reviews, archives)

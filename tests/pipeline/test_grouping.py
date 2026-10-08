@@ -8,6 +8,16 @@ from whoami.pipeline.grouping import GREY_ZONE, SameEventJudge, group_agglomerat
 CUTOFF = datetime(2026, 10, 7, 12, tzinfo=UTC)
 
 
+def test_bridge_members_cannot_average_away_time_or_event_exclusions():
+    vectors = np.tile([1., 0.], (10, 1))
+    dates = [CUTOFF, CUTOFF + timedelta(hours=73)] + [CUTOFF + timedelta(hours=36)] * 8
+    groups = group_agglomerative(vectors, dates)
+    assert all(not (0 in group and 1 in group) for group in groups)
+    groups = group_agglomerative(vectors, [CUTOFF] * 10, overrides={(0, 1): False})
+    assert all(not (0 in group and 1 in group) for group in groups)
+    assert sorted(i for group in groups for i in group) == list(range(10))
+
+
 def at(hours_ago: float) -> datetime:
     return CUTOFF - timedelta(hours=hours_ago)
 
@@ -40,6 +50,8 @@ def test_identical_vectors_more_than_72_hours_apart_stay_apart():
 
     assert group_agglomerative(vectors, [at(100), at(10)]) == [[0], [1]]
     assert group_agglomerative(vectors, [at(75), at(4)]) == [[0, 1]]
+    assert group_agglomerative(vectors, [at(72), at(0)]) == [[0, 1]]
+    assert group_agglomerative(vectors, [at(72 + 1/3600), at(0)]) == [[0], [1]]
 
 
 def test_average_linkage_does_not_chain_a_story_that_drifts():

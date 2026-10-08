@@ -36,9 +36,9 @@ class EntailmentChecker:
         cited_ids = list(dict.fromkeys(citation.id_evidencia for citation in claim.citas))
         passages = "\n".join(f"- {c.id_evidencia} [{c.campo}]: {neutralize(c.pasaje)}" for c in claim.citas)
         messages = build_messages(
-            f"{ENTAILMENT_TASK}\nPasajes citados:\n{passages}",
+            ENTAILMENT_TASK,
             [evidences[i] for i in cited_ids if i in evidences],
-            user_query=f"Afirmación ({claim.tipo}): {claim.texto}",
+            user_query=f"Afirmación ({claim.tipo}): {claim.texto}\nPasajes citados:\n{passages}",
         )
         try:
             completion = self._llm.complete(

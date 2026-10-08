@@ -25,12 +25,8 @@ INVENTED = {"afirmaciones": [{
 HEADLINE_ONLY = {"afirmaciones": [{
     "texto": "TVN estrena nueva temporada.", "tipo": "hecho", "atribuida_a": None,
     "citas": [{"id_evidencia": "N-414e1be5622c", "campo": "titulo", "pasaje": "estrena nueva temporada"}]}]}
-PACKAGE = {
-    "titulo": "Sismo frente a Burica", "brief": "El USGS reportó un sismo frente a Burica.",
-    "enfoque_interes_publico": "Seguridad de la zona fronteriza.", "preguntas": ["¿Hubo daños?", "¿Hubo réplicas?", "¿Qué dice Sinaproc?"],
-    "fuentes_y_verificaciones": ["Confirmar con el catálogo USGS."], "guion": "El USGS reportó un sismo frente a Burica.",
-    "copy_digital": "Sismo frente a Burica.",
-}
+PACKAGE = {"titulo": ["A-1"], "brief": ["A-1"], "guion": ["A-1"], "copy_digital": ["A-1"],
+           "enfoque": "impacto", "preguntas": ["fuentes", "vacios", "actualizaciones"]}
 PARTIAL_GROUP, INSUFFICIENT_GROUP = "G-006", "G-007"
 
 
@@ -97,7 +93,10 @@ def test_generating_creates_the_case_file_and_opens_it_with_its_tabs(tmp_path):
         assert case_id == "CASO-006" and response.headers["HX-Push-Url"] == f"/cases/{case_id}"
         assert has_tabs(response.text) and "El Servicio Geológico de EE. UU. reportó el sismo" in response.text
         case = client.app.state.repository.case(case_id)
-        assert case["borrador"]["titulo"] == "Sismo frente a Burica" and case["estado_revision"] == "nuevo"
+        assert case["borrador"]["titulo"] == "El Servicio Geológico de EE. UU. reportó el sismo frente a Burica."
+        assert case["estado_revision"] == "nuevo"
+        stored = next(c for c in client.app.state.repository.snapshot_export()[0].cases if c["id_caso"] == case_id)
+        assert stored["metodo_generacion"] == "seleccion-afirmaciones-v1" and stored["borrador"]["respaldo"]["titulo"] == ["A-1"]
         assert has_tabs(client.get(f"/groups/{PARTIAL_GROUP}").text)
         assert "Generar ficha" not in client.get(f"/groups/{PARTIAL_GROUP}").text
 

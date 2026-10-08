@@ -15,6 +15,7 @@
         <span class="badge evidence--{{ group.estado_evidencia }}">{{ evidence_labels[group.estado_evidencia] }}</span>
         {% if group.id_caso %}<span id="review-badge-{{ group.id_grupo }}" class="badge review review--{{ group.estado_revision }}">{{ review_labels[group.estado_revision] }}</span>
         {% else %}<span class="badge badge--pending" title="Todavía no se ha generado la ficha de este tema">Sin ficha</span>{% endif %}
+        <span class="badge badge--coverage coverage--{{ group.cobertura_tvn.estado }}" title="{{ group.cobertura_tvn.razon }}">{{ coverage_badges[group.cobertura_tvn.estado] }}</span>
         {% if group|needs_investigation %}<span class="flag">{{ icon("alert") }}Requiere investigación</span>{% endif %}
       </span>
     </span>

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "total": 60,
+  "annotation": "agent proposal, pending human review",
+  "development": {
+    "count": 40,
+    "by_kind": {
+      "supported": 20,
+      "contradiction": 7,
+      "unanswerable": 7,
+      "adversarial": 6
+    },
+    "sha256": "6a2310c26bb01611c3fa596e571a811ed491afe15c9b591e2fbf54f581dab1a7"
+  },
+  "reserved": {
+    "count": 20,
+    "by_kind": {
+      "supported": 10,
+      "contradiction": 3,
+      "unanswerable": 3,
+      "adversarial": 4
+    },
+    "sha256": "9038dbfb9783074123b3da3a2c0d4c1c3c11295b9a5ac0863bdd0f94dc86122d"
+  },
+  "isolation": "Reserved queries and answers stay outside the checkout; evaluation requires an explicit --reserved path."
+}

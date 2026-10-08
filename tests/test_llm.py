@@ -309,6 +309,27 @@ def make_llm(tmp_path: Path, client: FakeClient, fake: FakeTime | None = None, *
     )
 
 
+def test_provider_switch_cannot_replay_another_endpoints_chat(tmp_path):
+    from dataclasses import replace
+    a = make_llm(tmp_path, FakeClient(chat_response("provider-a")))
+    a.complete(CHAT, USER_MESSAGE, purpose="test")
+    b = LLM(FakeClient(chat_response("provider-b")), replace(make_settings(tmp_path), base_url="http://other/"))
+    result = b.complete(CHAT, USER_MESSAGE, purpose="test")
+    assert result.text == "provider-b" and not result.cached
+    first, second = ledger_lines(tmp_path)
+    assert first["provider_id"] != second["provider_id"]
+
+
+def test_provider_switch_separates_embedding_cache_and_same_provider_reuses_it(tmp_path):
+    a = make_llm(tmp_path, FakeClient(embedding_response([1, 0])))
+    a.embed(EMBEDDING, ["one"], purpose="test", dimensions=2)
+    client = FakeClient(embedding_response([0, 1]))
+    b = LLM(client, replace(make_settings(tmp_path), base_url="http://other/"))
+    assert b.embed(EMBEDDING, ["one"], purpose="test", dimensions=2).tolist() == [[0, 1]]
+    assert b.embed(EMBEDDING, ["one"], purpose="test", dimensions=2).tolist() == [[0, 1]]
+    assert len(client.embedding_calls) == 1
+
+
 def ledger_lines(tmp_path: Path) -> list[dict]:
     path = tmp_path / "ledger.jsonl"
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []

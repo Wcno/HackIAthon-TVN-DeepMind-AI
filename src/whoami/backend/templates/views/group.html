@@ -7,6 +7,13 @@
     <p><strong>{{ group.n_medios|number }}</strong>{{ pluralize(group.n_medios, "medio", "medios") }}</p>
     <p><strong>{{ group.n_procedencias|number }}</strong>{{ pluralize(group.n_procedencias, "procedencia independiente", "procedencias independientes") }}</p>
   </div>
+  {% set tvn = group.cobertura_tvn %}
+  {% if tvn %}<section class="tvn" aria-labelledby="tvn-title"><h2 class="h2" id="tvn-title">Cobertura de TVN</h2>
+    <p><span class="badge badge--coverage coverage--{{ tvn.estado }}">{{ coverage_badges[tvn.estado] }}</span> {{ tvn.razon }}</p>
+    {% for citation in tvn.pasajes_nuevos %}
+    <p class="tvn__update"><strong>Posible actualización:</strong> «{{ citation.pasaje }}» <a class="link" href="/evidence/{{ citation.id_evidencia|urlencode }}" hx-get="/evidence/{{ citation.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML">Ver fuente</a></p>
+    {% endfor %}
+  </section>{% endif %}
   <p class="lede">Repetición no significa corroboración: las réplicas de una misma agencia cuentan como una sola procedencia.</p>
   <section class="origin"><h2 class="h2">Quién publicó</h2>
     <ul>{% for member in group.miembros %}

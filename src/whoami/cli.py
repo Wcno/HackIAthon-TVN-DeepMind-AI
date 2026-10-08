@@ -17,6 +17,7 @@
                                         data/processed/imagenes.json and vendors a resized copy of each (network)
     whoami imagenes-locales             vendor the photos already in imagenes.json (idempotent; network only for new ones)
     whoami export-backend               export persisted case files and human reviews (offline)
+    whoami evaluar                     G7 benchmark, baselines, metrics and automated tests
 """
 
 import argparse
@@ -26,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from whoami import demo
-from whoami.embeddings import Embedder, embed_corpus
+from whoami.embeddings import Embedder, embed_corpus, fetch_model
 from whoami.generation import run
 from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
@@ -65,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("build")
     commands.add_parser("demo")
     commands.add_parser("embed")
+    download = commands.add_parser("download-model", help="install/check the pinned local embedding model")
+    download.add_argument("--directory", type=Path)
+    download.add_argument("--offline", action="store_true", help="check existing files without downloading")
     pipeline_command = commands.add_parser("pipeline")
     pipeline_command.add_argument(
         "--vectors", type=Path, help="embeddings .npy next to a manifest.json with their ids (default: the only one)"
@@ -72,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument("--sin-llm", action="store_true", help="no LLM at all: logistic topics, embeddings-only grouping")
     pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     run.add_arguments(commands.add_parser("generar"))
+    from whoami.evaluation import run as evaluation
+
+    evaluation.add_arguments(commands.add_parser("evaluar"))
 
     commands.add_parser("contexto-oficial")
 
@@ -84,6 +91,18 @@ def main(argv: list[str] | None = None) -> int:
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
+    if args.command == "download-model":
+        try:
+            print(fetch_model(args.directory, offline=args.offline))
+            return 0
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+
+    if args.command == "evaluar":
+        try:
+            return evaluation.main(args)
+        except (ValueError, FileNotFoundError, KeyError) as error:
+            parser.error(str(error))
 
     if args.command == "generar":
         return run.main(args)

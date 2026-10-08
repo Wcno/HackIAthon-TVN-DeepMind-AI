@@ -47,14 +47,35 @@ def clean_text(raw: str | None) -> str | None:
 
 def section_of(url: str) -> str | None:
     """First path segment, which these outlets use as the section."""
-    segments = [segment for segment in urlsplit(url).path.split("/") if segment]
+    try:
+        segments = [segment for segment in urlsplit(url).path.split("/") if segment]
+    except ValueError:
+        return None  # Preserve the record for central URL exclusion and quality accounting.
     return segments[0] if len(segments) > 1 else None
 
 
 def canonical_url(url: str) -> str:
     """Same article despite scheme, `www.`, query, fragment or trailing slash."""
-    parts = urlsplit(url.strip())
+    if not valid_http_url(url):
+        return f"invalid:{url}"
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:
+        return f"invalid:{url}"  # Distinct malformed inputs must not abort or alias valid rows.
     return parts.netloc.lower().removeprefix("www.") + parts.path.rstrip("/")
+
+
+def valid_http_url(url: str) -> bool:
+    """Central ingestion validation, applied before valid URL aliases are merged."""
+    try:
+        parsed = urlsplit(url)
+        if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
+                or any(char.isspace() or ord(char) < 32 for char in url)):
+            return False
+        parsed.port
+        return True
+    except ValueError:
+        return False
 
 
 def belongs_to_outlet(url: str | None, domain: str) -> bool:

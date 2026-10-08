@@ -55,6 +55,6 @@ def test_export_without_overlays_keeps_existing_artifacts(tmp_path):
         pass
     destination = tmp_path / "delivery"
     counts = export_backend(EditorialRepository(settings.database), destination)
-    assert set(counts) == {"fichas.jsonl", "revisiones.jsonl", "consultas.jsonl"}
+    assert set(counts) == {"fichas.jsonl", "revisiones.jsonl", "revisiones_vinculadas.jsonl", "consultas.jsonl"}
     assert not (destination / COMPANION).exists()
     load(settings.data_directory, destination)

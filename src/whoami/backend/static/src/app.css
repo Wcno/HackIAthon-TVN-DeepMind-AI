@@ -190,6 +190,12 @@
   .generator__form.htmx-request .generator__progress { @apply flex; }
   .generator__spinner { @apply size-4 shrink-0 animate-spin rounded-full border-2 border-blue/30 border-t-blue motion-reduce:animate-none; }
   .badge--pending { @apply bg-white text-ink-2 ring-line; }
+  .badge--coverage { @apply bg-white text-ink-2 ring-line; }
+  .coverage--cubierto { @apply bg-yellow-soft text-[#5a4300] ring-yellow-soft; }
+  .coverage--dato_nuevo { @apply bg-blue-soft text-navy ring-blue-soft; }
+  .tvn { @apply mt-6 grid max-w-[64ch] gap-2; }
+  .tvn__update { @apply text-[15.5px] text-ink-2; }
+  .generator__coverage { @apply rounded-xl bg-yellow-soft/70 px-4 py-3 text-[15px] font-medium text-[#5a4300]; }
 
   .versions { @apply my-4 grid grid-cols-2 gap-4; }
   .version { @apply rounded-2xl bg-ground p-6; }

@@ -259,3 +259,8 @@ def test_invalid_draft_names_the_offending_field(tmp_path):
             "draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]})
         body = response.json()
         assert (body["field"], body["index"]) == ("preguntas", 1) and "Pregunta 2" in body["message"]
+
+
+def test_the_editable_draft_leaves_out_the_claim_references_of_the_generated_text(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3"))) as client:
+        assert "respaldo" not in client.get("/api/cases/CASO-001/draft").json()["draft"]

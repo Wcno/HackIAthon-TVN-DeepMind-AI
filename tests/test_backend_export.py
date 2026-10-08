@@ -37,6 +37,7 @@ def test_changed_content_exports_only_its_current_review_cycle(tmp_path):
     repository = EditorialRepository(settings.database)
     bundle = load_pipeline(settings.data_directory, settings.output_directory)
     repository.import_bundle(bundle)
+    previous_history = repository.review_history("CASO-005")
     changed = tuple(case | {"accion_recomendada": "Review the updated content"} if case["id_caso"] == "CASO-005" else case
                     for case in bundle.cases)
     repository.import_bundle(replace(bundle, cases=changed))
@@ -46,6 +47,11 @@ def test_changed_content_exports_only_its_current_review_cycle(tmp_path):
     assert output.review_state("CASO-005") == "nuevo"
     assert not any(review.id_caso == "CASO-005" for review in output.revisiones)
     assert any(review["estado"] == "aprobado_como_borrador" for review in repository.review_history("CASO-005"))
+    assert len(repository.review_history("CASO-005")) == len(previous_history)
+    fresh = EditorialRepository(tmp_path / "fresh.sqlite3")
+    fresh.import_bundle(load_pipeline(settings.data_directory, destination))
+    assert fresh.case("CASO-005")["estado_revision"] == "nuevo"
+    assert any(review["estado"] == "aprobado_como_borrador" for review in fresh.review_history("CASO-005"))
 
 
 def test_two_concurrent_reviewers_cannot_overwrite_each_other(tmp_path):
@@ -68,3 +74,30 @@ def test_two_concurrent_reviewers_cannot_overwrite_each_other(tmp_path):
     assert results.count("conflict") == 1
     assert repository.case("CASO-001")["version"] == version + 1
     assert len([review for review in repository.review_history("CASO-001") if review["nota"] == "Concurrent decision"]) == 1
+
+
+def test_a_reviewed_case_whose_pipeline_content_changes_shows_each_event_once(tmp_path):
+    from dataclasses import replace
+    from whoami.backend.pipeline import load_pipeline
+    from whoami.backend.presentation import review_timeline
+    from whoami.contracts import DEMO
+    bundle = load_pipeline(DEMO, DEMO)
+    repository = EditorialRepository(tmp_path / "db.sqlite3")
+    repository.import_bundle(bundle)
+    case_id = "CASO-004"
+    version = repository.case(case_id)["version"]
+    repository.review(case_id, state="en_revision", actor="Ana", note=None, expected_version=version)
+    changed = replace(bundle, cases=tuple(
+        case | {"afirmaciones": [claim | {"texto": claim["texto"] + " (actualizado)"} for claim in case["afirmaciones"]]}
+        if case["id_caso"] == case_id else case for case in bundle.cases))
+    repository.import_bundle(changed)
+    exported = repository.snapshot_export()[0]
+    repository.import_bundle(exported)  # a round trip through the delivery files must not repeat anything
+
+    history, audit = repository.review_history(case_id), repository.audit_history(case_id)
+    by_decision = [(item["estado"], item["responsable"], item["fecha"]) for item in history]
+    assert len(by_decision) == len(set(by_decision))
+    assert sum(item["estado"] == "en_revision" and item["responsable"] == "Ana" for item in history) == 1
+    timeline = review_timeline(history, audit)
+    edits = [item for item in timeline if item["kind"] == "edit"]
+    assert len(edits) == len({(item["title"], item["content_version"]) for item in edits}) == len(audit)

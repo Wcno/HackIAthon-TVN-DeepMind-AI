@@ -188,7 +188,7 @@ def citation_errors(citations: Iterable[Citation], evidences: Mapping[str, Evide
 
 
 class Claim(Schema):
-    """A claim of a case file. Accusations are statements attributed to someone, never facts (§8)."""
+    """A cited claim of a case file or structured answer. Accusations are attributed statements (§8)."""
 
     id_afirmacion: NonEmpty
     texto: NonEmpty
@@ -214,6 +214,7 @@ class EditorialPackage(Schema):
     guion: NonEmpty
     copy_digital: NonEmpty
     leyenda: NonEmpty | None
+    respaldo: dict[str, tuple[str, ...]] | None = None
 
     @field_validator("brief")
     @classmethod
@@ -234,6 +235,13 @@ class ContradictionVersion(Schema):
     valor: NonEmpty
     alcance: NonEmpty
     id_evidencia: NonEmpty
+    citas: tuple[Citation, ...] = ()
+
+    @model_validator(mode="after")
+    def _citations_belong_to_the_version(self) -> Self:
+        if any(citation.id_evidencia != self.id_evidencia for citation in self.citas):
+            raise ValueError("las citas de una versión deben pertenecer a su evidencia")
+        return self
 
 
 class Contradiction(Schema):
@@ -260,6 +268,7 @@ class CaseFile(Schema):
     contradicciones: tuple[Contradiction, ...]
     accion_recomendada: NonEmpty
     sintetico: bool = False
+    metodo_generacion: str | None = Field(default=None, pattern="^seleccion-afirmaciones-v1$")
 
     @model_validator(mode="after")
     def _headline_only_drafts_say_so(self) -> Self:
@@ -324,6 +333,17 @@ class ContextLink(Schema):
         return self
 
 
+class TVNCoverage(Schema):
+    """Discovery assessment against the loaded TVN snapshot, never the entire web."""
+
+    estado: str = Field(pattern="^(cubierto|dato_nuevo|sin_coincidencia|no_comprobada)$")
+    razon: NonEmpty
+    ids_tvn: tuple[str, ...] = ()
+    pasajes_nuevos: tuple[Citation, ...] = ()
+    metodo: str = "tvn-snapshot-v3"
+    snapshot_sha256: str | None = Field(default=None, pattern="^[0-9a-f]{64}$")
+
+
 class Group(Schema):
     """News about the same event, ranked in the inbox. Counters are derived from the members."""
 
@@ -337,6 +357,7 @@ class Group(Schema):
     sin_contexto_motivo: NonEmpty | None
     id_caso: NonEmpty | None
     sintetico: bool = False
+    cobertura_tvn: TVNCoverage | None = None
 
     @model_validator(mode="after")
     def _members_and_context(self) -> Self:
@@ -375,9 +396,17 @@ class Answer(Schema):
     motivo_abstencion: NonEmpty | None = None
     faltante: NonEmpty | None = None
     versiones: tuple[ContradictionVersion, ...] = ()
+    afirmaciones: tuple[Claim, ...] = ()
 
     @model_validator(mode="after")
     def _shape_matches_state(self) -> Self:
+        if self.afirmaciones:
+            if self.estado != "respondida" or self.respuesta != " ".join(claim.texto for claim in self.afirmaciones):
+                raise ValueError("la respuesta debe componerse exactamente de sus afirmaciones")
+            if len({claim.id_afirmacion for claim in self.afirmaciones}) != len(self.afirmaciones):
+                raise ValueError("las afirmaciones de una respuesta necesitan IDs únicos")
+            if set(self.citas) != {citation for claim in self.afirmaciones for citation in claim.citas}:
+                raise ValueError("las citas de la respuesta deben corresponder a sus afirmaciones")
         if self.estado == "respondida":
             if self.respuesta is None or not self.citas:
                 raise ValueError("una respuesta respondida necesita texto y citas")
@@ -440,6 +469,34 @@ def transition_errors(records: Iterable[ReviewRecord]) -> list[str]:
 # ---------------------------------------------------------------------------------------------------------
 
 
+class ReviewArchive(Schema):
+    """An immutable reviewed snapshot; its decisions never apply to current content."""
+
+    ficha: CaseFile
+    grupo: Group
+    evidencias: dict[str, Evidence]
+    decisiones: tuple[ReviewRecord, ...]
+    contenido_sha256: str
+
+    @staticmethod
+    def digest(case: CaseFile, group: Group, evidence: dict[str, Evidence]) -> str:
+        import hashlib
+        import json
+        payload = {"case": case.model_dump(mode="json"), "group": group.model_dump(mode="json"),
+                   "evidence": {key: value.model_dump(mode="json") for key, value in evidence.items()}}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+    @model_validator(mode="after")
+    def _bound_decisions(self) -> Self:
+        if self.contenido_sha256 != self.digest(self.ficha, self.grupo, self.evidencias):
+            raise ValueError("Archived review snapshot hash mismatch")
+        if self.ficha.id_grupo != self.grupo.id_grupo or any(r.id_caso != self.ficha.id_caso for r in self.decisiones):
+            raise ValueError("Archived review belongs to another case")
+        if transition_errors(self.decisiones):
+            raise ValueError("Invalid archived review cycle")
+        return self
+
+
 class OutputSet(Schema):
     """Everything the interface and the API read, as one object."""
 
@@ -448,6 +505,8 @@ class OutputSet(Schema):
     fichas: tuple[CaseFile, ...]
     consultas: tuple[Answer, ...]
     revisiones: tuple[ReviewRecord, ...]
+    historial_revisiones: tuple[ReviewArchive, ...] = ()
+    revisiones_vinculadas: tuple[ReviewArchive, ...] = ()
 
     def review_state(self, case_id: str) -> ReviewState:
         return current_review_state(self.revisiones, case_id)
@@ -466,10 +525,12 @@ def verify(output: OutputSet) -> None:
 
     citations = [c for f in output.fichas for claim in f.afirmaciones for c in claim.citas]
     citations += [c for answer in output.consultas for c in answer.citas]
+    citations += [c for answer in output.consultas for claim in answer.afirmaciones for c in claim.citas]
     problems += citation_errors(citations, evidences)
 
     versions = [v for f in output.fichas for contradiction in f.contradicciones for v in contradiction.versiones]
     versions += [v for answer in output.consultas for v in answer.versiones]
+    problems += citation_errors([citation for version in versions for citation in version.citas], evidences)
     problems += [
         f"{v.id_evidencia}: la versión contradictoria cita una evidencia que no existe"
         for v in versions
@@ -477,6 +538,10 @@ def verify(output: OutputSet) -> None:
     ]
 
     for group in output.grupos:
+        if group.cobertura_tvn is not None:
+            problems += citation_errors(group.cobertura_tvn.pasajes_nuevos, evidences)
+            problems += [f"{group.id_grupo}: TVN coverage refers to missing evidence {key}"
+                         for key in group.cobertura_tvn.ids_tvn if key not in evidences]
         ids = [m.id_noticia for m in group.miembros] + [link.id_evidencia for link in group.contexto]
         problems += [f"{group.id_grupo}: {i} no está en evidencias" for i in ids if i not in evidences]
         for link in group.contexto:
@@ -491,6 +556,14 @@ def verify(output: OutputSet) -> None:
             problems.append(f"{group.id_grupo}: id_caso {group.id_caso} no tiene ficha")
 
     for case_file in output.fichas:
+        if case_file.borrador is not None:
+            if case_file.metodo_generacion == "seleccion-afirmaciones-v1" and case_file.borrador.respaldo is None:
+                problems.append(f"{case_file.id_caso}: generated draft is missing accepted claim references")
+            from whoami.generation.package_selection import verify_package
+            try:
+                verify_package(case_file.borrador, case_file.afirmaciones)
+            except ValueError as error:
+                problems.append(f"{case_file.id_caso}: {error}")
         owner = groups.get(case_file.id_grupo)
         if owner is None:
             problems.append(f"{case_file.id_caso}: el grupo {case_file.id_grupo} no existe")
@@ -519,6 +592,18 @@ def verify(output: OutputSet) -> None:
             if reviewed.borrador is None:
                 problems.append(f"{record.id_caso}: no se puede pasar a aprobado_como_borrador sin borrador")
     problems += transition_errors(output.revisiones)
+
+    if output.revisiones_vinculadas:
+        from whoami.reviews import review_snapshots
+        expected = review_snapshots(output)
+        seen = set()
+        for snapshot in output.revisiones_vinculadas:
+            case_id = snapshot.ficha.id_caso
+            if case_id in seen or expected.get(case_id) != snapshot:
+                problems.append(f"{case_id}: review decisions do not match the current content snapshot")
+            seen.add(case_id)
+        if seen != set(expected):
+            problems.append("Active reviews are missing a content snapshot")
 
     if problems:
         raise ValueError("el paquete es incoherente:\n- " + "\n- ".join(problems))

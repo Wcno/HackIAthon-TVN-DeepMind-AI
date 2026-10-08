@@ -3,7 +3,7 @@ import shutil
 
 from whoami.contracts import DEMO, EVIDENCE_FILE, GROUPS_FILE
 from whoami.pipeline.official import refresh_official
-from whoami.schemas import Evidence
+from whoami.schemas import Evidence, Group
 from whoami.store import read_jsonl
 
 INEC_ID = "INEC-ipc_var_interanual-2026-08"
@@ -29,7 +29,9 @@ def test_refresh_relabels_context_and_replaces_only_the_official_evidence(tmp_pa
     groups, evidences = read_jsonl(data / GROUPS_FILE), read_jsonl(data / EVIDENCE_FILE)
     labels = {c["id_evidencia"]: c["etiqueta"] for g in groups for c in g["contexto"]}
     assert labels[INEC_ID] == "IPC, variación interanual (revisada)"
-    assert [g | {"contexto": None} for g in groups] == [g | {"contexto": None} for g in groups_before]
+    # Groups written back always carry the optional fields of the current schema (e.g. `cobertura_tvn`), old files may not.
+    normalized = lambda gs: [Group.model_validate(g).model_dump(mode="json") | {"contexto": None} for g in gs]  # noqa: E731
+    assert normalized(groups) == normalized(groups_before)
     unlabeled = lambda gs: json.dumps([[{**c, "etiqueta": ""} for c in g["contexto"]] for g in gs])  # noqa: E731
     assert unlabeled(groups) == unlabeled(groups_before)
     assert [e["id_evidencia"] for e in evidences] == [e["id_evidencia"] for e in evidences_before]

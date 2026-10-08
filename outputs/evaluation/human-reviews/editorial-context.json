@@ -1,0 +1,14 @@
+{
+  "project": "TVN DeepMind AI",
+  "criteria": [
+    "Titulos atractivos, claros y fieles a la noticia.",
+    "Ayudar a TVN a descubrir e informarse sobre nuevas noticias de otras fuentes que aun no haya publicado.",
+    "Los titulos deben captar la atencion; evaluar su atractivo editorial por separado del sustento factual."
+  ],
+  "source": "Instrucciones humanas explicitas en esta conversacion",
+  "recorded_at": "2026-10-08T03:27:18.776886+00:00",
+  "human_claim_review_sample_requested": 10,
+  "original_g7_sample_minimum": 30,
+  "sample_scope_instruction": "vamos a validar 10 solamente",
+  "updated_at": "2026-10-08T03:32:37.583803+00:00"
+}

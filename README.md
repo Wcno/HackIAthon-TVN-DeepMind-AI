@@ -8,6 +8,11 @@ fichas de evidencia y borradores editoriales para revisión humana. Está pensad
 para ayudar a editores, periodistas y productores digitales a planificar la
 agenda, investigar hechos y preparar contenidos con fuentes trazables.
 
+El foco editorial es descubrir noticias de otras fuentes que TVN todavía no
+haya publicado. El archivo de TVN sirve como referencia de su cobertura: una
+noticia ya publicada por TVN no cuenta como una novedad para el medio. Los
+títulos deben captar la atención y comunicar el hecho con claridad y fidelidad.
+
 El proyecto busca reducir el tiempo dedicado a revisar fuentes dispersas,
 identificar noticias sobre un mismo evento y encontrar contexto relevante.
 Cada resultado debe permitir revisar su evidencia, sus fechas y lo que falta
@@ -128,6 +133,19 @@ minutos ante respuestas HTTP 429; los fallos se conservan en
 `data/raw/news/gdelt/doc/`. Ver [el cierre de G1](docs/g1-completion.md) para
 la cobertura y los límites del corpus.
 
+Para instalar la revisión fijada de EmbeddingGemma desde una máquina nueva:
+
+```powershell
+uv run --locked whoami download-model
+uv run --locked whoami download-model --offline
+```
+
+El segundo comando comprueba que los tres archivos están disponibles sin usar
+la red. `--directory RUTA` permite elegir el directorio; para utilizarlo al
+procesar datos, definir `WHOAMI_EMBEDDING_MODEL_DIR` con esa misma ruta. Una
+descarga incompleta puede reanudarse; cada archivo se instala tras copiarse por
+completo.
+
 El comando `whoami embed` construye los vectores locales y
 `whoami pipeline --sin-llm` procesa el corpus sin llamadas al modelo generativo.
 La primera descarga de EmbeddingGemma requiere conexión; después puede
@@ -135,6 +153,19 @@ reutilizarse el modelo en caché. `whoami generar` produce fichas y respuestas
 con el modelo configurado y requiere preparar sus entradas y credenciales.
 Consultar las opciones con `uv run --locked whoami --help` y
 `uv run --locked whoami generar --help`.
+
+La comparación de cobertura distingue eventos ya cubiertos por TVN, posibles
+actualizaciones externas con datos nuevos citados, eventos sin coincidencia en
+el snapshot y novedad no comprobada. Los grupos ya cubiertos se excluyen de la
+bandeja principal y de nuevas fichas. Una ausencia en el snapshot no demuestra
+que TVN nunca haya publicado el evento; la cobertura incompleta se muestra al
+editor. Las actualizaciones requieren verificar el alcance del dato nuevo.
+
+Para escribir borradores, el modelo selecciona y ordena afirmaciones aceptadas.
+El código conserva sus textos, tipos y atribuciones en título, brief, guion y
+copy, y comprueba sus referencias al cargar el paquete. El registro de revisiones
+exporta también el contenido revisado y el historial de versiones retiradas;
+cambiar la ficha, el grupo o sus fuentes abre un nuevo ciclo de revisión.
 
 ## Validación y exportación
 
@@ -145,6 +176,18 @@ uv run --locked pytest -q
 La suite cubre contratos, procesamiento, generación y revisión editorial;
 incluye el reinicio de un servidor HTTP real y la validación de los archivos
 exportados contra el contrato compartido.
+
+Para ejecutar el benchmark G7, comparar BM25 con embeddings y guardar las
+métricas junto con todas las pruebas:
+
+```powershell
+uv run --locked whoami evaluar --mode recorded
+```
+
+El modo `live` mide la generación con Gemini. Las consultas reservadas se
+mantienen fuera del repositorio y las métricas con etiquetas de IA se marcan
+como provisionales hasta incorporar las revisiones humanas. Ver
+[la evaluación G7](docs/evaluation.md) para requisitos, métodos y formatos.
 
 Para exportar las fichas, consultas y decisiones del ciclo de revisión actual,
 detener primero el servidor y ejecutar:

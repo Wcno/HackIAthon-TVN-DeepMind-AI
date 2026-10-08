@@ -22,7 +22,7 @@ def row_ids(html):
 
 def test_inbox_lists_a_page_of_rows_and_offers_more(client, monkeypatch):
     monkeypatch.setattr(module, "INBOX_PAGE_SIZE", 2)
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     html = client.get("/inbox").text
     assert len(row_ids(html)) == 2
     assert 'href="/inbox?desde=2"' in html and 'hx-get="/inbox?desde=2"' in html
@@ -40,7 +40,7 @@ def test_ver_mas_fragment_returns_only_the_next_rows_and_the_next_link(client, m
 
 def test_last_page_has_no_ver_mas_and_a_plain_load_keeps_earlier_pages(client, monkeypatch):
     monkeypatch.setattr(module, "INBOX_PAGE_SIZE", 2)
-    total = len(client.app.state.editorial.inbox()) - 1
+    total = len(client.app.state.editorial.inbox(include_covered=True)) - 1
     html = client.get("/inbox?desde=4").text
     assert len(row_ids(html)) == total and "Ver más" not in html
 
@@ -92,9 +92,14 @@ def test_nuevo_means_a_case_file_exists_and_is_unreviewed(client):
 
 
 def test_case_header_carries_the_investigation_flag_like_the_list(client):
-    header = client.get("/groups/G-003").text.split('class="case__head"')[1].split("</header>")[0]
-    assert "Requiere investigación" in header
-    assert "Requiere investigación" not in client.get("/groups/G-001").text.split('class="case__head"')[1].split("</header>")[0]
+    from whoami.backend.presentation import needs_investigation
+    high_and_insufficient = {"puntaje": {"rango": "alto"}, "estado_evidencia": "insuficiente"}
+    assert needs_investigation(high_and_insufficient)
+    assert not needs_investigation(high_and_insufficient | {"puntaje": {"rango": "medio"}})
+    assert not needs_investigation(high_and_insufficient | {"estado_evidencia": "parcial"})
+    for group in client.app.state.editorial.inbox(include_covered=True):
+        header = client.get(f"/groups/{group['id_grupo']}").text.split('class="case__head"')[1].split("</header>")[0]
+        assert ("Requiere investigación" in header) == needs_investigation(group)
 
 
 @pytest.mark.parametrize("params", [{"topic": "no-existe"}, {"estado": "no-existe"}, {"topic": "no-existe", "estado": "no-existe"}])
@@ -124,13 +129,13 @@ def test_empty_results_do_not_ask_to_pick_from_an_empty_list(client):
 
 def test_scores_always_show_two_decimals(client):
     html = client.get("/inbox").text
-    assert '<span class="score__value">70,00</span>' in html and '<span class="score__value">93,75</span>' in html
-    assert '<span class="score__value">70,00</span>' in client.get("/groups/G-003").text
+    assert '<span class="score__value">55,00</span>' in html and '<span class="score__value">78,75</span>' in html
+    assert '<span class="score__value">55,00</span>' in client.get("/groups/G-003").text
 
 
 def test_methodology_picker_is_short_and_searchable(client, monkeypatch):
     monkeypatch.setattr(module, "METHODOLOGY_OPTIONS", 3)
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     page = client.get("/methodology").text
     assert page.count("<option") == 3
     last = ranked[-1]

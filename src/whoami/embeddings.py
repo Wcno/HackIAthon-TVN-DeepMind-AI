@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,18 +43,27 @@ def model_dir() -> Path:
     return Path(override) if override else MODELS_CACHE / "local" / MODEL_NAME
 
 
-def fetch_model(target: Path | None = None, download: Download | None = None) -> Path:
+def fetch_model(target: Path | None = None, download: Download | None = None, *, offline: bool = False) -> Path:
     """Downloads the pinned files (network) into `target`; files already there are kept."""
     if download is None:
         from huggingface_hub import hf_hub_download as download
     target = target or model_dir()
     for filename, destination in _LAYOUT.items():
         path = target / destination
-        if path.exists():
+        if path.is_file() and path.stat().st_size:
             continue
+        if offline:
+            raise FileNotFoundError("Local model is incomplete; run whoami download-model with internet access")
         cached = download(MODEL_REPO, filename, revision=MODEL_REVISION, cache_dir=MODELS_CACHE)
         path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(cached, path)
+        partial = path.with_suffix(path.suffix + ".part")
+        try:
+            shutil.copyfile(cached, partial)
+            if not partial.stat().st_size:
+                raise ValueError("Downloaded model file is empty")
+            partial.replace(path)
+        finally:
+            partial.unlink(missing_ok=True)
     return target
 
 
@@ -69,8 +79,20 @@ class Embedder:
     `session` and `tokenizer` are injectable so tests never load the real model.
     """
 
+    dimensions = DIMENSIONS
+
     def __init__(self, directory: Path | None = None, *, session: Any = None, tokenizer: Any = None) -> None:
         directory = directory or model_dir()
+        if session is None and tokenizer is None:
+            self.cache_identity = hashlib.sha256(json.dumps({
+                "model": MODEL_REPO, "revision": MODEL_REVISION,
+                "files": {name: _sha256(directory / _LAYOUT[name]) for name in MODEL_FILES},
+                "document_prefix": DOCUMENT_PREFIX, "query_prefix": QUERY_PREFIX,
+                "max_tokens": MAX_TOKENS,
+            }, sort_keys=True).encode("utf-8")).hexdigest()
+        else:
+            # Injected sessions have no persistent model identity. Do not alias a real model.
+            self.cache_identity = f"injected:{uuid.uuid4()}"
         self._session = session or self._load_session(directory / "onnx" / "model.onnx")
         self._tokenizer = tokenizer or self._load_tokenizer(directory / "tokenizer.json")
 

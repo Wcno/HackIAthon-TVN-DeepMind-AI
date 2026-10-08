@@ -105,7 +105,7 @@ _PANAMANIAN_REGIONS = word_pattern(
     tuple(
         fold(name)
         for name in (
-            "Bocas del Toro", "Chiriquí", "Veraguas", "Coclé", "Herrera", "Los Santos", "Colón", "Panamá Oeste",
+            "Panamá", "Bocas del Toro", "Chiriquí", "Veraguas", "Coclé", "Herrera", "Los Santos", "Colón", "Panamá Oeste",
             "Darién", "Guna Yala", "Emberá-Wounaan", "Ngäbe-Buglé",
         )
     )

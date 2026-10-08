@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from whoami.backend.app import create_app, number, percent
+from whoami.backend.presentation import needs_investigation
 from whoami.backend.settings import Settings
 
 
@@ -51,7 +52,7 @@ def selected_row_ids(html):
 
 
 def test_inbox_is_master_detail_with_lead_filters_list_and_open_pane(client):
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     html = client.get("/inbox").text
     assert '<article class="lead' in html and 'id="case"' in html and 'role="tabpanel"' in html
     assert 'name="topic"' in html and 'name="estado"' in html
@@ -93,7 +94,7 @@ def test_pane_is_marked_open_only_on_case_routes(client):
 
 
 def test_filters_keep_the_selection_and_are_carried_by_links(client):
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     topic = ranked[-1]["tema"]
     html = client.get(f"/groups/{ranked[-1]['id_grupo']}", params={"topic": topic}).text
     assert f"?topic={topic}" in html
@@ -101,7 +102,7 @@ def test_filters_keep_the_selection_and_are_carried_by_links(client):
 
 
 def test_inbox_filters_by_topic_and_review_state(client):
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     topic = ranked[-1]["tema"]
     html = client.get("/inbox", params={"topic": topic}).text
     assert html.count('<li class="row') == sum(1 for group in ranked if group["tema"] == topic)
@@ -109,7 +110,7 @@ def test_inbox_filters_by_topic_and_review_state(client):
 
 
 def test_groups_without_case_file_say_so_in_the_pane(client):
-    without_case = [group for group in client.app.state.editorial.inbox() if not group["id_caso"]]
+    without_case = [group for group in client.app.state.editorial.inbox(include_covered=True) if not group["id_caso"]]
     if not without_case:
         pytest.skip("every group has a case file in this dataset")
     pane = client.get(f"/groups/{without_case[0]['id_grupo']}").text.split('id="case"')[1]
@@ -185,7 +186,8 @@ def test_flag_requires_investigation_only_when_priority_high_and_evidence_insuff
     rows = client.get("/inbox").text.split('class="rows"')[1]
     items = rows.split("<li class=\"row")[1:]
     flagged = [item for item in items if "Requiere investigación" in item]
-    assert len(flagged) == 1 and "Evidencia insuficiente" in flagged[0]
+    expected = [g for g in client.app.state.editorial.inbox(include_covered=True) if needs_investigation(g)]
+    assert len(flagged) == len(expected) and all("Evidencia insuficiente" in item for item in flagged)
     assert client.get("/groups/G-001").text.split('<article class="lead')[1].split("</article>")[0].count("Requiere investigación") == 0
 
 

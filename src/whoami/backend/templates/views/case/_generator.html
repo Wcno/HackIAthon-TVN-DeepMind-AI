@@ -8,6 +8,7 @@
 {% set gid = group.id_grupo|urlencode %}
 <section class="generator" id="case-file-generator" aria-labelledby="generator-title">
   <h2 class="generator__title" id="generator-title">Este tema todavía no tiene ficha</h2>
+  {% if group.cobertura_tvn.estado == "cubierto" %}<p class="generator__coverage"><strong>TVN ya lo cubrió.</strong> {{ group.cobertura_tvn.razon }} Puedes generar la ficha de todos modos.</p>{% endif %}
   <p class="generator__text">{{ pending[group.estado_evidencia] }}</p>
   {% if generator and generator.retry is false %}
   <p class="form-error" role="alert">{{ generator.message }}</p>

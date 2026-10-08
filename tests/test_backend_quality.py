@@ -7,6 +7,22 @@ from whoami.backend.service import quality_report
 from whoami.contracts import PROCESSED
 
 
+def test_a_source_without_news_reports_every_day_of_the_window_without_news(tmp_path):
+    from whoami.backend.reports import quality_view
+    processed = tmp_path / "processed"
+    processed.mkdir()
+    news = {"ventana": {"desde": "2026-10-01T03:00:00Z", "hasta": "2026-10-04T03:00:00Z"}, "registros_leidos": 5,
+            "noticias_unicas": 5, "incluidas": 0, "excluidas_por_motivo": {"fuera_de_ventana": 5}, "incluidas_por_origen_fecha": {},
+            "cobertura_por_fuente": {"missing": {"incluidas": 0, "dias_con_noticias": 0, "dias_sin_noticias": "todos"}}}
+    (processed / "calidad_noticias.json").write_text(json.dumps(news), encoding="utf-8")
+    sources = [{"id_fuente": "missing", "medio": "Sin datos", "dominio": "example.test", "tipo": "medio",
+                "canales": [{"canal": "rss", "url": "https://example.test/rss"}], "licencia": "n/a", "condiciones_reutilizacion": "n/a"}]
+    (processed / "fuentes.json").write_text(json.dumps({"fuentes": sources}), encoding="utf-8")
+    source = quality_view(processed)["news"]["coverage"]["groups"][0]["sources"][0]
+    assert source["range"] == "Todos los días de la ventana sin noticias"
+    assert "5 días" not in source["range"]
+
+
 def test_snapshot_integrity_distinguishes_verified_missing_and_changed(tmp_path):
     processed = tmp_path / "processed"
     processed.mkdir()

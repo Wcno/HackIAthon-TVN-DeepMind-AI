@@ -80,6 +80,11 @@ DRAFT_FIELD_LABELS = {
     "preguntas": "Pregunta", "fuentes_y_verificaciones": "Verificación",
 }
 FILE_STATE_LABELS = {NO_CASE_FILE: "Sin ficha", **REVIEW_LABELS}
+COVERAGE_FILTERS = {"": "Todos", "nuevo": "Nuevos para TVN", "cubierto": "Cubiertos por TVN"}
+COVERAGE_BADGES = {
+    "cubierto": "Cubierto por TVN", "dato_nuevo": "Dato nuevo frente a TVN",
+    "sin_coincidencia": "Sin cobertura en TVN", "no_comprobada": "TVN sin comprobar",
+}
 INBOX_PAGE_SIZE = 50
 METHODOLOGY_OPTIONS = 25
 
@@ -180,7 +185,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, score=score, percent=percent,
                             short_date=short_date, spanish_decimals=spanish_decimals, latest_date=latest_date, needs_investigation=needs_investigation)
-    templates.env.globals.update(review_labels=REVIEW_LABELS, file_states=FILE_STATE_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets,
+    templates.env.globals.update(review_labels=REVIEW_LABELS, file_states=FILE_STATE_LABELS, coverage_filters=COVERAGE_FILTERS, coverage_badges=COVERAGE_BADGES, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets,
                                  score_components=score_components, abstention_copy=abstention_copy, approval_cautions=approval_cautions,
                                  review_timeline=review_timeline, pluralize=pluralize, evidence_card=evidence_card,
                                  source_line=lambda evidence_id: source_line(app.state.repository.record("evidence", evidence_id)))
@@ -218,7 +223,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
              status_code: int = 200, **context):
         """Master/detail screen: ranked list plus the open workspace; with no group, the first listed one is selected."""
         editorial = request.app.state.editorial
-        ranked = editorial.inbox()
+        cobertura = request.query_params.get("cobertura", "")
+        cobertura = cobertura if cobertura in COVERAGE_FILTERS else ""
+        ranked = editorial.inbox(include_covered=cobertura == "", covered_only=cobertura == "cubierto")
         topic_options = sorted({item["tema"] for item in ranked})
         topic = request.query_params.get("topic", "")
         topic = topic if topic in topic_options else ""
@@ -228,14 +235,14 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         groups = [item for item in ranked if (not topic or item["tema"] == topic)
                   and (not estado or file_state(item) == estado)
                   and (not topic_search or topic_search.casefold() in item["titulo"].casefold())]
-        filtering = bool(topic or estado or topic_search)
+        filtering = bool(topic or estado or topic_search or cobertura)
         lead = None if filtering or not ranked else ranked[0]
         listing = groups[1:] if lead else groups
         offset = int(request.query_params["desde"]) if request.query_params.get("desde", "").isdecimal() else 0
         end = offset + INBOX_PAGE_SIZE
         is_more = request.headers.get("HX-Request") == "true" and request.headers.get("HX-Target") == "more-rows"
         rows = listing[offset:end] if is_more else listing[:end]
-        active = {key: value for key, value in {"topic": topic, "estado": estado, "q": topic_search}.items() if value}
+        active = {key: value for key, value in {"topic": topic, "estado": estado, "cobertura": cobertura, "q": topic_search}.items() if value}
         opened = group is not None
         if group is None and groups:
             group = editorial.group(groups[0]["id_grupo"])
@@ -243,10 +250,10 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             case = editorial.case(group["id_caso"])
         pane = pane or ("case" if case else "group")
         document_title = f"{PANE_LABELS[pane]} · {(case or group)['titulo']}" if opened and group else title
-        filters = urlencode({"topic": topic, "estado": estado, **({"q": topic_search} if topic_search else {})}) if filtering else ""
+        filters = urlencode({"topic": topic, "estado": estado, "cobertura": cobertura, **({"q": topic_search} if topic_search else {})}) if filtering else ""
         return render(request, "workspace", title, status_code=status_code, groups=groups, rows=rows, total=len(groups), lead=lead,
                       remaining=max(0, len(listing) - end), more_query=urlencode({**active, "desde": end}),
-                      rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado,
+                      rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado, cobertura=cobertura,
                       topic_options=topic_options, group=group, case=case, pane=pane, opened=opened, document_title=document_title,
                       selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", topic_search=topic_search, **context)
 
@@ -334,7 +341,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/methodology", response_class=HTMLResponse)
     def methodology(request: Request, grupo: str | None = None, q: Annotated[str, Query(max_length=200)] = ""):
         return render(request, "methodology", "Metodología", search=q.strip(),
-                      methodology=methodology_view(request.app.state.editorial.inbox(), grupo, q, METHODOLOGY_OPTIONS))
+                      methodology=methodology_view(request.app.state.editorial.inbox(include_covered=True), grupo, q, METHODOLOGY_OPTIONS))
 
     @app.get("/groups/{group_id}", response_class=HTMLResponse)
     def group(request: Request, group_id: str):

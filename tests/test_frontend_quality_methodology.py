@@ -127,7 +127,7 @@ def test_methodology_weights_ranges_and_rules_version_come_from_the_contract(cli
 
 
 def test_worked_example_matches_the_group_score(client):
-    group = client.app.state.editorial.inbox()[0]
+    group = client.app.state.editorial.inbox(include_covered=True)[0]
     score = group["puntaje"]
     page = client.get("/methodology").text
     text = text_of(page)
@@ -143,7 +143,7 @@ def test_worked_example_matches_the_group_score(client):
 
 
 def test_grupo_query_switches_the_example(client):
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     other = ranked[-1]
     assert other["id_grupo"] != ranked[0]["id_grupo"]
     page = client.get("/methodology", params={"grupo": other["id_grupo"]}).text
@@ -155,7 +155,7 @@ def test_grupo_query_switches_the_example(client):
 def test_example_selector_is_a_get_form_with_htmx_swap_and_unknown_group_falls_back(client):
     page = client.get("/methodology").text
     assert 'method="get"' in page and 'name="grupo"' in page and 'hx-get="/methodology"' in page and 'hx-select="#ejemplo"' in page
-    ranked = client.app.state.editorial.inbox()
+    ranked = client.app.state.editorial.inbox(include_covered=True)
     assert f'<p class="example__title">{ranked[0]["titulo"]}</p>' in client.get("/methodology", params={"grupo": "nope"}).text
     fragment = client.get("/methodology", params={"grupo": ranked[-1]["id_grupo"]}, headers={"HX-Request": "true"}).text
     assert "<html" not in fragment and 'id="ejemplo"' in fragment

@@ -1,0 +1,91 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "results": [
+    {
+      "group": "G-9dd3cc2ae9",
+      "claims": 2,
+      "discarded_claims": 0,
+      "draft": true,
+      "claim_references": {
+        "titulo": [
+          "A-2"
+        ],
+        "brief": [
+          "A-1",
+          "A-2"
+        ],
+        "guion": [
+          "A-1",
+          "A-2"
+        ],
+        "copy_digital": [
+          "A-2"
+        ],
+        "enfoque": [
+          "seguimiento"
+        ],
+        "preguntas": [
+          "fuentes",
+          "vacios",
+          "impacto"
+        ]
+      },
+      "generation_steps_without_entailment": 2,
+      "elapsed_s": 0.005761199980042875,
+      "verified": true,
+      "review_state": "nuevo"
+    },
+    {
+      "group": "G-71fafd723f",
+      "claims": 2,
+      "discarded_claims": 0,
+      "draft": true,
+      "claim_references": {
+        "titulo": [
+          "A-1"
+        ],
+        "brief": [
+          "A-1",
+          "A-2"
+        ],
+        "guion": [
+          "A-1",
+          "A-2"
+        ],
+        "copy_digital": [
+          "A-1"
+        ],
+        "enfoque": [
+          "impacto"
+        ],
+        "preguntas": [
+          "fuentes",
+          "periodo",
+          "impacto"
+        ]
+      },
+      "generation_steps_without_entailment": 2,
+      "elapsed_s": 0.0053807999938726425,
+      "verified": true,
+      "review_state": "nuevo"
+    }
+  ],
+  "llm_calls_including_entailment": {
+    "afirmaciones": {
+      "hit": 2,
+      "miss": 0
+    },
+    "g4-implicacion": {
+      "hit": 4,
+      "miss": 0
+    },
+    "paquete": {
+      "hit": 2,
+      "miss": 0
+    }
+  },
+  "held_out_read": false,
+  "human_reviews_requested": 0,
+  "complete": true,
+  "limitations": "This proves provider/protocol execution and mechanical references, not human semantic support or headline appeal."
+}

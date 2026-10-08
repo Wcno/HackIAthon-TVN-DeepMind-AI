@@ -102,7 +102,7 @@ def _coverage(news: dict, sources: list[dict], directory: Path) -> dict:
             "days": [day in active for day in window_days] if has_days else None,
             "active": len(active), "total": len(window_days),
             "range": (f"{len(active)} de {len(window_days)} días con noticias · {span}" if has_days else span.capitalize())
-                     if included else "Sin noticias en la ventana",
+                     if included else "Todos los días de la ventana sin noticias",
         })
     return {"first": day_label(window_days[0]), "last": day_label(window_days[-1]), "has_days": has_days,
             "groups": [{"label": TYPE_LABELS.get(kind, kind), "sources": rows} for kind, rows in groups.items()]}

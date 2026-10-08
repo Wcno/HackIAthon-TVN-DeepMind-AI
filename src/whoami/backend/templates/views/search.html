@@ -1,8 +1,9 @@
-{# Header search. Carries the active topic and estado so searching narrows the list instead of resetting it.
+{# Header search. Carries the active topic, estado and cobertura so searching narrows the list instead of resetting it.
    Set `oob` to refresh it after an htmx swap of the list. #}
 <form id="search-form" class="search" role="search" action="/inbox" method="get"{% if oob %} hx-swap-oob="true"{% endif %}>
   {{ icon("search") }}
   {% if topic %}<input type="hidden" name="topic" value="{{ topic }}">{% endif %}
   {% if estado %}<input type="hidden" name="estado" value="{{ estado }}">{% endif %}
+  {% if cobertura %}<input type="hidden" name="cobertura" value="{{ cobertura }}">{% endif %}
   <input id="search" name="q" type="search" autocomplete="off" maxlength="2000" placeholder="Buscar un tema" aria-label="Buscar un tema" value="{{ topic_search or '' }}">
 </form>
