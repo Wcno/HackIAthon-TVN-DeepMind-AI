@@ -1,6 +1,6 @@
 from generation_fakes import by_id, news
 from whoami.generation.version_citations import enrich_version_citations, support_version
-from whoami.schemas import Answer, ContradictionVersion, citation_errors
+from whoami.schemas import Answer, Citation, ContradictionVersion, citation_errors
 
 
 def test_version_references_explicit_literal_source_fields():
@@ -33,3 +33,19 @@ def test_saved_versions_can_be_enriched_without_model_calls():
     assert all(version.citas for version in enriched.versiones)
     assert citation_errors(enriched.citas, evidence) == []
     assert not original.citas
+
+
+def test_version_coverage_requires_its_cited_passage_to_support_scope_figures():
+    from whoami.evaluation.datasets import BenchmarkCase
+    from whoami.evaluation.metrics import answer_metrics, score_answer
+
+    evidence = by_id(news("N-1", titulo="33 tránsitos", descripcion="Anuncio para 2026."),
+                     news("N-2", titulo="32 tránsitos", descripcion="Anuncio para 2026."))
+    answer = Answer(id_consulta="Q-1", consulta="¿Cuántos?", estado="contradiccion", versiones=tuple(
+        ContradictionVersion(valor=value, alcance="en 2026", id_evidencia=identity,
+                             citas=(Citation(id_evidencia=identity, campo="titulo", pasaje=f"{value} tránsitos"),))
+        for identity, value in (("N-1", "33"), ("N-2", "32"))))
+    case = BenchmarkCase(id="Q-1", kind="contradiction", query="¿Cuántos?", expected_states=("contradiccion",))
+    measured = answer_metrics([case], [score_answer(case, answer, evidence)])
+    assert measured["contradiction_version_coverage"] == {"numerator": 0, "denominator": 2}
+    assert measured["query_factual_claim_coverage"]["value"] is None

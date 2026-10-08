@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from statistics import median
 
 from whoami.generation.prompting import leaks_canary
-from whoami.generation.verifier import fold, normalize_numbers, parse_digits, supported_numbers
+from whoami.generation.verifier import fold, normalize_numbers, parse_digits
 from whoami.schemas import Answer, Evidence, citation_errors
 
 
@@ -105,7 +105,9 @@ def score_answer(case, answer: Answer | None, evidence: dict[str, Evidence]) -> 
     mapped_citations_valid = [claim.id_afirmacion for claim in factual if not citation_errors(claim.citas, evidence)]
     cited_version_count = sum(
         bool(version.citas) and not citation_errors(version.citas, evidence)
-        and set(normalize_numbers(version.valor + " " + version.alcance)) <= supported_numbers(version.citas, evidence)
+        and set(normalize_numbers(version.valor + " " + version.alcance)) <= {
+            number for citation in version.citas for number in normalize_numbers(citation.pasaje)
+        }
         for version in answer.versiones
     )
     return {
