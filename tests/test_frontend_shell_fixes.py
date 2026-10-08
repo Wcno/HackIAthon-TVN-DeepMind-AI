@@ -132,3 +132,14 @@ def test_visible_copy_uses_one_term_per_concept(client):
         visible = re.sub(r"<[^>]+>", " ", visible)
         assert "Paquete editorial" not in visible and "paquete editorial" not in visible, path
         assert not re.search(r"\b[Cc]aso\b", visible), path
+
+
+def test_justifications_use_decimal_commas_in_popover_and_methodology(client):
+    from whoami.backend.reports import spanish_decimals
+
+    assert spanish_decimals("Base 0.6 por el tema; similitud 0.59, versión 2025-10.") == "Base 0,6 por el tema; similitud 0,59, versión 2025-10."
+    assert not re.search(r"\d\.\d", client.get("/methodology").text.split('class="calc"')[1].split("</table>")[0])
+
+
+def test_api_title_names_the_product_correctly(client):
+    assert client.app.title == "TVN DeepMind AI"

@@ -92,7 +92,7 @@
       .prov__row { @apply grid grid-cols-[minmax(12rem,1fr)_6rem_minmax(10rem,13rem)_minmax(0,1.4fr)] items-baseline gap-x-6 rounded-2xl px-4 py-3.5 transition hover:bg-white/70; }
       .prov__head { @apply px-4 pb-1 text-[13px] font-medium text-ink-3 hover:bg-transparent; }
       .prov__name { @apply text-[16px] font-semibold; }
-      .prov__name a { @apply block text-sm font-normal break-all text-ink-3 no-underline hover:text-blue hover:underline; }
+      .prov__name a { @apply flex min-h-11 items-center text-sm font-normal break-all text-ink-3 no-underline hover:text-blue hover:underline; }
       .prov__files { @apply text-[15px] text-ink-2; }
       .prov__when { @apply text-[15px] text-ink-2; }
       .prov__license { @apply text-sm text-ink-3; }

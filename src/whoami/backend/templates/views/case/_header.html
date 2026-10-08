@@ -20,7 +20,7 @@
           {% for component in score_components() %}{% set key = component.key %}{% set weight = component.weight %}
           <tr><th scope="row"><span class="pop__key pop__key--{{ key }}" aria-hidden="true">{{ key }}</span>{{ component.name }}</th>
             <td class="pop__pts">{{ (score.componentes[key] * weight)|number }} / {{ weight }}</td>
-            <td class="pop__why">{{ score.justificaciones[key] }}</td></tr>
+            <td class="pop__why">{{ score.justificaciones[key]|spanish_decimals }}</td></tr>
           {% endfor %}
         </table>
       </div>

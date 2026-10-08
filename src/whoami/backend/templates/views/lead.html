@@ -14,7 +14,7 @@
         <span class="topic">{{ lead.tema_etiqueta }}</span>
         <span class="dateline">Panamá, {{ lead|latest_date|short_date }}</span>
       </p>
-      <p class="lead__why">{{ lead.puntaje.justificaciones.R }} {{ lead.puntaje.justificaciones.E }}</p>
+      <p class="lead__why">{{ (lead.puntaje.justificaciones.R ~ ' ' ~ lead.puntaje.justificaciones.E)|spanish_decimals }}</p>
       <div class="lead__facts">
         <p class="score score--large"><span class="score__value">{{ lead.puntaje.valor|number }}</span><span class="score__range">{{ lead.puntaje.rango }}</span>{% set score = lead.puntaje %}{% include 'views/case/_scorebar.html' %}</p>
         <div class="lead__badges">

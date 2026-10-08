@@ -28,13 +28,13 @@
       <ul class="flow__legend">
         {% for segment in news.segments %}
         <li><span class="flow__seg--{{ segment.kind }}"></span><span><b>{{ segment.count|number }}</b> {{ segment.label }}</span>
-          <small>{% if segment.reason %}Motivo de exclusión: <code class="text-[13px]">{{ segment.reason }}</code>. Se guardan en noticias_excluidas.csv.{% else %}{{ segment.note }}{% endif %}</small></li>
+          <small>{% if segment.reason %}Excluidas: {{ segment.label }}. Quedan registradas con su motivo para poder revisarlas.{% else %}{{ segment.note }}{% endif %}</small></li>
         {% endfor %}
       </ul>
     </figure>
 
     {% if news.thresholds %}
-    <div class="checks" aria-label="Umbrales mínimos del reto (§6.A)">
+    <div class="checks" aria-label="Umbrales mínimos de calidad">
       {% for check in news.thresholds %}<span class="check">{{ report_icon("check") }}{{ "Cumple" if check.passed else "No cumple" }} {{ check.label }}</span>{% endfor %}
     </div>
     {% endif %}

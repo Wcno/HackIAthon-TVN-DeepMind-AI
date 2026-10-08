@@ -1,4 +1,4 @@
-"""FastAPI app for the TVN DataMind AI editorial desk: routes, error handlers and Jinja filters."""
+"""FastAPI app for the TVN DeepMind AI editorial desk: routes, error handlers and Jinja filters."""
 
 from contextlib import asynccontextmanager
 import asyncio
@@ -26,7 +26,7 @@ from whoami.backend.repository import EditorialRepository, InvalidReview, Missin
 from whoami.backend.panama_time import panama_time, short_date
 from whoami.backend.presentation import (draft_budgets, evidence_card, field_label, latest_date, needs_investigation, pluralize,
                                          snapshot_view, source_line)
-from whoami.backend.reports import methodology_view, quality_view, score_components
+from whoami.backend.reports import methodology_view, quality_view, score_components, spanish_decimals
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
 from whoami.contracts import PROCESSED, REVIEW_STATES, REVIEW_TRANSITIONS, TOPIC_LABELS, ReviewState
@@ -117,7 +117,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     settings = settings or Settings.from_environment()
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, percent=percent,
-                            short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
+                            short_date=short_date, spanish_decimals=spanish_decimals, latest_date=latest_date, needs_investigation=needs_investigation)
     templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components,
                                  pluralize=pluralize, evidence_card=evidence_card,
                                  source_line=lambda evidence_id: source_line(app.state.repository.record("evidence", evidence_id)))
@@ -138,7 +138,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         finally:
             await app.state.gemini.close()
 
-    app = FastAPI(title="TVN DataMind AI", lifespan=lifespan)
+    app = FastAPI(title="TVN DeepMind AI", lifespan=lifespan)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
