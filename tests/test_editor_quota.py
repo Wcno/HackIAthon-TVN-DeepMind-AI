@@ -10,14 +10,14 @@ from whoami.backend.gemini import GeminiClient, GenerationUnavailable
 from whoami.backend.repository import EditorialRepository
 from whoami.backend.settings import Settings
 from whoami.llm.ledger import Ledger
-from whoami.llm.models import ModelLimits
+from whoami.llm.models import MODELS, ModelLimits
 
 
 def test_production_budget_reserves_free_tier_not_forty_percent_of_an_already_reduced_cap(tmp_path):
     from whoami.backend.quota import GenerationQuota, QuotaUnavailable
     path = tmp_path / "shared.jsonl"
     ledger = Ledger(path, lambda: datetime.now(UTC) - timedelta(minutes=2))
-    for _ in range(92):
+    for _ in range(MODELS["gemini-3.5-flash-lite"].cap - 8):
         ledger.record(model="gemini-3.5-flash-lite", purpose="other-tests", cache="miss", status="ok", latency_s=0)
     quota = GenerationQuota("gemini-3.5-flash-lite", ledger_path=path, database=tmp_path / "quota.sqlite3")
     for _ in range(8):
