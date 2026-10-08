@@ -131,6 +131,18 @@
     `<span class="badge evidence evidence--${key}">${icon(EVIDENCE[key].icon)}${EVIDENCE[key].label}</span>`;
   const reviewBadge = (key) =>
     key ? `<span class="badge review review--${key}">${REVIEW[key]}</span>` : `<span class="badge review review--none">Sin ficha</span>`;
+  // Illustrative photos, only on pages that load ../imagenes.js. Thumbnails are decorative; larger ones carry the credit.
+  const IMAGES = window.IMAGES || {};
+  const photo = (g, cls, credit = true) => {
+    const im = IMAGES[g.id_grupo];
+    if (!im) return "";
+    return `<figure class="photo ${cls}"><img src="../${esc(im.src)}" alt="${credit ? esc(im.alt) : ""}" loading="lazy">${
+      credit
+        ? `<figcaption class="photo__credit">Imagen ilustrativa · ${esc(im.autor)} · <a href="${esc(im.fuente)}" target="_blank" rel="noopener">${esc(im.licencia)}</a></figcaption>`
+        : ""
+    }</figure>`;
+  };
+
   const priorityCode = (rango) => `<span class="priority priority--${rango}">${rango.toUpperCase()}</span>`;
 
   const scoreBar = (p) =>
@@ -157,13 +169,15 @@
   function renderInbox() {
     const lead = ranked[0];
     const unfiltered = state.topic === "todos" && state.review === "todos";
-    // The lead already shows the top topic; repeat it in the list only when filtering.
-    const list = filtered().filter((g) => !(unfiltered && g === lead));
+    // The lead band already shows the top topic, so its row stays hidden unless the band is (while drafting).
+    const list = filtered();
+    const isLead = (g) => unfiltered && g === lead;
     const topics = [...new Set(ranked.map((g) => g.tema))];
     const q = D.calidad;
     const el = document.getElementById("inbox");
     const band = document.getElementById("lead-band");
     const leadHtml = `<article class="lead ${state.groupId === lead.id_grupo ? "is-selected" : ""}" data-open="${lead.id_grupo}">
+        ${photo(lead, "lead__photo")}
         <span class="lead__rank" aria-label="Puesto 1">1</span>
         <div class="lead__body">
           <h2 class="lead__title">${esc(lead.titulo)}</h2>
@@ -182,7 +196,7 @@
       </article>`;
     const snapshot = `<p class="snapshot">
         <span>${number(q.leidos)} noticias leídas · ${number(q.incluidas)} en la ventana de 30 días · ${number(q.excluidas)} excluidas</span>
-        <a href="#calidad" class="link">Ver calidad de datos</a>
+        <a href="${window.QUALITY_HREF || "calidad.html"}" class="link">Ver calidad de datos</a>
       </p>`;
     if (band) band.innerHTML = snapshot + leadHtml;
     el.innerHTML = `${band ? "" : snapshot + leadHtml}
@@ -206,21 +220,26 @@
           </select>
           ${icon("chevron", "icon select__chevron")}
         </label>
-        <span class="count">${unfiltered ? `${plural(list.length, "tema más", "temas más")}` : plural(list.length, "tema", "temas")}</span>
+        <span class="count">${
+          unfiltered
+            ? `<span class="count__more">${plural(list.length - 1, "tema más", "temas más")}</span><span class="count__all">${plural(list.length, "tema", "temas")}</span>`
+            : plural(list.length, "tema", "temas")
+        }</span>
       </div>
 
       ${
         list.length
-          ? `<ol class="rows">${list.map(row).join("")}</ol>`
+          ? `<ol class="rows">${list.map((g) => row(g, isLead(g))).join("")}</ol>`
           : `<div class="empty"><p>No hay temas con estos filtros.</p><button type="button" class="btn" data-clear>Quitar filtros</button></div>`
       }`;
   }
 
-  function row(g) {
+  function row(g, lead = false) {
     const selected = state.groupId === g.id_grupo;
-    return `<li class="row ${selected ? "is-selected" : ""}">
+    return `<li class="row ${lead ? "row--lead" : ""} ${selected ? "is-selected" : ""}">
       <button type="button" class="row__hit" data-open="${g.id_grupo}" aria-current="${selected}">
         <span class="row__rank">${rankOf[g.id_grupo]}</span>
+        ${photo(g, "row__photo", false)}
         <span class="row__main">
           <span class="row__title">${esc(g.titulo)}</span>
           <span class="meta">
@@ -264,6 +283,7 @@
     el.innerHTML = `
       <button type="button" class="back" data-back>${icon("back")}Volver a temas</button>
       <header class="case__head">
+        ${photo(g, "case__photo")}
         <h1 class="case__title">${esc(g.titulo)}</h1>
         <p class="meta">
           ${priorityCode(g.puntaje.rango)}
