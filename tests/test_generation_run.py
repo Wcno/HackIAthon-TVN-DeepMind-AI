@@ -14,13 +14,14 @@ from whoami.contracts import DEMO as DEMO_DIR
 from whoami.contracts import EVIDENCE_FILE, FICHAS_FILE, GROUPS_FILE, QUERIES_FILE, REVIEWS_FILE
 from whoami.generation import run
 from whoami.generation.run import RunConfig
-from whoami.schemas import verify
+from whoami.schemas import sort_inbox, verify
 from whoami.store import load, read_jsonl
 
 MODEL = "gemma-4-26b-a4b-it"
 STATES = {g.id_grupo: g.estado_evidencia for g in DEMO.grupos}
-#: The command skips insufficient groups, so their demo case files are not expected.
-EXPECTED_FICHAS = [f for f in DEMO.fichas if STATES[f.id_grupo] != "insuficiente"]
+#: The command skips insufficient groups in the top but keeps one: the best ranked, which has a demo case file.
+BEST_INSUFFICIENT = next(g for g in sort_inbox(DEMO.grupos) if g.estado_evidencia == "insuficiente")
+EXPECTED_FICHAS = [f for f in DEMO.fichas if STATES[f.id_grupo] != "insuficiente" or f.id_grupo == BEST_INSUFFICIENT.id_grupo]
 
 
 class FakeEmbedder:
@@ -105,9 +106,11 @@ def test_the_summary_counts_cases_claims_packages_answers_and_calls(workspace):
     assert "respondida: 2" in text and "afirmaciones" in text
 
 
-def test_insufficient_groups_are_skipped_in_the_top(workspace):
+def test_insufficient_groups_do_not_take_top_slots_but_one_is_kept_as_the_case_without_enough_evidence(workspace):
     _, _, data, outputs = generar(workspace, top=3)  # the third group of the inbox is insufficient
-    assert {f.id_caso for f in load(data, outputs).fichas} == {"CASO-001", "CASO-002", "CASO-005"}
+    written = load(data, outputs)
+    assert {f.id_caso for f in written.fichas} == {"CASO-001", "CASO-002", "CASO-005", "CASO-003"}
+    assert [f.borrador for f in written.fichas if STATES[f.id_grupo] == "insuficiente"] == [None]
 
 
 def test_the_implication_check_runs_through_the_command(workspace):
