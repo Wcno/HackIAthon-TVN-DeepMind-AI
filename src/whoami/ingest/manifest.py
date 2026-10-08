@@ -46,7 +46,7 @@ def build() -> dict:
     hashes = {_relative(path): _sha256(path) for path in processed}
     cutoff = max(datetime.fromisoformat(fetch["fecha_descarga"]) for fetch in fetches)
     manifest = {
-        "version": f"{cutoff:%Y%m%d}-{_sha256_text(json.dumps(hashes, sort_keys=True))[:8]}",
+        "version": _version(cutoff, hashes),
         "fecha_corte_UTC": iso(cutoff),
         "consultas": fetches,
         "cantidades": {_relative(path): count for path in processed if (count := _count(path)) is not None},
@@ -58,6 +58,24 @@ def build() -> dict:
     write_json(MANIFEST_JSON, manifest)
     write_json(PROCESSED_MANIFEST_JSON, manifest)
     return {"version": manifest["version"], "fecha_corte_UTC": manifest["fecha_corte_UTC"], "archivos": len(hashes)}
+
+
+def refresh(paths: list[Path], data: Path = DATA) -> dict:
+    """Re-hash only `paths` (files under `data` rewritten after `build`) and the version derived from the hashes.
+
+    Everything else in the manifest is kept as built, so a rewrite of one file does not touch the rest.
+    """
+    manifest = json.loads((data / MANIFEST_JSON.name).read_text(encoding="utf-8"))
+    for path in paths:
+        manifest["sha256"][path.relative_to(data).as_posix()] = _sha256(path)
+    manifest["version"] = _version(datetime.fromisoformat(manifest["fecha_corte_UTC"]), manifest["sha256"])
+    write_json(data / MANIFEST_JSON.name, manifest)
+    write_json(data / PROCESSED_MANIFEST_JSON.relative_to(DATA), manifest)
+    return {"version": manifest["version"], "archivos": len(manifest["sha256"])}
+
+
+def _version(cutoff: datetime, hashes: dict[str, str]) -> str:
+    return f"{cutoff:%Y%m%d}-{_sha256_text(json.dumps(hashes, sort_keys=True))[:8]}"
 
 
 def _fetches() -> list[dict]:
