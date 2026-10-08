@@ -12,6 +12,7 @@
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
                                         --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
     whoami export-backend               export persisted case files and human reviews (offline)
+    whoami evaluar                     G7 benchmark, baselines, metrics and automated tests
 """
 
 import argparse
@@ -67,11 +68,20 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument("--sin-llm", action="store_true", help="no LLM at all: logistic topics, embeddings-only grouping")
     pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     run.add_arguments(commands.add_parser("generar"))
+    from whoami.evaluation import run as evaluation
+
+    evaluation.add_arguments(commands.add_parser("evaluar"))
 
     export_command = commands.add_parser("export-backend")
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
+
+    if args.command == "evaluar":
+        try:
+            return evaluation.main(args)
+        except (ValueError, FileNotFoundError, KeyError) as error:
+            parser.error(str(error))
 
     if args.command == "generar":
         return run.main(args)

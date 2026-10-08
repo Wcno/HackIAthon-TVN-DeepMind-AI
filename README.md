@@ -8,6 +8,11 @@ fichas de evidencia y borradores editoriales para revisión humana. Está pensad
 para ayudar a editores, periodistas y productores digitales a planificar la
 agenda, investigar hechos y preparar contenidos con fuentes trazables.
 
+El foco editorial es descubrir noticias de otras fuentes que TVN todavía no
+haya publicado. El archivo de TVN sirve como referencia de su cobertura: una
+noticia ya publicada por TVN no cuenta como una novedad para el medio. Los
+títulos deben captar la atención y comunicar el hecho con claridad y fidelidad.
+
 El proyecto busca reducir el tiempo dedicado a revisar fuentes dispersas,
 identificar noticias sobre un mismo evento y encontrar contexto relevante.
 Cada resultado debe permitir revisar su evidencia, sus fechas y lo que falta
@@ -145,6 +150,18 @@ uv run --locked pytest -q
 La suite cubre contratos, procesamiento, generación y revisión editorial;
 incluye el reinicio de un servidor HTTP real y la validación de los archivos
 exportados contra el contrato compartido.
+
+Para ejecutar el benchmark G7, comparar BM25 con embeddings y guardar las
+métricas junto con todas las pruebas:
+
+```powershell
+uv run --locked whoami evaluar --mode recorded
+```
+
+El modo `live` mide la generación con Gemini. Las consultas reservadas se
+mantienen fuera del repositorio y las métricas con etiquetas de IA se marcan
+como provisionales hasta incorporar las revisiones humanas. Ver
+[la evaluación G7](docs/evaluation.md) para requisitos, métodos y formatos.
 
 Para exportar las fichas, consultas y decisiones del ciclo de revisión actual,
 detener primero el servidor y ejecutar:

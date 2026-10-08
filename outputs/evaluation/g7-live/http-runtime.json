@@ -1,0 +1,220 @@
+{
+  "timestamp_utc": "2026-10-08T01:58:42.245335+00:00",
+  "synthetic": true,
+  "real_http_views": [
+    {
+      "path": "/quality",
+      "status": 200
+    },
+    {
+      "path": "/inbox",
+      "status": 200
+    },
+    {
+      "path": "/queries",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-001",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-001/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-002",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-002/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-003",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-003/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-005",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-005/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-004",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-004/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-007",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-007/context",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-006",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-006/context",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-001",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-001/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-001/review",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-002",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-002/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-002/review",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-003",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-003/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-003/review",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-004",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-004/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-004/review",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-005",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-005/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-005/review",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-2cf673d2b74a",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-7d665f7db893",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-89883386681c",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-f1a4caa2bca0",
+      "status": 200
+    },
+    {
+      "path": "/evidence/WB-PAN-NE.EXP.GNFS.ZS-2024",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-ff2911fe7429",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-dce13ea37725",
+      "status": 200
+    },
+    {
+      "path": "/evidence/INEC-ipc_var_interanual-2026-08",
+      "status": 200
+    },
+    {
+      "path": "/evidence/WB-PAN-FP.CPI.TOTL.ZG-2024",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-0f7c1a26d5ed",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-e0d7e73e44fc",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-2491ad97ee36",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-b212eb58ea29",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-5a85a8d35030",
+      "status": 200
+    },
+    {
+      "path": "/evidence/USGS-us6000rvkl",
+      "status": 200
+    },
+    {
+      "path": "/evidence/N-414e1be5622c",
+      "status": 200
+    }
+  ],
+  "query_outcomes": [
+    "respondida",
+    "respondida",
+    "contradiccion",
+    "abstencion"
+  ],
+  "saved_transitions": [
+    "requiere_evidencia",
+    "en_revision",
+    "aprobado_como_borrador",
+    "descartado",
+    "en_revision",
+    "aprobado_como_borrador"
+  ],
+  "different_processes": true,
+  "state_after_restart": "aprobado_como_borrador",
+  "g2_export": {
+    "fichas.jsonl": 5,
+    "revisiones.jsonl": 11,
+    "consultas.jsonl": 4
+  },
+  "snapshot_integrity": "verified"
+}

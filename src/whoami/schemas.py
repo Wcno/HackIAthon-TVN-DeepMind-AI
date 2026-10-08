@@ -188,7 +188,7 @@ def citation_errors(citations: Iterable[Citation], evidences: Mapping[str, Evide
 
 
 class Claim(Schema):
-    """A claim of a case file. Accusations are statements attributed to someone, never facts (§8)."""
+    """A cited claim of a case file or structured answer. Accusations are attributed statements (§8)."""
 
     id_afirmacion: NonEmpty
     texto: NonEmpty
@@ -234,6 +234,13 @@ class ContradictionVersion(Schema):
     valor: NonEmpty
     alcance: NonEmpty
     id_evidencia: NonEmpty
+    citas: tuple[Citation, ...] = ()
+
+    @model_validator(mode="after")
+    def _citations_belong_to_the_version(self) -> Self:
+        if any(citation.id_evidencia != self.id_evidencia for citation in self.citas):
+            raise ValueError("las citas de una versión deben pertenecer a su evidencia")
+        return self
 
 
 class Contradiction(Schema):
@@ -375,9 +382,17 @@ class Answer(Schema):
     motivo_abstencion: NonEmpty | None = None
     faltante: NonEmpty | None = None
     versiones: tuple[ContradictionVersion, ...] = ()
+    afirmaciones: tuple[Claim, ...] = ()
 
     @model_validator(mode="after")
     def _shape_matches_state(self) -> Self:
+        if self.afirmaciones:
+            if self.estado != "respondida" or self.respuesta != " ".join(claim.texto for claim in self.afirmaciones):
+                raise ValueError("la respuesta debe componerse exactamente de sus afirmaciones")
+            if len({claim.id_afirmacion for claim in self.afirmaciones}) != len(self.afirmaciones):
+                raise ValueError("las afirmaciones de una respuesta necesitan IDs únicos")
+            if set(self.citas) != {citation for claim in self.afirmaciones for citation in claim.citas}:
+                raise ValueError("las citas de la respuesta deben corresponder a sus afirmaciones")
         if self.estado == "respondida":
             if self.respuesta is None or not self.citas:
                 raise ValueError("una respuesta respondida necesita texto y citas")
@@ -466,10 +481,12 @@ def verify(output: OutputSet) -> None:
 
     citations = [c for f in output.fichas for claim in f.afirmaciones for c in claim.citas]
     citations += [c for answer in output.consultas for c in answer.citas]
+    citations += [c for answer in output.consultas for claim in answer.afirmaciones for c in claim.citas]
     problems += citation_errors(citations, evidences)
 
     versions = [v for f in output.fichas for contradiction in f.contradicciones for v in contradiction.versiones]
     versions += [v for answer in output.consultas for v in answer.versiones]
+    problems += citation_errors([citation for version in versions for citation in version.citas], evidences)
     problems += [
         f"{v.id_evidencia}: la versión contradictoria cita una evidencia que no existe"
         for v in versions

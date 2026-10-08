@@ -24,6 +24,7 @@ def all_schemas() -> dict[str, dict]:
         "package": package_schema(),
         "claims": claims_schema(IDS),
         "answer": answer_schema(IDS),
+        "structured_answer": answer_schema(IDS, structured=True),
         "entailment": entailment_schema(),
         "contradiction_pair": contradiction_pair_schema(),
     }
