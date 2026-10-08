@@ -40,4 +40,4 @@ tests/pipeline/test_smoke.py::test_the_llm_model_option_reaches_the_calls
     rows = load_news_rows()
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-688 passed, 12 warnings in 30.42s
+688 passed, 12 warnings in 31.39s

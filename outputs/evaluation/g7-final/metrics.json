@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-08T03:15:15.860537+00:00",
+  "timestamp_utc": "2026-10-08T03:47:53.363058+00:00",
   "mode": "saved generation",
   "split": "development",
   "generation_origin": "outputs\\evaluation\\g7-structured-live",
@@ -25,14 +25,14 @@
     "version_citation_method": "literal-fields-v1",
     "query_prompt_version": "structured-claims-v1"
   },
-  "index_setup_s": 2.095196600013878,
+  "index_setup_s": 2.193476999993436,
   "index_seeded_news": 2941,
   "retrieval": {
     "bm25": {
       "latency": {
         "n": 120,
-        "median_s": 0.006049500007065944,
-        "p95_s": 0.010103500011609867,
+        "median_s": 0.0067626999953063205,
+        "p95_s": 0.027939099993091077,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -49,8 +49,8 @@
     "emb": {
       "latency": {
         "n": 120,
-        "median_s": 0.06385234999470413,
-        "p95_s": 0.10096250000060536,
+        "median_s": 0.06467369999154471,
+        "p95_s": 0.4437466000090353,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -65,8 +65,8 @@
     "hybrid": {
       "latency": {
         "n": 120,
-        "median_s": 0.06888515000173356,
-        "p95_s": 0.11442249998799525,
+        "median_s": 0.07036650000372902,
+        "p95_s": 0.5141510000103153,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -2238,27 +2238,20 @@
       "failures": []
     },
     "human_support": {
-      "numerator": 0,
-      "denominator": 0,
-      "value": null,
-      "failures": []
+      "numerator": 8,
+      "denominator": 10,
+      "value": 0.8,
+      "failures": [
+        "CASO-7eec9567e8/A-2",
+        "CASO-f15debf340/A-3"
+      ]
     },
-    "reviewed_unique_claims": 0,
+    "reviewed_unique_claims": 10,
     "minimum_sample": 30,
     "meets_human_target": false,
     "review_errors": [],
     "unknown_review_ids": [],
     "pending": [
-      "CASO-bc61489f19/A-1",
-      "CASO-bc61489f19/A-2",
-      "CASO-7eec9567e8/A-1",
-      "CASO-7eec9567e8/A-2",
-      "CASO-f15debf340/A-1",
-      "CASO-f15debf340/A-2",
-      "CASO-f15debf340/A-3",
-      "CASO-5ae7185008/A-1",
-      "CASO-5ae7185008/A-2",
-      "CASO-5ae7185008/A-3",
       "CASO-fc933530e0/A-1",
       "CASO-fc933530e0/A-2",
       "CASO-ffb833242d/A-1",

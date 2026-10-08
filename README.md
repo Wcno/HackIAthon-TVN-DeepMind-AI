@@ -8,6 +8,11 @@ fichas de evidencia y borradores editoriales para revisión humana. Está pensad
 para ayudar a editores, periodistas y productores digitales a planificar la
 agenda, investigar hechos y preparar contenidos con fuentes trazables.
 
+El foco editorial es descubrir noticias de otras fuentes que TVN todavía no
+haya publicado. El archivo de TVN sirve como referencia de su cobertura: una
+noticia ya publicada por TVN no cuenta como una novedad para el medio. Los
+títulos deben captar la atención y comunicar el hecho con claridad y fidelidad.
+
 El proyecto busca reducir el tiempo dedicado a revisar fuentes dispersas,
 identificar noticias sobre un mismo evento y encontrar contexto relevante.
 Cada resultado debe permitir revisar su evidencia, sus fechas y lo que falta

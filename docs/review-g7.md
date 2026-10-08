@@ -38,9 +38,13 @@ added through a documented source-provenance audit against immutable commit
 `b64fe80`, with LF/CRLF differences recorded and canonical records verified
 equal. Captured answers, original timings and provider usage were preserved.
 
-Human topic, pair and benchmark decisions, and review of at least 30 generated
-claims with at least 90% support, remain unverified. No review path was supplied.
-The issue remains open and its results are provisional.
+Human claim decisions are now available for the ten claims requested by the
+user: eight supported and two unclear (80%). The explicit ten-review scope is
+documented; the original 30-claim/90% criteria remain unsatisfied. Human topic,
+pair and benchmark decisions are still unavailable. The issue remains open
+and its results are provisional. Factual support, headline appeal and discovery of
+news absent from TVN coverage are separate assessments; these existing TVN
+stories do not establish the latter.
 
 Final local validation: 688 passing tests, all T01–T10 checks passed, wheel build
 passed, 40 measured development queries, 41 generated claims, no API failures.
