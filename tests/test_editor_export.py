@@ -34,7 +34,7 @@ def test_export_preserves_flexible_draft_and_scopes_approval_to_it(tmp_path):
     destination = tmp_path / "delivery"
     counts = export_backend(EditorialRepository(settings.database), destination)
     assert counts[COMPANION] == 1
-    companion = json.loads((destination / COMPANION).read_text())
+    companion = json.loads((destination / COMPANION).read_text(encoding="utf-8"))
     assert companion["id_caso"] == "CASO-004"
     assert companion["draft"] == record["draft"]
     assert companion["source_ids"] == record["source_ids"]
