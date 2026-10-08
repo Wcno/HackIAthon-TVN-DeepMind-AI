@@ -12,7 +12,7 @@ from whoami.evaluation.datasets import (
     BENCHMARK, MANIFEST, BenchmarkCase, apply_human_labels, benchmark_reviews, load_cases, load_evidence, sha256, subject_hash, verify_review,
 )
 from whoami.evaluation.metrics import answer_metrics, binary_counts, key_present, latency, ratio, score_answer
-from whoami.evaluation.run import MeasuredLLM, retrieval_benchmark, token_totals
+from whoami.evaluation.run import MeasuredLLM, evaluate, retrieval_benchmark, token_totals, validate_saved_inputs
 from whoami.evaluation.tasks import SeededEmbedder, aligned_vectors, claim_evaluation, claim_subject
 from whoami.embeddings import MODEL_NAME, MODEL_REVISION
 from whoami.generation.prompting import CosineGate
@@ -274,6 +274,27 @@ def test_reversing_citations_cannot_inflate_the_human_review_sample(tmp_path):
     result, _ = claim_evaluation([{"id_caso": "CASO-1", "afirmaciones": claims}], evidence, path)
     assert result["reviewed_unique_claims"] == 1
     assert result["review_errors"]
+
+
+def test_replay_into_the_original_directory_is_rejected_before_any_writes(tmp_path):
+    from argparse import Namespace
+
+    artifact = tmp_path / "benchmark_review_packet.jsonl"
+    artifact.write_bytes(b"original archived packet")
+    args = Namespace(repeats=1, generate_cases=0, output=tmp_path, reuse_generation=tmp_path)
+    with pytest.raises(ValueError, match="differ"):
+        evaluate(args)
+    assert artifact.read_bytes() == b"original archived packet"
+
+
+def test_replay_cannot_use_original_timings_against_changed_synthetic_sources():
+    first = by_id(news("N-1", titulo="Real source"), news("N-syn1", titulo="Original synthetic source"))
+    changed = by_id(news("N-1", titulo="Real source"), news("N-syn1", titulo="Changed synthetic source"))
+    fingerprint = lambda records: subject_hash({identity: item.model_dump(mode="json") for identity, item in records.items()})
+    saved = {"evidence_sha256": "unchanged-real-file", "evaluation_corpus_sha256": fingerprint(first)}
+    validate_saved_inputs(saved, saved)
+    with pytest.raises(ValueError, match="evaluation_corpus"):
+        validate_saved_inputs(saved, {"evidence_sha256": "unchanged-real-file", "evaluation_corpus_sha256": fingerprint(changed)})
 
 
 def test_g7_t01_invalid_dates_and_nulls_do_not_block_valid_rows(tmp_path, monkeypatch):

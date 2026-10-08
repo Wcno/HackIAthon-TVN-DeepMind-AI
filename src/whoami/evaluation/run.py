@@ -176,12 +176,20 @@ def review_file(directory: Path | None, name: str, optional: bool = False) -> Pa
     return existing[0]
 
 
+def validate_saved_inputs(saved: dict, expected: dict) -> None:
+    for name, fingerprint in expected.items():
+        if saved.get(name) != fingerprint:
+            raise ValueError(f"Saved generation belongs to different or unverified {name}")
+
+
 def evaluate(args) -> dict:
     if args.repeats < 1 or args.generate_cases < 0:
         raise ValueError("repeats must be positive and generate-cases nonnegative")
     output = args.output.resolve()
     if output in (ROOT.resolve(), OUTPUTS.resolve(), DATA.resolve()) or DATA.resolve() in output.parents:
         raise ValueError("Use a separate evaluation directory, not product data/output roots")
+    if args.reuse_generation and args.reuse_generation.resolve() == output:
+        raise ValueError("Replay output must differ from the original run directory")
     output.mkdir(parents=True, exist_ok=True)
     benchmark_path = args.reserved or BENCHMARK
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -193,6 +201,7 @@ def evaluate(args) -> dict:
         raise ValueError("Benchmark type distribution changed")
     evidence_path = PROCESSED / "evidencias.jsonl"
     evidence = load_evidence(evidence_path)
+    corpus_fingerprint = subject_hash({identity: item.model_dump(mode="json") for identity, item in evidence.items()})
     missing = {identity for case in cases for identity in case.evidence_ids if identity not in evidence}
     if missing:
         raise ValueError(f"Expected benchmark evidence missing: {sorted(missing)}")
@@ -221,13 +230,11 @@ def evaluate(args) -> dict:
     saved = None
     saved_answers, saved_scores = {}, {}
     if args.reuse_generation:
-        if args.reuse_generation.resolve() == output:
-            raise ValueError("Replay output must differ from the original run directory")
         saved = json.loads((args.reuse_generation / "metrics.json").read_text(encoding="utf-8"))
-        if saved["inputs"]["benchmark_sha256"] != sha256(benchmark_path) or saved["inputs"]["evidence_sha256"] != sha256(evidence_path):
-            raise ValueError("Saved generation belongs to different benchmark/evidence bytes")
-        if saved["inputs"]["vectors_sha256"] != sha256(vector_path):
-            raise ValueError("Saved generation used different news vectors")
+        validate_saved_inputs(saved["inputs"], {
+            "benchmark_sha256": sha256(benchmark_path), "evidence_sha256": sha256(evidence_path),
+            "vectors_sha256": sha256(vector_path), "evaluation_corpus_sha256": corpus_fingerprint,
+        })
         from whoami.evaluation.datasets import unique_records
 
         saved_answers = unique_records(read_records(args.reuse_generation / "answers.jsonl"), "id")
@@ -301,7 +308,8 @@ def evaluate(args) -> dict:
         "environment": {"python": platform.python_version(), "platform": platform.platform(), "cpu_count": os.cpu_count(),
                         "embedding_threads": os.environ.get("WHOAMI_EMBEDDING_THREADS", "ONNX default")},
         "inputs": {"benchmark_sha256": sha256(benchmark_path), "evidence_sha256": sha256(evidence_path),
-                   "vectors_sha256": sha256(vector_path), "frozen_news": len(ids), "evidence_count": len(evidence)},
+                   "vectors_sha256": sha256(vector_path), "evaluation_corpus_sha256": corpus_fingerprint,
+                   "frozen_news": len(ids), "evidence_count": len(evidence)},
         "model": {"generation": saved["model"]["generation"] if saved else args.model if llm else "recorded product outputs; original timing/tokens unavailable",
                   "embedding": MODEL_NAME, "revision": MODEL_REVISION, "cosine_threshold": gate.min_cosine},
         "index_setup_s": index_s, "index_seeded_news": len(ids), "retrieval": retrieval, "answers": answer_metrics(cases, results),
