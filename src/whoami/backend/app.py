@@ -77,6 +77,9 @@ EVIDENCE_LABELS = {
 }
 
 
+STATIC_DIRECTORY = Path(__file__).parent / "static"
+
+
 def number(value: float | int | None, decimals: int | None = None) -> str:
     """Spanish number format: 30.823 and 44,36."""
     if value is None:
@@ -90,9 +93,15 @@ def percent(value: float | int | None, decimals: int = 2) -> str:
     return "-" if value is None else f"{number(value, decimals)} %"
 
 
+PHOTO_PLACEHOLDER = "/static/img/photo-placeholder.svg"
+
+
 def image_src(value: str) -> str:
-    """An article photo (http/https) or one of the app's own static images; anything else is dropped."""
-    return value if value.startswith("/static/") or safe_url(value) != "#" else ""
+    """One of the app's own static images that exists on disk; anything else (an outlet's URL, a missing copy)
+    is the local placeholder, so a page never asks an external server for a photo."""
+    if value.startswith("/static/") and ".." not in value and (STATIC_DIRECTORY / value.removeprefix("/static/")).is_file():
+        return value
+    return PHOTO_PLACEHOLDER
 
 
 def safe_url(value: str) -> str:
@@ -130,7 +139,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             await app.state.gemini.close()
 
     app = FastAPI(title="TVN DataMind AI", lifespan=lifespan)
-    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+    app.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
