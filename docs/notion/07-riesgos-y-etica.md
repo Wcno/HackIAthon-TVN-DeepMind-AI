@@ -26,7 +26,7 @@
 | Gemma devuelve JSON inválido en respuestas largas | Fallos de generación | Generación con flash-lite; Gemma solo para tareas cortas; JSON inválido nunca entra en caché | Mitigado |
 | Sin red no hay generación en vivo | **Falla T10** | Caché de respuestas y consultas precalculadas (35 en `consultas.jsonl`); ensayo con el wifi apagado | Pendiente de ensayo |
 | Citas falsas: un ID real con un pasaje que no lo respalda | Pérdida de credibilidad | Verificador determinista: ID existente, pasaje literal y cifras normalizadas | Mitigado con pruebas |
-| Derechos del contenido de TVN | Legal | Solo metadatos; los términos de TVN prohíben copiar contenido | Mitigado |
+| Derechos del contenido de TVN | Legal | El feed no publica condiciones de reutilización. Solo metadatos y descripción breve; sin redistribuir el cuerpo. Sin acuerdo escrito, la reutilización queda restringida. | Mitigado parcialmente; **pendiente de consulta legal** |
 | Etiquetas y umbrales ajustados sobre el mismo conjunto de desarrollo | Métricas optimistas | Declarar que son provisionales; revisión humana antes de citar cifras | Abierto |
 
 ## Sesgos y límites declarados

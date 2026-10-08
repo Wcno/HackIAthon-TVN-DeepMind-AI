@@ -8,8 +8,9 @@
 | Rol | Persona | Carril |
 | --- | --- | --- |
 | Datos y fuentes | _por asignar_ | `src/whoami/ingest/`, `data/` |
-| Pipeline y puntaje | _por asignar_ | `src/whoami/pipeline/`, `src/whoami/evaluation/` |
+| Pipeline y puntaje | _por asignar_ | `src/whoami/pipeline/`, `src/whoami/embeddings.py` |
 | Generación, backend y revisión | _por asignar_ | `src/whoami/generation/`, `src/whoami/backend/` |
+| Revisión editorial | _por asignar_ | persona que revisa las fichas en la interfaz |
 
 Frontera entre carriles: `src/whoami/contracts.py` y `src/whoami/schemas.py`. Se modifican
 de común acuerdo.

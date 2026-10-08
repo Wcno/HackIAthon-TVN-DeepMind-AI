@@ -25,13 +25,15 @@ Fichas generadas en `outputs/fichas.jsonl` (5 casos):
 | `CASO-5ae7185008` | economía | Enfrentamiento en la Comisión de Presupuesto entre Yamireliz Chong y Benicio Robinson | parcial | alto | nuevo |
 | `CASO-fc933530e0` | logística y Canal | Navieras de Vietnam ratifican su confianza en el registro de barcos y el Canal | suficiente para borrador | alto | nuevo |
 
-Todas las fichas están en `nuevo`. Ninguna se ha aprobado; aprobar no equivale a publicar.
+Todas las fichas están en `nuevo`. Ninguna se ha aprobado, y **ninguna tiene persona revisora
+asignada**; aprobar no equivale a publicar.
 
 ## Caso sin evidencia suficiente
 
-Las fichas anteriores no incluyen ningún caso `insuficiente`, porque el generador omite los
-grupos sin evidencia suficiente. Para cumplir el requisito se presenta el grupo
-`G-61c55dfdbb` (`data/processed/grupos.jsonl`) como caso de abstención:
+**Requisito no cumplido de forma literal:** el §5 pide una ficha con evidencia insuficiente. Las
+fichas anteriores no incluyen ningún caso `insuficiente`, porque el generador omite los grupos
+sin evidencia suficiente. Mientras el equipo decide si genera una ficha de abstención, el caso
+se presenta como grupo, `G-61c55dfdbb` (`data/processed/grupos.jsonl`):
 
 - **Titular:** «PASE-U: compras con la billetera de Caja de Ahorros superan los $45 millones desde junio».
 - **Puntaje:** 83,24 (alto). Componentes: R 1,0 · I 0,8 · U 1,0 · N 0,79 · E 0,13.

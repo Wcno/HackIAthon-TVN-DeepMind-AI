@@ -17,16 +17,9 @@ guarda solo la estructura de tiempos (§11) y la lista de verificación.
 | 1 min | Valor operativo medido o hipótesis identificada | _por asignar_ |
 | 1 min | Riesgos, límites y próximos pasos | _por asignar_ |
 
-## Pasos de la demo (referencia)
-
-1. Bandeja de temas con puntajes desglosados (CU-01).
-2. Un grupo con procedencias y su contexto oficial, con período y unidad (CU-02, CU-03).
-3. Una ficha con citas y una afirmación marcada «sin sustento», si aparece (T09).
-4. Una consulta sin respuesta: abstención explícita (CU-04, T06).
-5. Un grupo de prioridad alta con evidencia insuficiente: no se puede aprobar (T08).
-
-Ejecutar con el wifi apagado y con el comando del README. Modelos y datos deben estar
-en la máquina antes de empezar.
+El guion de la demo y los pasos de navegación los define el equipo. Ver los casos que
+pueden mostrarse en `05-casos-y-evidencias.md` y las pruebas en `06-pruebas-y-metricas.md`.
+La demo debe ejecutarse con el wifi apagado y con el comando del README (T10).
 
 ## Preguntas del jurado (§11)
 

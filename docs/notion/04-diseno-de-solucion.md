@@ -7,9 +7,9 @@
 
 ```text
 fuentes públicas (noticias, Banco Mundial, INEC, USGS)
-   │  carga por lote, datos congelados en data/processed/ + manifest.json (SHA-256)
+   │  carga por lote; datos congelados en data/processed/ + manifest.json (SHA-256)
    ▼
-embeddings locales (embeddinggemma-300m, ONNX q4)
+embeddings (embeddinggemma-300m, ONNX q4; propuesto, ver DP-02)
    ▼
 clasificación temática → agrupación → vínculo con indicador o evento → puntaje
    ▼
@@ -26,27 +26,45 @@ backend FastAPI + HTMX → revisión humana (SQLite) → exportación
 
 Carga por lote; no hay monitoreo continuo. La demo no requiere internet.
 
+## Modelo de datos
+
+Definido en `src/whoami/contracts.py` y validado con Pydantic en `src/whoami/schemas.py`.
+
+| Archivo (`data/processed/` salvo indicación) | Contenido | Identificador |
+| --- | --- | --- |
+| `noticias.csv` | Noticias incluidas en la ventana | `N-<hash>` |
+| `noticias_excluidas.csv` | Excluidas, con motivo (`id_noticia`, `motivo`) | `N-<hash>` |
+| `indicadores.csv` | Series del Banco Mundial | `WB-<iso3>-<indicador>-<año>` |
+| `indicadores_inec.csv` | Series del INEC | `INEC-<serie>-<período>` |
+| `eventos.geojson` | Sismos del USGS | `USGS-<id>` |
+| `evidencias.jsonl` | Evidencia citable por las fichas (noticias, indicadores, sismos) | ID del tipo |
+| `grupos.jsonl` | Grupos de noticias con puntaje y estado de evidencia | `G-<hash>` |
+| `fuentes.json` | Catálogo por medio: dominio, tipo (`medio` u `oficial`), canales, licencia, condiciones y fecha de consulta | `id_fuente` |
+| `manifest.json` | Versión, corte, consultas, cantidades, licencias, SHA-256 | — |
+| `outputs/fichas.jsonl` | Fichas con afirmaciones y citas | `CASO-<hash>` |
+| `outputs/consultas.jsonl` | Consultas precalculadas y su estado | `D-A…`, `D-C…` |
+
 ## Stack y versiones
 
 | Pieza | Elección | Versión |
 | --- | --- | --- |
-| Lenguaje | Python | 3.12 o superior (CI en 3.12, local en 3.14) |
+| Lenguaje | Python | 3.12 o superior (CI en 3.12; local en 3.14) |
 | Dependencias | `uv` y `uv.lock` | fijadas |
 | Servidor y vistas | FastAPI, Uvicorn, Jinja2, HTMX (ADR-0002) | `fastapi>=0.115`, `uvicorn>=0.30` |
 | Validación de datos | Pydantic | `>=2.9` |
 | Persistencia editorial | SQLite | biblioteca estándar |
 | Cliente de modelos | `openai` apuntado a `GEMINI_BASE_URL` | `>=3.26` |
 | Embeddings | `onnxruntime` y `tokenizers` | `onnxruntime>=1.30`, `tokenizers>=0.23` |
-| Clasificación y agrupación | scikit-learn (regresión logística, agrupación aglomerativa) | `>=1.9` |
+| Clasificación y agrupación | scikit-learn: regresión logística y agrupación aglomerativa | `>=1.9` |
 | Línea base de recuperación | BM25 propio | — |
 
-## Modelos y parámetros
+## Modelos, prompts y parámetros
 
-| Uso | Modelo | Parámetros | Costo medido |
-| --- | --- | --- | --- |
-| Respuestas, fichas, paquetes y verificación de implicación | `gemini-3.5-flash-lite` | salida JSON estricta, tope de tokens por llamada, espera de 20 s por defecto y 3 intentos (`WHOAMI_GENERATION_*`) | 70 llamadas y 46.280 tokens de red en la corrida final de G7 (ver `06`) |
-| Temas, veredictos de agrupación y contradicciones | `gemma-4-26b-a4b-it` | JSON estricto, tope de tokens, timeout de 90 s, JSON inválido nunca se guarda | 3.484 llamadas en una noche de ejecución |
-| Embeddings | `embeddinggemma-300m` (ONNX q4) | 768 dimensiones, prefijos de documento y consulta | 587 MB de memoria pico y 30 ms por consulta en 2 CPU |
+| Uso | Modelo | Parámetros | Prompts (código) | Costo medido |
+| --- | --- | --- | --- | --- |
+| Respuestas (800 tokens), fichas (2.000), paquetes y verificación de implicación (200) | `gemini-3.5-flash-lite` | JSON estricto; topes de tokens por llamada en `generation/`; timeout de 90 s en el cliente `llm/`; el backend limita la consulta a 20 s y 3 intentos (`WHOAMI_GENERATION_*`) | `src/whoami/generation/prompting.py`, `query_box.py`, `case_files.py`, `entailment.py` | Corrida final de G7: 70 completions (30 de red y 40 de caché), 46.280 tokens de red |
+| Temas (60 tokens), agrupación (30) y contradicciones (300) | `gemma-4-26b-a4b-it` | JSON estricto; topes de tokens; timeout de 90 s; JSON inválido nunca se guarda | `src/whoami/pipeline/topics.py`, `grouping.py`, `generation/contradictions.py` | 3.484 llamadas en una noche de ejecución |
+| Embeddings | `embeddinggemma-300m` (ONNX q4), propuesto | 768 dimensiones; prefijos de documento y consulta | `src/whoami/embeddings.py` | 587 MB de memoria pico y 30 ms por consulta en 2 CPU |
 
 Costo monetario: todo el uso fue en el tier gratuito. Google no publica límites exactos, así
 que no se estima un costo en dólares. Los límites medidos figuran en `docs/adr/0001`.

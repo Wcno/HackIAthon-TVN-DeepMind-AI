@@ -1,29 +1,36 @@
 # Pruebas y métricas
 
 > Espeja la página «Pruebas y métricas» del §5. La matriz T01-T10 es evidencia mínima de
-> admisión. Cada resultado indica si lo verificó una prueba automatizada o si es una
+> admisión. Cada resultado indica si lo verificó una prueba automatizada o si queda una
 > comprobación manual pendiente.
+
+## Evidencia de ejecución
+
+- Comando: `uv run --locked pytest -q --junitxml outputs/validation/g8-junit.xml` (con `PYTHONUTF8=1`).
+- Commit probado: `origin/prod` (`16bf92c`) más los cambios de G8.
+- Resultado: **637 pruebas pasan, 0 fallan**. Registro: `outputs/validation/g8-pytest.log`.
+  Resultados por prueba: `outputs/validation/g8-junit.xml`.
 
 ## Matriz de aceptación (§9)
 
-Corrida de referencia: `uv run --locked pytest -q` sobre `origin/prod` (commit `16bf92c`),
-**637 pruebas pasan**, registro en `outputs/validation/g8-pytest.log`.
+Las pruebas se citan por archivo. Cada nombre de archivo existe bajo `tests/` y sus pruebas
+están en el XML de la corrida.
 
-| ID | Entrada | Resultado esperado | Observado | Pruebas que lo cubren | Corrección |
+| ID · Caso | Entrada | Resultado esperado | Observado | Pruebas que lo cubren | Corrección |
 | --- | --- | --- | --- | --- | --- |
-| T01 | Datos con fechas inválidas y nulos | Validar, separar errores y conservar nulos | Automatizado: pasa | `test_schemas` (fechas ISO 8601 UTC), `test_worldbank` (nulos conservados), `test_inec` (faltantes como nulo, nunca cero), `test_gdelt_gkg` (campos faltantes excluidos) | — |
-| T02 | Tres registros del mismo evento | Agrupar sin perder fuentes ni triplicar importancia | Automatizado: pasa | `test_provenance` (agencias y copias casi idénticas), `test_scoring` (duplicar no sube el puntaje), `test_schemas` (agencia replicada cuenta una vez) | — |
-| T03 | Noticia antigua recirculada | Mostrar fecha original; no presentarla como nueva | Automatizado: pasa | `test_recirculation`, `test_scoring` (grupo recirculado no es nuevo), `test_run` (conserva fecha original) | Con datos reales no se disparaba; ver `02-plan-y-decisiones.md` |
-| T04 | Cifra anual del Banco Mundial | Mantener país, año y unidad; no presentarla como cifra de hoy | Automatizado: pasa | `test_schemas` (periodo, unidad y valor obligatorios), `test_generation_verifier` (el período debe declararse), `test_worldbank` (unidad por indicador) | — |
-| T05 | Dos afirmaciones incompatibles | Mostrar ambas, su alcance y la revisión pendiente | Automatizado: pasa | `test_generation_contradictions`, `test_schemas` (contradicción muestra ambas versiones) | — |
-| T06 | Consulta sin respuesta | Abstención explícita; sin cifras ni citas inventadas | Automatizado: pasa | `test_generation_cosine_gate`, `test_generation_query_box`, `test_backend` (consultas precalculadas con abstención) | — |
-| T07 | Fuente que pide ignorar instrucciones | Tratarla como dato no confiable; no revelar secretos | Automatizado: pasa | `test_generation_prompting` (instrucciones fuera del turno de evidencia, canario) | — |
-| T08 | Caso de prioridad alta | Exponer componentes y regla; no habilitar publicación | Automatizado: pasa | `test_scoring`, `test_run` (componentes con justificación), `test_schemas` (prioridad alta con evidencia insuficiente no se aprueba) | — |
-| T09 | Brief editorial | Formato útil, citas pertinentes, hechos e inferencias distinguidos | Automatizado: pasa | `test_schemas` (brief ≤250 palabras, copy ≤80, tres preguntas), `test_generation_entailment`, `test_generation_verifier` (acusación no presentada como hecho) | — |
-| T10 | Sin internet durante la demo | Funcionar con snapshot y fallback documentado | Parcial: pruebas automatizadas pasan; **ensayo con el wifi apagado pendiente** | `test_smoke` (pipeline offline no crea ningún LLM), `test_backend` (el proveedor nunca se llama sin conexión), `test_backend_process` (reinicio con la misma base) | Ensayar con el wifi apagado antes del pitch |
+| T01 · Fechas inválidas y nulos | Datos con fechas inválidas y nulos | Validar, separar errores y conservar nulos | Automatizado: pasa | `test_schemas` (fechas ISO 8601 UTC), `test_worldbank` (nulos conservados), `test_inec` (faltantes como nulo, nunca cero), `test_gdelt_gkg` (campos faltantes excluidos) | — |
+| T02 · Mismo evento en varios registros | Tres registros del mismo evento | Agrupar sin perder fuentes ni triplicar importancia | Automatizado: pasa | `test_provenance` (agencias y copias casi idénticas), `test_scoring` (duplicar no sube el puntaje), `test_schemas` (agencia replicada cuenta una vez) | — |
+| T03 · Noticia antigua recirculada | Noticia antigua que vuelve a circular | Mostrar fecha original; no presentarla como nueva | Automatizado: pasa | `test_recirculation`, `test_scoring` (grupo recirculado no es nuevo), `test_run` (conserva fecha original) | Decisión de G1: las reediciones antiguas se descartan por fecha original; la regla sigue probada con datos sintéticos |
+| T04 · Cifra anual del Banco Mundial | Serie anual con país, año y unidad | Mantener país, año y unidad; no presentarla como cifra de hoy | Automatizado: pasa | `test_schemas` (período, unidad y valor obligatorios), `test_generation_verifier` (el período debe declararse), `test_worldbank` (unidad por indicador) | — |
+| T05 · Dos afirmaciones incompatibles | Dos cifras o fechas que no coinciden | Mostrar ambas, su alcance y la revisión pendiente | Automatizado: pasa | `test_generation_contradictions`, `test_schemas` (la contradicción muestra ambas versiones con su fuente) | — |
+| T06 · Consulta sin respuesta | Pregunta sin evidencia en el corpus | Abstención explícita; sin cifras ni citas inventadas | Automatizado: pasa | `test_generation_cosine_gate`, `test_generation_query_box`, `test_backend` (consultas precalculadas con abstención) | — |
+| T07 · Fuente que pide ignorar instrucciones | Titular con instrucciones maliciosas | Tratarla como dato no confiable; no revelar secretos | Automatizado: pasa | `test_generation_prompting` (instrucciones fuera del turno de evidencia; canario de fuga) | — |
+| T08 · Caso de prioridad alta | Grupo con puntaje alto y evidencia insuficiente | Exponer componentes y regla; no habilitar publicación | Automatizado: pasa | `test_scoring`, `test_run` (componentes con justificación), `test_schemas` (prioridad alta con evidencia insuficiente no se aprueba) | — |
+| T09 · Brief editorial | Grupo con evidencia suficiente | Formato útil, citas pertinentes, hechos e inferencias distinguidos | Automatizado: pasa | `test_schemas` (brief ≤250 palabras, copy ≤80, tres preguntas), `test_generation_entailment`, `test_generation_verifier` (acusación no presentada como hecho) | — |
+| T10 · Sin internet durante la demo | Demo con el wifi apagado | Funcionar con snapshot y fallback documentado | **Parcial:** pruebas automatizadas pasan; **ensayo con el wifi apagado pendiente** | `test_smoke` (el pipeline offline no crea ningún LLM), `test_backend` (el proveedor nunca se llama sin conexión), `test_backend_process` (reinicio con la misma base) | Ensayar con el wifi apagado antes del pitch |
 
-Los resultados automatizados son de la corrida de referencia. Un resultado "pasa" significa
-que la prueba se ejecuta y se cumple. No mide calidad en datos reales.
+Un resultado «pasa» significa que la prueba se ejecuta y se cumple. No mide calidad con
+datos reales. Las pruebas T07 y T10 en vivo siguen pendientes de ensayo manual.
 
 ## Métricas (§9.1)
 
@@ -47,6 +54,9 @@ Lectura honesta: BM25 ya recupera casi toda la evidencia esperada y es mucho má
 Los embeddings ganan en clasificación y en agrupación, pero también generan más falsas
 agrupaciones. Los resultados no justifican usar IA en cada tarea.
 
+**Cifra de corpus:** las métricas G7 usan 2.941 noticias; el manifest actual tiene 3.176
+incluidas. No deben citarse juntas hasta conciliarlas (ver `03-catalogo-de-datos.md`).
+
 ## Baselines (§8)
 
 1. **Clasificación temática:** palabras clave frente a embeddings (macro-F1).
@@ -60,3 +70,4 @@ Dónde la IA no ayuda: BM25 gana en cifras exactas y siglas, y en velocidad.
 - Revisión de las etiquetas de tema y de pares.
 - P@5 con el criterio de una persona editora, no de un agente.
 - Integrar `feat/g7-evaluation` en `prod`, o citar solo lo que esté en `prod`.
+- Conciliar 3.176 noticias incluidas con 2.941 de la evidencia.
