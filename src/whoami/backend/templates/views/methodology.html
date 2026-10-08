@@ -22,7 +22,7 @@
 
   <section class="section" aria-labelledby="componentes">
     <h2 class="section__title" id="componentes">Qué mide cada componente</h2>
-    <p class="section__lede">Pesos iniciales propuestos por el reto (§4). Si cambian, cambia la versión de las reglas y cada puntaje sigue trazable a las reglas con que se calculó.</p>
+    <p class="section__lede">Pesos iniciales propuestos por el reto. Si cambian, cambia la versión de las reglas y cada puntaje sigue trazable a las reglas con que se calculó.</p>
 
     <div class="weights">
       <div class="scorebar" aria-hidden="true">{% for item in methodology.weights %}<span class="scorebar__seg scorebar__seg--{{ item.key }}" style="width:{{ item.weight }}%"></span>{% endfor %}</div>
@@ -31,7 +31,7 @@
 
     <div class="components">
       {% for item in methodology.weights %}
-      <div class="component"><span class="pop__key pop__key--{{ item.key }}">{{ item.key }}</span><p class="component__name">{{ item.name }}</p><p class="component__weight">{{ item.weight }}<small>pts</small></p><p class="component__what">{{ item.what }}</p></div>
+      <div class="component"><span class="pop__key pop__key--{{ item.key }}">{{ item.key }}</span><p class="component__name">{{ item.name }}</p><p class="component__weight">{{ item.weight }} <small>pts</small></p><p class="component__what">{{ item.what }}</p></div>
       {% endfor %}
     </div>
 

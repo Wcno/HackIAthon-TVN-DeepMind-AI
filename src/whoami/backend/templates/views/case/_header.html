@@ -12,7 +12,7 @@
         <span class="score__range">Prioridad {{ score.rango|capitalize }}</span>
         {% include 'views/case/_scorebar.html' %}
       </summary>
-      <div class="popover absolute top-full left-3 mt-2 w-[min(440px,90vw)]">
+      <div class="popover absolute top-full left-0 mt-2 w-[min(440px,calc(100vw-2rem))]">
         <p class="pop__title">Cómo se calcula el puntaje</p>
         <p class="pop__formula">Suma ponderada de cinco componentes. Reglas {{ score.version_reglas }}.</p>
         <table class="pop__table">
@@ -20,7 +20,7 @@
           {% for component in score_components() %}{% set key = component.key %}{% set weight = component.weight %}
           <tr><th scope="row"><span class="pop__key pop__key--{{ key }}" aria-hidden="true">{{ key }}</span>{{ component.name }}</th>
             <td class="pop__pts">{{ (score.componentes[key] * weight)|score }} / {{ weight }}</td>
-            <td class="pop__why">{{ score.justificaciones[key] }}</td></tr>
+            <td class="pop__why">{{ score.justificaciones[key]|spanish_decimals }}</td></tr>
           {% endfor %}
         </table>
       </div>
@@ -32,20 +32,20 @@
       {% if group|needs_investigation %}<span class="flag">{{ icon("alert") }}Requiere investigación</span>{% endif %}
     </div>
   </div>
-  <p class="meta">{{ group.n_noticias|number }} noticias · {{ group.n_medios|number }} medios · {{ group.n_procedencias|number }} procedencias independientes</p>
+  <p class="meta">{{ group.n_noticias|number }} {{ pluralize(group.n_noticias, "noticia", "noticias") }} · {{ group.n_medios|number }} {{ pluralize(group.n_medios, "medio", "medios") }} · {{ group.n_procedencias|number }} {{ pluralize(group.n_procedencias, "procedencia independiente", "procedencias independientes") }}</p>
 </header>
 {% set tabs = [("historia", "Historia", "/cases/" ~ (group.id_caso or '')|urlencode, true), ("cobertura", "Cobertura", "/groups/" ~ gid, false),
                ("contexto", "Contexto", "/groups/" ~ gid ~ "/context", false), ("borrador", "Borrador", "/cases/" ~ (group.id_caso or '')|urlencode ~ "/draft", true),
                ("revision", "Revisión", "/cases/" ~ (group.id_caso or '')|urlencode ~ "/review", true)] %}
-<nav class="tabs" role="tablist" aria-label="Secciones del caso">
+<nav class="tabs" role="tablist" aria-label="Secciones del tema">
   {% for key, label, href, needs_case in tabs if group.id_caso or not needs_case %}
   <a class="tab" role="tab" href="{{ href }}{{ filter_query }}" hx-get="{{ href }}{{ filter_query }}" hx-target="#case" hx-swap="innerHTML" hx-push-url="true" aria-selected="{{ 'true' if key == tab else 'false' }}">{{ label }}</a>
   {% endfor %}
 </nav>
-{% if tab != 'borrador' %}
-<aside class="drawer" id="source-panel" aria-label="Fuente" hx-on::after-swap="this.classList.add('is-open')">
+{% if tab in ('historia', 'cobertura') or (tab == 'contexto' and group.contexto) %}
+<aside class="drawer" id="source-panel" aria-label="Fuente" inert hx-on::after-swap="this.classList.add('is-open')">
   <div class="drawer__head"><p class="drawer__kind">Fuente</p>
-    <button type="button" class="icon-btn" aria-label="Cerrar fuente" hx-on:click="this.closest('.drawer').classList.remove('is-open')">&times;</button></div>
+    <button type="button" class="icon-btn" aria-label="Cerrar fuente" data-close-drawer>&times;</button></div>
   <div id="source-body"><p class="muted">Elige una cita numerada para ver la fuente aquí.</p></div>
 </aside>
 {% endif %}

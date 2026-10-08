@@ -3,6 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 
+from whoami.backend.panama_time import panama_time
 from whoami.backend.reports import quality_view
 from whoami.contracts import BRIEF_MAX_WORDS, COPY_MAX_WORDS, SCRIPT_SECONDS, SPOKEN_WORDS_PER_SECOND
 
@@ -89,3 +90,33 @@ def review_timeline(history: list[dict], audit: list[dict]) -> list[dict]:
         edits.append({"kind": "edit", "when": event["timestamp"], "title": title, "supersedes": supersedes,
                       "content_version": event["content_version"]})
     return sorted([*decisions, *edits], key=lambda item: datetime.fromisoformat(item["when"]), reverse=True)
+
+
+EVIDENCE_KINDS = {"noticia": "Noticia", "indicador": "Indicador oficial", "serie_inec": "Indicador oficial (INEC)", "sismo": "Sismo (USGS)"}
+FIELD_LABELS = {
+    "titulo": "Título", "medio": "Medio", "fecha_publicacion": "Fecha de publicación", "descripcion": "Descripción",
+    "indicador": "Indicador", "periodo": "Período", "valor": "Valor", "unidad": "Unidad", "serie": "Serie", "base": "Base",
+    "frecuencia": "Frecuencia", "lugar": "Lugar", "hora_utc": "Hora (UTC)", "estado": "Estado", "latitud": "Latitud", "longitud": "Longitud",
+}
+#: Shown once in the source header instead of again among the passages.
+HEADER_FIELDS = ("titulo", "fecha_publicacion")
+
+
+def pluralize(count: int, singular: str, plural: str) -> str:
+    return singular if count == 1 else plural
+
+
+def field_label(key: str) -> str:
+    return FIELD_LABELS.get(key, key.replace("_", " ").capitalize())
+
+
+def evidence_card(evidence: dict) -> dict:
+    """A source as the editor reads it: kind, headline, one formatted date and labelled passages."""
+    return {"tipo": EVIDENCE_KINDS.get(evidence["tipo"], "Fuente"), "titulo": evidence["titulo"],
+            "fecha": panama_time(evidence["fecha"]) if evidence["fecha"] else None, "url": evidence["url"],
+            "campos": [{"etiqueta": field_label(key), "valor": value} for key, value in evidence["campos"].items() if key not in HEADER_FIELDS]}
+
+
+def source_line(evidence: dict) -> dict:
+    """Headline and outlet (or kind of source) that identify a citation in a list of sources."""
+    return {"titulo": evidence["titulo"], "detalle": evidence["campos"].get("medio") or EVIDENCE_KINDS.get(evidence["tipo"], "Fuente")}

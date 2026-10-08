@@ -9,18 +9,18 @@
 </svg>
 {%- endmacro %}
 {# A topic's photo. Larger renditions carry the credit; list thumbnails are decorative beside their title. #}
-{% macro photo(group, cls, credit=true) -%}
+{% macro photo(group, cls, credit=true, credit_link_in_tab_order=true) -%}
 {% if group.imagen %}{% set image = group.imagen %}
 <figure class="photo {{ cls }}"><img src="{{ (image.local or image.url)|image_src }}" alt="{{ (image.alt or 'Foto: ' ~ group.titulo) if credit else '' }}" loading="lazy" referrerpolicy="no-referrer">
-  {%- if credit %}<figcaption class="photo__credit"><a href="{{ image.enlace|safe_url }}" target="_blank" rel="noopener">{{ image.credito }}</a></figcaption>{% endif %}</figure>
+  {%- if credit %}<figcaption class="photo__credit"><a href="{{ image.enlace|safe_url }}" target="_blank" rel="noopener"{% if not credit_link_in_tab_order %} tabindex="-1"{% endif %}>{{ image.credito }}</a></figcaption>{% endif %}</figure>
 {%- endif %}
 {%- endmacro %}
 {% macro open_href(group) -%}
 {{ ("/cases/" ~ group.id_caso|urlencode) if group.id_caso else ("/groups/" ~ group.id_grupo|urlencode) }}{{ filter_query }}
 {%- endmacro %}
 {% set nav = [("/inbox", "Temas", "inbox"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
-{% if target == "case" %}{% include 'views/pane.html' %}
-{% elif target == "desk" %}{% include 'views/desk.html' %}
+{% if target == "case" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/pane.html' %}
+{% elif target == "desk" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/desk.html' %}
 {% elif target == "more-rows" %}{% include 'views/rows.html' %}
 {% else %}
 {% if not fragment %}
@@ -29,12 +29,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title }} · TVN DeepMind AI</title>
+  <title>{{ document_title or title }} · TVN DeepMind AI</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/shell.js" defer></script>
   <script src="/static/editor.js" defer></script>
 </head>
 <body hx-boost="false"{% if workspace %} class="body--desk"{% endif %}>
+  <a class="skip-link" href="#screen">Saltar al contenido</a>
   <header class="strap">
     <a class="brand" href="/inbox">
       <span class="brand__bug" aria-hidden="true"></span>
@@ -44,11 +46,12 @@
       {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </nav>
     {% include 'views/search.html' %}
+    {% if offline %}<p class="offline-flag" role="status" title="Esta instancia trabaja con datos y respuestas precalculados">Sin conexión</p>{% endif %}
     {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
   </header>
   {% if demo %}<p class="synthetic" role="status">Demostración con datos sintéticos: las noticias son inventadas; las cifras oficiales son reales.</p>{% endif %}
 {% endif %}
-<main id="screen" class="{{ 'workspace' if workspace else 'screen' }}">
+<main id="screen" tabindex="-1" class="{{ 'workspace' if workspace else 'screen' }}">
   <h1 class="screen__title{% if workspace or screen == 'evidence' %} sr-only{% endif %}">{{ title }}</h1>
   {% include 'views/' ~ ('workspace' if workspace else screen) ~ '.html' %}
 </main>

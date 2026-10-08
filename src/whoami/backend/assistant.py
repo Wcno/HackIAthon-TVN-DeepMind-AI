@@ -155,7 +155,7 @@ class DraftAssistant:
         if not articles:
             return abstention("No hay evidencia suficiente: no encontré otras noticias sobre esta búsqueda.",
                               "Prueba con un nombre o tema más concreto del corpus cargado.")
-        return {"kind": "articles", "text": "Noticias del corpus cargado, fuera de las fuentes del caso.", "articles": articles}
+        return {"kind": "articles", "text": "Noticias del corpus cargado, fuera de las fuentes de la ficha.", "articles": articles}
 
     async def respond(self, case_id: str, request: AssistantRequest, client) -> dict:
         case = self.repository.case(case_id)

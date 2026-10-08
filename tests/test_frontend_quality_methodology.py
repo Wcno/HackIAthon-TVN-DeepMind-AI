@@ -45,7 +45,7 @@ def test_excluded_rows_are_listed_by_reason(client):
     news = load("calidad_noticias.json")
     page = client.get("/quality").text
     for reason, count in news["excluidas_por_motivo"].items():
-        assert reason in page and spanish(count) in page
+        assert reason.replace("fuera_de_ventana", "fuera de la ventana") in page and reason not in page and spanish(count) in page
     inec = load("calidad_inec.json")
     for item in inec["excluidos"]:
         assert item["periodo"] in page
@@ -119,7 +119,7 @@ def test_methodology_weights_ranges_and_rules_version_come_from_the_contract(cli
     text = text_of(page)
     for key, weight in SCORE_WEIGHTS.items():
         assert f'<span class="pop__key pop__key--{key}">{key}</span>' in page
-        assert f"{weight}<small>pts</small>" in page
+        assert f"{weight} <small>pts</small>" in page
         assert f"width:{weight}%" in page
     assert "P igual a 30 R más 25 I más 20 U más 15 N más 10 E" in page
     assert f"Versión de las reglas: {RULES_VERSION}" in text

@@ -26,6 +26,11 @@ def fixed(value: float) -> str:
     return f"{value:.2f}".replace(".", ",")
 
 
+def spanish_decimals(text: str) -> str:
+    """Justifications are written by the pipeline with decimal points; the editor reads decimal commas."""
+    return re.sub(r"(?<=\d)\.(?=\d)", ",", text)
+
+
 def _loaded(report: dict) -> dict | None:
     return None if report.get("available") is False else report
 
@@ -347,7 +352,7 @@ def _example(group: dict) -> dict:
     score = group["puntaje"]
     rows = [{"key": key, "name": COMPONENTS[key][0], "value": fixed(score["componentes"][key]), "weight": weight,
              "points": fixed(score["componentes"][key] * weight), "width": f"{score['componentes'][key] * weight:g}%",
-             "why": score["justificaciones"][key]} for key, weight in SCORE_WEIGHTS.items()]
+             "why": spanish_decimals(score["justificaciones"][key])} for key, weight in SCORE_WEIGHTS.items()]
     return {"title": group["titulo"], "range": score["rango"], "total": fixed(score["valor"]),
             "evidence_state": group["estado_evidencia"], "evidence": EVIDENCE_NAMES[group["estado_evidencia"]],
             "rules": score["version_reglas"], "rows": rows}

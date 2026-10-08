@@ -42,7 +42,7 @@ def test_case_page_has_score_breakdown_and_source_links(client):
 
 def test_evidence_page_is_the_source_panel(client):
     html = client.get("/evidence/N-2cf673d2b74a").text
-    assert "Fuente original" in html and "Panamá" in html
+    assert "Abrir fuente original" in html and "Panamá" in html
 
 
 def test_draft_shows_package_and_cited_claims(client):

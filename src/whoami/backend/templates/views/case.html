@@ -21,6 +21,6 @@
   <section class="action"><h2 class="h2">Acción recomendada</h2><p>{{ case.accion_recomendada }}</p></section>
   <section class="sources"><h2 class="h2">Fuentes</h2>
     <ol class="sources__list">{% for id in case.ids_fuente %}
-      <li><a class="source-line" href="/evidence/{{ id|urlencode }}" hx-get="/evidence/{{ id|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML"><span class="source-line__n">{{ loop.index }}</span><span class="source-line__t">{{ id }}</span><span class="source-line__d">Ver fuente</span></a></li>{% endfor %}
+      <li><a class="source-line" href="/evidence/{{ id|urlencode }}" hx-get="/evidence/{{ id|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML"><span class="source-line__n">{{ loop.index }}</span>{% set line = source_line(id) %}<span class="source-line__t"><span class="source-line__title">{{ line.titulo }}</span><span class="source-line__outlet">{{ line.detalle }}</span></span><span class="source-line__d">Ver fuente</span></a></li>{% endfor %}
     </ol></section>
 </div>

@@ -197,25 +197,37 @@
       toggle.setAttribute('aria-expanded', String(open));
       if (matchMedia('(max-width: 960px)').matches) (open ? assistant.querySelector('[data-assist="close"]') : toggle).focus();
     }
+    let sourceOpener = null;
     function closeSource() {
       source.hidden = true;
       setAssistant(true);
+      if (sourceOpener?.isConnected) sourceOpener.focus({preventScroll: true});
+      sourceOpener = null;
     }
+    // The headline and date sit in the drawer header, so the passages list skips them unless a citation points at them.
+    const marked = (node, text, citation, field) => {
+      const at = citation && citation.campo === field ? text.indexOf(citation.pasaje) : -1;
+      if (at < 0) return node.append(document.createTextNode(text));
+      node.append(document.createTextNode(text.slice(0, at)), element('mark', '', citation.pasaje), document.createTextNode(text.slice(at + citation.pasaje.length)));
+    };
     async function openSource(id, citation) {
+      if (source.hidden) sourceOpener = document.activeElement;
       source.hidden = false;
       const body = source.querySelector('[data-source-body]');
       body.replaceChildren(element('p', 'muted', 'Cargando fuente…'));
+      source.querySelector('[data-edit="close-source"]').focus({preventScroll: true});
       try {
         const evidence = await request(`/api/evidence/${encodeURIComponent(id)}`);
-        body.replaceChildren(element('h3', 'drawer__title', evidence.titulo));
-        if (evidence.fecha) body.append(element('p', 'muted', new Intl.DateTimeFormat('es-PA', {timeZone: 'America/Panama', dateStyle: 'medium', timeStyle: 'short'}).format(new Date(evidence.fecha))));
+        const title = element('h3', 'drawer__title');
+        marked(title, evidence.titulo, citation, 'titulo');
+        body.replaceChildren(title);
+        if (evidence.fecha_texto) body.append(element('p', 'muted', `${evidence.fecha_texto} (Panamá)`));
         for (const [field, value] of Object.entries(evidence.campos)) {
+          if (field === 'titulo' || (field === 'fecha_publicacion' && citation?.campo !== field)) continue;
           const section = element('section', 'passage');
-          section.append(element('p', 'passage__field', field));
+          section.append(element('p', 'passage__field', evidence.etiquetas[field] || field));
           const text = element('p');
-          const at = citation && citation.campo === field ? value.indexOf(citation.pasaje) : -1;
-          if (at >= 0) text.append(document.createTextNode(value.slice(0, at)), element('mark', '', citation.pasaje), document.createTextNode(value.slice(at + citation.pasaje.length)));
-          else text.textContent = value;
+          marked(text, value, citation, field);
           section.append(text);
           body.append(section);
         }
@@ -462,7 +474,9 @@
       input.value = '';
     }, {signal: abort.signal});
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') { source.hidden = true; if (assistant.classList.contains('is-open')) setAssistant(false); }
+      if (event.key !== 'Escape') return;
+      if (!source.hidden) closeSource();
+      else if (assistant.classList.contains('is-open')) setAssistant(false);
     }, {signal: abort.signal});
     form.querySelectorAll('textarea').forEach(fit);
     refresh();
