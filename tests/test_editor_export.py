@@ -28,7 +28,7 @@ def test_export_preserves_flexible_draft_and_scopes_approval_to_it(tmp_path):
         for state in ("en_revision", "aprobado_como_borrador"):
             version = client.get("/api/cases/CASO-004/draft").json()["version"]
             assert client.post("/cases/CASO-004/review", data={
-                "state": state, "actor": "Human editor", "expected_version": version,
+                "state": state, "actor": "Human editor", "note": "Verificado", "expected_version": version,
             }).status_code == 200
         current = client.get("/api/cases/CASO-004/draft").json()
     destination = tmp_path / "delivery"

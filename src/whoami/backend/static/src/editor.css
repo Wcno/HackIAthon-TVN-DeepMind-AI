@@ -7,7 +7,13 @@
   .savebar__msg { @apply basis-full text-sm font-medium text-navy; }
   .savebar__msg[role="alert"] { @apply text-rose-700; }
   .ed-hint { @apply mt-4 text-[15px] text-ink-3; }
-  .ed { @apply -mx-3 block w-[calc(100%+1.5rem)] resize-none rounded-lg border-b border-line bg-transparent px-3 py-1.5 text-ink transition hover:bg-ground focus:bg-white focus:ring-2 focus:ring-blue; }
+  .ed { @apply -mx-3 block w-[calc(100%+1.5rem)] resize-none overflow-hidden rounded-lg border-b border-line bg-transparent px-3 py-1.5 text-ink transition hover:bg-ground focus:bg-white focus:ring-2 focus:ring-blue; }
+  .ed[aria-invalid="true"], .field [aria-invalid="true"] { @apply bg-rose-50 ring-2 ring-rose-600; }
+  .conflict { @apply mt-4 grid gap-3 rounded-2xl bg-yellow-soft/70 px-5 py-4 text-[15px] text-[#5a4300] ring-1 ring-yellow; }
+  .conflict__title { @apply text-base font-semibold; }
+  .conflict summary { @apply cursor-pointer font-medium; }
+  .conflict__text { @apply mt-2 whitespace-pre-wrap rounded-lg bg-white px-3 py-2 text-ink; }
+  .conflict__actions { @apply flex flex-wrap gap-2; }
   .ed--title { @apply font-title text-[26px] leading-tight font-semibold text-navy; }
   .ed--text { @apply text-[17px] leading-relaxed; }
   .ed-list { @apply grid list-none gap-1; }

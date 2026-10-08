@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import socket
 import threading
@@ -166,3 +167,82 @@ def test_mobile_offline_assistant_abstains_without_overflow(page, editor_server)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     page.get_by_role("button", name="Cerrar", exact=True).click()
     expect(page.locator('.draft-assistant')).to_be_hidden()
+
+
+def save_and_wait(page):
+    page.get_by_role("button", name="Guardar cambios", exact=True).click()
+
+
+def test_saving_resets_every_review_badge_of_the_topic(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    group = page.locator("[data-editor]").get_attribute("data-group")
+    page.locator('textarea[data-key="titulo"]').fill("Titular que invalida la revisión")
+    save_and_wait(page)
+    expect(page.get_by_role("status").filter(has_text="Cambios guardados")).to_be_visible()
+    badges = page.locator(f'.case__badges .review, [id$="review-badge-{group}"]')
+    assert badges.count() == 2
+    for index in range(badges.count()):
+        expect(badges.nth(index)).to_have_text("Nuevo")
+        expect(badges.nth(index)).to_have_class(re.compile("review--nuevo"))
+    assert page.locator(f'[id^="review-badge-"]:not([id$="-{group}"])').filter(has_not_text="Nuevo").count() >= 1
+
+
+def test_save_conflict_keeps_my_edits_and_lets_me_choose(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    title = page.locator('textarea[data-key="titulo"]')
+    other = httpx.get(f"{editor_server}/api/cases/CASO-001/draft").json()
+    other["draft"]["titulo"] = "Titular de otra persona"
+    httpx.put(f"{editor_server}/api/cases/CASO-001/draft", json={
+        "draft": other["draft"], "source_ids": other["source_ids"], "expected_version": other["version"]}).raise_for_status()
+    title.fill("Mi titular")
+    save_and_wait(page)
+    conflict = page.locator("[data-conflict]")
+    expect(conflict).to_be_visible()
+    expect(conflict).to_contain_text("Titular de otra persona")
+    expect(title).to_have_value("Mi titular")
+    expect(page.get_by_role("button", name="Guardar cambios", exact=True)).to_be_disabled()
+    conflict.get_by_role("button", name="Guardar mi versión", exact=True).click()
+    expect(page.get_by_role("status").filter(has_text="Cambios guardados")).to_be_visible()
+    expect(conflict).to_be_hidden()
+    assert httpx.get(f"{editor_server}/api/cases/CASO-001/draft").json()["draft"]["titulo"] == "Mi titular"
+
+
+def test_save_conflict_can_adopt_the_other_version(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    title = page.locator('textarea[data-key="titulo"]')
+    other = httpx.get(f"{editor_server}/api/cases/CASO-001/draft").json()
+    other["draft"]["titulo"] = "Titular de otra persona"
+    httpx.put(f"{editor_server}/api/cases/CASO-001/draft", json={
+        "draft": other["draft"], "source_ids": other["source_ids"], "expected_version": other["version"]}).raise_for_status()
+    title.fill("Mi titular")
+    save_and_wait(page)
+    page.locator("[data-conflict]").get_by_role("button", name="Usar la otra versión", exact=True).click()
+    expect(title).to_have_value("Titular de otra persona")
+    expect(page.locator("[data-conflict]")).to_be_hidden()
+    expect(page.locator("[data-save-state]")).to_have_text("Sin cambios")
+
+
+def test_over_budget_text_saves_with_a_soft_warning(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    page.locator('textarea[data-key="brief"]').fill(" ".join(["palabra"] * 300))
+    save_and_wait(page)
+    status = page.get_by_role("status").filter(has_text="Cambios guardados")
+    expect(status).to_contain_text("Brief")
+    expect(status).to_contain_text("250")
+
+
+def test_validation_error_names_and_highlights_the_field(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    question = page.locator('textarea[data-key="preguntas"]').nth(1)
+    question.fill("")
+    save_and_wait(page)
+    expect(page.get_by_role("alert").filter(has_text="Pregunta 2")).to_be_visible()
+    expect(question).to_have_attribute("aria-invalid", "true")
+    question.fill("¿Una pregunta válida?")
+    expect(question).not_to_have_attribute("aria-invalid", "true")
+
+
+def test_textareas_have_no_inner_scrollbars(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    overflowing = page.evaluate("[...document.querySelectorAll('.draft-form textarea')].filter(t => t.scrollHeight > t.clientHeight).length")
+    assert overflowing == 0

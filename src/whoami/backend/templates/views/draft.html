@@ -16,8 +16,8 @@
   <textarea class="ed {{ 'ed--title' if key == 'titulo' else 'ed--text' }}" rows="1" data-key="{{ key }}" aria-labelledby="ed-{{ key }}" maxlength="{{ 500 if key == 'titulo' else 20000 }}">{{ value }}</textarea>
 </section>
 {%- endmacro %}
-<div data-editor="{{ case.id_caso }}" id="draft-editor">
-  <script type="application/json" data-editor-config>{{ {"draft": b, "source_ids": case.ids_fuente, "version": case.version}|tojson }}</script>
+<div data-editor="{{ case.id_caso }}" data-group="{{ group.id_grupo }}" id="draft-editor">
+  <script type="application/json" data-editor-config>{{ {"draft": b, "source_ids": case.ids_fuente, "version": case.version, "review_labels": review_labels}|tojson }}</script>
   <form class="draft-form">
     <div class="savebar">
       <p class="savebar__state"><span class="savebar__dot" aria-hidden="true"></span><span data-save-state>Sin cambios</span></p>
@@ -25,8 +25,17 @@
         <button type="button" class="btn btn--quiet btn--small" data-edit="discard" disabled>Descartar cambios</button>
         <button type="submit" class="btn btn--primary btn--small" data-edit="save" disabled>Guardar cambios</button>
       </div>
-      <p class="savebar__msg" data-save-message role="status" hidden></p>
+      <p class="savebar__msg" id="save-message" data-save-message role="status" hidden></p>
     </div>
+    <section class="conflict" data-conflict role="alert" hidden>
+      <h2 class="conflict__title">Otra persona guardó cambios mientras editabas</h2>
+      <p>Tus cambios siguen en pantalla y no se han perdido. Revisa la otra versión y elige cuál conservar.</p>
+      <div data-conflict-diff></div>
+      <div class="conflict__actions">
+        <button type="button" class="btn btn--primary btn--small" data-edit="overwrite">Guardar mi versión</button>
+        <button type="button" class="btn btn--small" data-edit="adopt">Usar la otra versión</button>
+      </div>
+    </section>
     {% if b.leyenda %}<p class="notice">{{ icon('alert') }}{{ b.leyenda }}</p>{% endif %}
     <p class="ed-hint">Haz clic en cualquier texto para editarlo. Los cambios se guardan solo cuando eliges Guardar cambios.</p>
     {{ field('titulo', 'Título propuesto', b.titulo, copy=true) }}
