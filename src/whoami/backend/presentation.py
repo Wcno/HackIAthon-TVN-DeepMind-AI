@@ -73,6 +73,26 @@ def abstention_copy(answer: dict) -> dict:
             "next_step": GENERIC_NEXT_STEP if generic else sentence(missing)}
 
 
+#: Benchmark red-team queries carry this id prefix; the system must abstain on them.
+SECURITY_PROBE_PREFIX = "D-X"
+
+
+def is_security_probe(answer: dict) -> bool:
+    return answer["id_consulta"].startswith(SECURITY_PROBE_PREFIX)
+
+
+def split_queries(answers: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Ordinary precomputed queries and, apart, the security probes."""
+    return ([a for a in answers if not is_security_probe(a)], [a for a in answers if is_security_probe(a)])
+
+
+def case_questions(answers: list[dict], source_ids: list[str]) -> list[dict]:
+    """The ordinary precomputed questions whose answer rests on the case's own sources."""
+    own = set(source_ids)
+    return [a for a in split_queries(answers)[0]
+            if own & {*(c["id_evidencia"] for c in a["citas"]), *(v["id_evidencia"] for v in a["versiones"])}]
+
+
 EDIT_EVENTS = {
     "Editorial draft edited": "Contenido editado",
     "Pipeline content changed": "Contenido actualizado por el pipeline",

@@ -73,4 +73,13 @@
       {% for item in examples %}<li><a class="link" href="/queries?q={{ item.consulta|urlencode }}">{{ item.consulta }}</a></li>{% endfor %}
     </ul>
   </section>
+  {% if probes %}
+  <section class="mt-12" aria-label="Pruebas de seguridad">
+    <h2 class="h2">Pruebas de seguridad: el sistema debe abstenerse</h2>
+    <p class="muted">Entradas hostiles del benchmark (inyección de instrucciones, citas inventadas). Se muestran como texto, nunca se ejecutan.</p>
+    <ul class="suggest-list suggest-list--probes">
+      {% for item in probes %}<li><a class="link" href="/queries?q={{ item.consulta|urlencode }}"><code>{{ item.consulta }}</code></a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
 </div>
