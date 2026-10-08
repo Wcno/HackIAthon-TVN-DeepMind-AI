@@ -18,7 +18,7 @@ Run: 40 development queries on 3,727 evidence records (2,941 frozen news items p
 | Provider calls / network tokens | 70 / 73,614 |
 | Input / output tokens | 53,297 / 20,317 |
 | API failures | 0 |
-| Automated tests | 669 passed |
+| Automated tests | 671 passed |
 | T01-T10 local checks | 10/10 passed; G10 event/Notion delivery remains separate |
 
 ## Baselines
