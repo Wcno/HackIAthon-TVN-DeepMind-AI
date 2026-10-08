@@ -1,13 +1,20 @@
 """Screen projections over the persistent repository, independent of HTTP."""
 
-import json
 import hashlib
+import json
+import unicodedata
 from pathlib import Path
 
 from whoami.backend.gemini import GenerationUnavailable
 from whoami.backend.repository import EditorialRepository
 from whoami.contracts import TOPIC_LABELS
 from whoami.schemas import Group, sort_inbox
+
+
+def comparable(question: str) -> str:
+    """A question without case, accents, inverted marks or spacing differences, to match it with a precalculated one."""
+    plain = "".join(c for c in unicodedata.normalize("NFD", question) if not unicodedata.combining(c))
+    return " ".join(plain.replace("¿", " ").replace("?", " ").split()).casefold()
 
 
 class EditorialService:
@@ -39,9 +46,9 @@ class EditorialService:
         return self.repository.case(case_id)
 
     def query(self, query: str) -> dict:
-        normalized = " ".join(query.split()).casefold()
+        normalized = comparable(query)
         for answer in self.repository.records("answer"):
-            if " ".join(answer["consulta"].split()).casefold() == normalized:
+            if comparable(answer["consulta"]) == normalized:
                 return answer
         raise GenerationUnavailable("sin conexión: solo consultas precalculadas; esta consulta no está disponible")
 

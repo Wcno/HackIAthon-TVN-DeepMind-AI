@@ -18,11 +18,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from whoami.backend.assistant import DraftAssistant
 from whoami.backend.editor import AssistantRequest, SaveDraft
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
-from whoami.backend.live_case_files import CaseFileUnavailable, LiveCaseFiles, NoGroundedClaims
+from whoami.backend.gemini_completions import CompletionUnavailable
+from whoami.backend.live_queries import LiveQueries
+from whoami.backend.live_case_files import LiveCaseFiles, NoGroundedClaims
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.panama_time import panama_time, short_date
-from whoami.backend.presentation import draft_budgets, latest_date, needs_investigation, snapshot_view
+from whoami.backend.presentation import abstention_copy, draft_budgets, latest_date, needs_investigation, snapshot_view
 from whoami.backend.reports import methodology_view, quality_view, score_components
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
@@ -52,6 +54,9 @@ REVIEW_FIELD_ERRORS = {
     "actor": "Escribe el nombre del responsable para registrar la decisión.",
     "expected_version": "La versión de la ficha no es válida. Recarga la página y vuelve a decidir.",
 }
+
+
+QUERY_MAX_LENGTH = 2000
 
 
 def review_field_error(error: RequestValidationError) -> str:
@@ -111,7 +116,7 @@ def safe_url(value: str) -> str:
         return "#"
 
 
-# G4 supplies generation/retrieval; G5 owns the cached client and transport.
+#: A seam for tests and alternative pipelines; by default the app answers with `LiveQueries`.
 QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dict]]
 
 
@@ -120,7 +125,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, percent=percent,
                             short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
-    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components)
+    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components, abstention_copy=abstention_copy)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -133,6 +138,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
         app.state.live_case_files = LiveCaseFiles(repository, app.state.gemini)
         app.state.assistant = DraftAssistant(repository, None if settings.demo else settings.data_directory / "embeddings")
+        app.state.live_queries = LiveQueries(app.state.gemini, app.state.assistant.index, app.state.assistant.evidence)
         try:
             yield
         finally:
@@ -213,6 +219,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         if request.method == "POST" and case_id and request.url.path.endswith("/review"):
             form = dict((await request.form()).items())
             return review_screen(request, case_id, 422, review_field_error(error), form)
+        if request.url.path == "/queries":
+            return render(request, "error", "Consulta demasiado larga", status_code=422,
+                          message=f"La consulta supera los {number(QUERY_MAX_LENGTH)} caracteres. Acórtala y vuelve a intentarlo.")
         return render(request, "error", "Revisa los campos", status_code=422,
                       message="La solicitud contiene campos ausentes o no válidos. Revisa la decisión y el responsable.")
 
@@ -262,7 +271,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                 return generator_failure(request, group, 409, GENERATOR_OFFLINE)
             try:
                 group["id_caso"] = await request.app.state.live_case_files.generate(group_id)
-            except CaseFileUnavailable as error:
+            except CompletionUnavailable as error:
                 logger.warning("Case file generation unavailable for %s: %s", group_id, error)
                 return generator_failure(request, group, 503, GENERATOR_UNAVAILABLE, retry=True)
             except NoGroundedClaims as error:
@@ -333,7 +342,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         return review_screen(request, case_id)
 
     @app.get("/queries", response_class=HTMLResponse)
-    async def queries(request: Request, q: Annotated[str | None, Query(max_length=2000)] = None):
+    async def queries(request: Request, q: Annotated[str | None, Query(max_length=QUERY_MAX_LENGTH)] = None):
         answer = None
         examples = request.app.state.repository.records("answer")
         try:
@@ -343,19 +352,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                 except GenerationUnavailable:
                     if settings.offline:
                         raise
-                    if query_provider is None:
-                        raise GenerationUnavailable("Live query generation is not configured by the G4 pipeline.") from None
-                    try:
-                        async with asyncio.timeout(settings.generation_timeout):
-                            answer = await query_provider(q, request.app.state.gemini, request.app.state.repository)
-                    except TimeoutError:
-                        raise GenerationUnavailable("The query deadline was exceeded.") from None
-                    evidence = {item["id_evidencia"]: item for item in request.app.state.repository.records("evidence")}
-                    try:
-                        validate_answer(answer, evidence)
-                    except (ValueError, TypeError, AttributeError):
-                        raise GenerationUnavailable("The query pipeline returned an invalid answer.") from None
-        except GenerationUnavailable as error:
+                    answer = await live_answer(request, q)
+        except (GenerationUnavailable, CompletionUnavailable) as error:
             if settings.offline:
                 # Offline, a question outside the precomputed set is an honest abstention, not a server fault.
                 return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples,
@@ -364,6 +362,20 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             return render(request, "queries", "Consulta con evidencia", status_code=503, answer=None, examples=examples,
                           query_status="unavailable", query_text=q)
         return render(request, "queries", "Consulta con evidencia", answer=answer, examples=examples, query_text=q)
+
+    async def live_answer(request: Request, question: str) -> dict:
+        provider = query_provider or (lambda text, gemini, repository: request.app.state.live_queries.answer(text))
+        try:
+            async with asyncio.timeout(settings.generation_timeout):
+                answer = await provider(question, request.app.state.gemini, request.app.state.repository)
+        except TimeoutError:
+            raise GenerationUnavailable("The query deadline was exceeded.") from None
+        evidence = {item["id_evidencia"]: item for item in request.app.state.repository.records("evidence")}
+        try:
+            validate_answer(answer, evidence)
+        except (ValueError, TypeError, AttributeError):
+            raise GenerationUnavailable("The query pipeline returned an invalid answer.") from None
+        return answer
 
     return app
 

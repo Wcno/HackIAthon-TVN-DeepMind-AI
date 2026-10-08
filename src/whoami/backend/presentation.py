@@ -45,3 +45,22 @@ def draft_budgets(draft: dict) -> dict:
     return {"brief": budget(word_count(draft["brief"]), brief[0], brief[2]),
             "guion": budget(spoken_seconds(draft["guion"]), script[0], script[2], script[1]),
             "copy": budget(word_count(draft["copy_digital"]), copy[0], copy[2])}
+
+
+GENERIC_NEXT_STEP = "Agrega una fuente que trate este tema directamente o prueba con una pregunta más concreta."
+#: What the query box writes when it has nothing specific to ask for; it only repeats the question.
+GENERIC_MISSING_PREFIX = "Fuentes que respondan directamente"
+
+
+def sentence(text: str) -> str:
+    text = text.strip()
+    return text if not text else text[0].upper() + text[1:] + ("" if text[-1] in ".!?" else ".")
+
+
+def abstention_copy(answer: dict) -> dict:
+    """The reason and next step of an abstention as readable sentences; a next step that only repeats the question
+    becomes a real one."""
+    missing = (answer.get("faltante") or "").strip()
+    generic = not missing or missing.startswith(GENERIC_MISSING_PREFIX)
+    return {"reason": sentence(answer.get("motivo_abstencion") or "Las fuentes no responden la consulta"),
+            "next_step": GENERIC_NEXT_STEP if generic else sentence(missing)}

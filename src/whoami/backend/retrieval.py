@@ -108,21 +108,46 @@ class CorpusRetriever:
             self._cache.popitem(last=False)
         return vector[0]
 
+    def _semantic_index(self) -> EmbeddingIndex | None:
+        """The embedding index, initialized on first use; None once it is unavailable. Call with the lock held."""
+        try:
+            if not self._initialized:
+                self._initialize()
+        except Exception as error:
+            self._degrade(error)
+        return self._semantic
+
+    def _degrade(self, error: Exception) -> None:
+        # Failure details may contain model paths or user content: expose only the type.
+        self._semantic = None
+        self._embedder = None
+        self._cache.clear()
+        self.mode = f"bm25: local embeddings unavailable ({type(error).__name__})"
+
+    def cosine_search(self, query: str, k: int) -> list[tuple[str, float]] | None:
+        """Top-k by raw embedding cosine, or None when only BM25 is available."""
+        if k <= 0 or not query.strip():
+            return []
+        with self._lock:
+            index = self._semantic_index()
+            if index is None:
+                return None
+            try:
+                return index.search(query, k)
+            except Exception as error:
+                self._degrade(error)
+                return None
+
     def search(self, query: str, k: int) -> list[tuple[str, float]]:
         if k <= 0 or not query.strip():
             return []
         with self._lock:
             lexical = self._lexical.search(query, max(20, k))
-            try:
-                if not self._initialized:
-                    self._initialize()
-                if self._semantic is not None:
-                    semantic = [key for key, score in self._semantic.search(query, max(20, k)) if score >= MIN_COSINE]
+            index = self._semantic_index()
+            if index is not None:
+                try:
+                    semantic = [key for key, score in index.search(query, max(20, k)) if score >= MIN_COSINE]
                     return hybrid_rrf([[key for key, _ in lexical], semantic])[:k]
-            except Exception as error:
-                # Failure details may contain model paths or user content: expose only the type.
-                self._semantic = None
-                self._embedder = None
-                self._cache.clear()
-                self.mode = f"bm25: local embeddings unavailable ({type(error).__name__})"
+                except Exception as error:
+                    self._degrade(error)
             return lexical[:k]
