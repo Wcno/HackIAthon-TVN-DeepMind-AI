@@ -1,5 +1,5 @@
 {
-  "version": "20261008-81c3563c",
+  "version": "20261008-b8f48ab0",
   "fecha_corte_UTC": "2026-10-08T00:51:38Z",
   "consultas": [
     {
@@ -369,7 +369,7 @@
     "processed/eventos.geojson": "79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d",
     "processed/evidencias.jsonl": "2d2646e4c6fa359940a48368b45f59ff0ed67c5d4f51cacb136951c6b1044046",
     "processed/fuentes.json": "91a62d08b866bcac633edbf0aa99e681eae75ceb556d7df1c6f803dbf09ae858",
-    "processed/grupos.jsonl": "5a9b4d7cb5a1ed96d966f64deaa45bed19be50269f1fe064fad9a7a38e40e0ed",
+    "processed/grupos.jsonl": "1106cba046d8dd3fb75028bd4e18702363717741389bb83e5f70a7c6a4f51cf1",
     "processed/imagenes.json": "d3c93c4a5f0e1c2736d7a9f0ea10f49101f3025a56f3753305abd86b1fd89d76",
     "processed/indicadores.csv": "f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e",
     "processed/indicadores_inec.csv": "5035a16d37f9f7257151737cd482483f80848e72d392112fc427db07ef613645",
