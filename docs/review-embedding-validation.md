@@ -19,3 +19,13 @@ The reviewer verified the snapshot fingerprint and equal inputs across q4, fp32 
 No reserved G7 access, fabricated human labels, automatic promotion or billing enablement was found. Human review and the protected tunnel remain pending and are disclosed; no executed private URL is claimed. Spec source: the user's approved design recorded in `docs/embedding-validation.md`.
 
 Summary: Standards **0** remaining; Spec **0** remaining. Pending user input: real human relevance/event judgments, PC-hosting preference and allowed email for the protected tunnel.
+
+## Follow-up: agent evaluations and optional human review
+
+The user subsequently requested that Codex perform the evaluations and fold the manual step. Fixed point for this update: published `2c455243da9b2f802477b1b67292dfb61ccb309a`; reviewed code `74398af768b2e09ab0bf52257ec48dd05123ee81`. Human judgments are now optional for this delivery, replacing that earlier pending input; hosting preferences/email remain separate.
+
+Standards: **0 findings**. The reviewer independently recomputed the report, confirmed exact agreement with 267 submissions/266 usable/one unknown, and checked snapshot/origin/item/grade/reviewer/rationale validation. Shared metric definitions and unknown exclusion are preserved. Agent outputs stay separate from human SQLite and human results. No documented-standard breach or actionable smell was found.
+
+Spec: **0 actionable findings**. The reviewer verified 217 retrieval judgments, 49 scored pairs and one excluded unknown; precision numerators are q4 135/150, fp32 134/150, and hybrid/BM25 121/150. The optional human form is folded; AI results are separate and honestly attributed. q4 remains selected without changing model weights, thresholds, retrieval or Gemini. Agent development-pool metrics are not described as human ground truth or statistically significant superiority.
+
+Validation before publication: 17 scoring/provenance/UI tests passed, two real Edge browser flows passed, wheel build passed; original human results are semantically unchanged and persisted human-label count remains zero. The later CI run verifies the published commit on Windows and Linux.
