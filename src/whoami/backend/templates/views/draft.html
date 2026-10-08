@@ -1,0 +1,3 @@
+<h2>Afirmaciones y evidencia</h2>{% include 'claims.html' %}
+  {% if case.borrador %}{% set package = case.borrador %}<h2>{{ package.titulo }}</h2>{% if package.leyenda %}<p>{{ package.leyenda }}</p>{% endif %}<p>{{ package.enfoque_interes_publico }}</p><h2>Brief</h2><p>{{ package.brief }}</p><h2>Preguntas</h2><ol>{% for question in package.preguntas %}<li>{{ question }}</li>{% endfor %}</ol><h2>Guion</h2><p>{{ package.guion }}</p><h2>Copy digital</h2><p>{{ package.copy_digital }}</p><h2>Fuentes y verificaciones pendientes</h2>{% for item in package.fuentes_y_verificaciones %}<p>{{ item }}</p>{% endfor %}{% else %}<p>No hay borrador: se necesita más evidencia.</p>{% endif %}
+  <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>

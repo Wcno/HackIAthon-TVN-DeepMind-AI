@@ -1,0 +1,10 @@
+{% if not fragment %}
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} · TVN DataMind AI</title></head><body>
+<header><a href="/inbox">TVN DataMind AI</a><nav><a href="/quality">Calidad de datos</a> · <a href="/inbox">Agenda</a> · <a href="/queries">Consultas</a></nav></header>
+{% endif %}
+<main id="screen">
+{% if demo %}<p role="status">Demostración: las noticias son sintéticas; no describen hechos reales.</p>{% endif %}
+<h1>{{ title }}</h1>
+{% include 'views/' ~ screen ~ '.html' %}
+</main>
+{% if not fragment %}</body></html>{% endif %}

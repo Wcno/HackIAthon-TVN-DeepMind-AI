@@ -11,6 +11,7 @@
     whoami pipeline [--vectors PATH] [--sin-llm] [--modelo-llm MODEL]
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
                                         --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
+    whoami export-backend               export persisted case files and human reviews (offline)
 """
 
 import argparse
@@ -66,6 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     pipeline_command.add_argument("--sin-llm", action="store_true", help="no LLM at all: logistic topics, embeddings-only grouping")
     pipeline_command.add_argument("--modelo-llm", default=DEFAULT_LLM_MODEL, help="chat model for topics and same-event verdicts")
     run.add_arguments(commands.add_parser("generar"))
+
+    export_command = commands.add_parser("export-backend")
+    export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
+    export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
 
     if args.command == "generar":
@@ -91,6 +96,17 @@ def main(argv: list[str] | None = None) -> int:
         except (pipeline.PipelineInputError, LLMError) as error:
             parser.error(str(error))
         print(format_summary(output, llm.counts() if llm else None))
+        return 0
+
+    if args.command == "export-backend":
+        from whoami.backend.export import export_backend
+        from whoami.backend.repository import EditorialRepository
+        from whoami.backend.settings import Settings
+
+        database = args.database or Settings.from_environment().database
+        if not database.is_file():
+            parser.error(f"backend database does not exist: {database}")
+        print(json.dumps(export_backend(EditorialRepository(database), args.output), indent=2))
         return 0
 
     only = set(args.only.split(",")) if getattr(args, "only", None) else None
