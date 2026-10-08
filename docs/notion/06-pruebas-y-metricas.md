@@ -13,6 +13,15 @@
 
 ## Matriz de aceptación (§9)
 
+**Evidencia G10 (2026-10-08, rama `feat/g10-offline`, base `prod` `1153820`):**
+1.091 pruebas pasan, incluidas las de navegador con Edge; wheel construido y
+probado desde una instalación separada con el paquete reubicado. Registro y XML:
+`outputs/validation/g10-final/pytest.log` y `pytest.xml`. El reporte del ensayo,
+auditorías con cero intentos externos/de inferencia y capturas de escritorio/móvil
+se conservan en esa misma carpeta. La captura histórica de G8 anterior permanece
+sin sobrescribirse. Revisión final independiente: Standards 0 y Spec 0; ver
+`docs/review-g10.md`.
+
 Las pruebas se citan por archivo. Cada nombre de archivo existe bajo `tests/` y sus pruebas
 están en el XML de la corrida.
 
