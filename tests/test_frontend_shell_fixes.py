@@ -46,6 +46,14 @@ def test_lead_photo_credit_is_not_a_tab_stop_before_the_card_link(client):
     assert all('tabindex="-1"' in link for link in credit)
 
 
+def test_the_opened_topic_keeps_its_photo_credit_as_a_keyboard_reachable_link(client):
+    header = next(client.get(f"/groups/{group}").text.split('<header class="case__head">')[1].split("</header>")[0]
+                  for group in ("G-001", "G-002", "G-003", "G-004", "G-005")
+                  if 'photo__credit' in client.get(f"/groups/{group}").text)
+    credit = re.search(r'<figcaption class="photo__credit"><a [^>]*>', header).group(0)
+    assert 'tabindex="-1"' not in credit and 'target="_blank"' in credit and 'rel="noopener"' in credit
+
+
 @pytest.mark.parametrize("path, heading, message", [
     ("/groups/G-nope", "Tema no encontrado", "No encontramos este tema"),
     ("/cases/CASO-nope", "Ficha no encontrada", "No encontramos esta ficha"),

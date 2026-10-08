@@ -324,3 +324,19 @@ def test_a_soft_rejection_followed_by_a_failed_retry_shows_the_flagged_reply_wit
     expect(page.locator('.reply .reply__warn')).to_have_count(1)
     warned.get_by_role("button", name="Aplicar", exact=True).click()
     expect(page.locator('textarea[data-key="titulo"]')).to_have_value(UNBACKED_OPTION)
+
+
+@pytest.mark.parametrize("scripted_server", [[TWO_OPTIONS, 500]], indirect=True)
+@pytest.mark.parametrize("width, button_height, cite_size", [(1440, 36, 32), (390, 44, 44)])
+def test_reply_controls_are_comfortable_to_hit_and_never_overflow_the_assistant(page, scripted_server, width, button_height, cite_size):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(f"{scripted_server}/cases/CASO-001/draft")
+    if width < 961:
+        page.get_by_role("button", name="Abrir Co-News", exact=True).click()
+    page.locator('#ask-input').fill("haz el titulo mas llamativo")
+    page.locator('.ask button[type="submit"]').click()
+    expect(page.locator('.option')).to_have_count(2)
+    apply = page.locator('.option').first.get_by_role("button", name="Aplicar", exact=True).bounding_box()
+    cite = page.locator('.reply .cite').first.bounding_box()
+    assert apply["height"] >= button_height and cite["height"] >= cite_size and cite["width"] >= cite_size
+    assert page.evaluate("(() => { const a = document.querySelector('.draft-assistant'); return a.scrollWidth <= a.clientWidth; })()")

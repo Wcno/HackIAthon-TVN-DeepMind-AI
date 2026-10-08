@@ -8,7 +8,8 @@
 {%- elif name == "spark" %}<path d="M12 4.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5Z"/>{% endif -%}
 </svg>
 {%- endmacro %}
-{# A topic's photo. Larger renditions carry the credit; list thumbnails are decorative beside their title. #}
+{# A topic's photo. Larger renditions carry the credit; list thumbnails are decorative beside their title.
+   The lead card keeps its credit out of the tab order so Tab reaches the topic link first; the same attribution is a normal tab stop in the opened topic's header. #}
 {% macro photo(group, cls, credit=true, credit_link_in_tab_order=true) -%}
 {% if group.imagen %}{% set image = group.imagen %}
 <figure class="photo {{ cls }}"><img src="{{ (image.local or image.url)|image_src }}" alt="{{ (image.alt or 'Foto: ' ~ group.titulo) if credit else '' }}" loading="lazy" referrerpolicy="no-referrer">
