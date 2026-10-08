@@ -123,6 +123,14 @@ def abstention(message: str, missing: str) -> dict:
     return {"kind": "abstention", "text": message, "missing": missing, "citations": []}
 
 
+MAX_RELATED_ARTICLES = 4
+# A related article must share this many of the topic's words, so one generic word ("anuncia", "programa") never qualifies it.
+MIN_SHARED_TOPIC_TERMS = 2
+# Measured on the Canal/LoTSA headline: related stories score 0.39-0.56, unrelated ones 0.13-0.27, and the
+# generic-word overlaps in between sit at 0.34-0.36. Applies only to a case-title query, whose cosines are this scale.
+CASE_TOPIC_MIN_COSINE = 0.38
+
+
 class DraftAssistant:
     def __init__(self, repository: EditorialRepository, embeddings_directory: Path | None = None):
         self.repository = repository
@@ -135,22 +143,40 @@ class DraftAssistant:
         return list(dict.fromkeys([*case["ids_fuente"], *(m["id_noticia"] for m in group["miembros"]),
                                   *(c["id_evidencia"] for c in group["contexto"])]))
 
+    def evidence_terms(self, evidence_id: str) -> set[str]:
+        item = self.evidence[evidence_id]
+        return set(tokenize("\n".join([item.get("titulo", ""), *item.get("campos", {}).values()])))
+
+    def topic_terms(self, terms: list[str], source_ids: list[str]) -> list[str]:
+        """The headline words the case's own articles corroborate; generic wording used by one article alone is dropped."""
+        articles = [self.evidence_terms(i) for i in source_ids if self.evidence[i]["tipo"] == "noticia"]
+        shared = [t for t in terms if sum(t in article for article in articles) >= 2]
+        return shared if len(shared) >= MIN_SHARED_TOPIC_TERMS else terms
+
     def search(self, case: dict, question: str) -> dict:
-        query = case["titulo"] if "este tema" in question.casefold() else question
+        about_case = "este tema" in question.casefold()
+        query = case["titulo"] if about_case else question
         terms = [t for t in tokenize(query) if t not in {"busca", "buscar", "noticia", "articulo", "fuente", "relacionado"}]
-        own = set(self.sources(case))
-        hits = self.index.search(" ".join(terms), len(self.evidence))
+        own = self.sources(case)
+        topic = set(self.topic_terms(terms, own) if about_case else terms)
+        required = min(MIN_SHARED_TOPIC_TERMS, len(topic))
+        cosines = self.index.cosine_search(" ".join(terms), len(self.evidence)) if about_case else None
+        cosine = dict(cosines) if cosines is not None else None
         articles = []
-        for evidence_id, _score in hits:
+        for evidence_id, _score in self.index.search(" ".join(terms), len(self.evidence)):
             item = self.evidence[evidence_id]
             if evidence_id in own or item["tipo"] != "noticia":
+                continue
+            if len(topic & self.evidence_terms(evidence_id)) < required:
+                continue
+            if cosine is not None and cosine.get(evidence_id, 0.0) < CASE_TOPIC_MIN_COSINE:
                 continue
             field = "descripcion" if item["campos"].get("descripcion") else "titulo"
             text = item["campos"].get(field, item["titulo"])
             articles.append({"id_evidencia": evidence_id, "titulo": item["titulo"], "url": item["url"],
                              "fecha": item["fecha"], "medio": self.outlets.get(evidence_id, "Fuente del corpus"),
                              "passage": text[:600], "field": field})
-            if len(articles) == 4:
+            if len(articles) == MAX_RELATED_ARTICLES:
                 break
         if not articles:
             return abstention("No hay evidencia suficiente: no encontré otras noticias sobre esta búsqueda.",
