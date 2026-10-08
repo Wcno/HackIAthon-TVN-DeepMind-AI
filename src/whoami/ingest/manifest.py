@@ -26,17 +26,17 @@ from whoami.ingest.output import iso, write_json
 from whoami.ingest.raw import FETCH_LOG, RawStore
 
 TRANSFORMATIONS = (
-    "GDELT: seendate se conserva como fecha_deteccion, nunca como fecha_publicacion; "
-    "se usa detección para la ventana solo si falta publicación. Capturas y errores se conservan sin modificar.",
-    "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) "
-    f"o del lastmod del sitemap; ventana de {NEWS_WINDOW.days} días hasta la fecha de corte (D-04); "
-    "excluidas con su motivo en noticias_excluidas.csv.",
-    "Banco Mundial: una consulta por indicador; cuadrícula completa país x indicador x año; nulos conservados; "
-    "unidad derivada del indicador.",
-    f"USGS: caja lat 5 a 12, lon -86 a -76, magnitud >= 3, desde {iso(EVENTS_WINDOW_START)} (D-02); "
-    "propiedades del §7 (mag -> magnitude).",
-    f"INEC: CSV y XLSX decodificados a UTF-8 en formato largo desde {INEC_FROM_YEAR}; variación interanual del PIB "
-    "calculada; períodos duplicados en origen excluidos.",
+    "GDELT: la fecha en que GDELT detectó la noticia se guarda como fecha de detección y nunca como fecha de publicación; "
+    "solo se usa para la ventana si falta la publicación. Las capturas y los errores se conservan sin modificar.",
+    "Noticias: deduplicación por URL canónica; la fecha de publicación sale del feed, de la página (artículos reeditados) "
+    f"o de la fecha de última modificación del sitemap; ventana de {NEWS_WINDOW.days} días hasta la fecha de corte (D-04); "
+    "las excluidas se listan con su motivo en noticias_excluidas.csv.",
+    "Banco Mundial: una consulta por indicador; cuadrícula completa de país por indicador por año; los nulos se conservan; "
+    "la unidad se deriva del indicador.",
+    f"USGS: caja de latitud 5 a 12 y longitud -86 a -76, magnitud de 3 o más, desde {iso(EVENTS_WINDOW_START)} (D-02); "
+    "se usan las propiedades del contrato de datos (la magnitud se guarda como magnitude).",
+    f"INEC: CSV y XLSX decodificados a UTF-8 y puestos en formato largo (una fila por serie y período) desde {INEC_FROM_YEAR}; "
+    "la variación interanual del PIB se calcula; los períodos duplicados en origen se excluyen.",
 )
 
 

@@ -23,7 +23,7 @@ from whoami.ingest.raw import RawFile, RawStore
 SITE: Final = "https://www.inec.gob.pa/"
 CPI_CATALOG: Final = SITE + "avance/Default2.aspx?ID_CATEGORIA=2&ID_CIFRAS=10&ID_IDIOMA=1"
 GDP_CATALOG: Final = SITE + "publicaciones/Default3.aspx?ID_CATEGORIA=4&ID_PUBLICACION=1419&ID_SUBCATEGORIA=73"
-LICENSE: Final = "CC BY 4.0 - Instituto Nacional de Estadistica y Censo (INEC), Contraloria General de la Republica de Panama"
+LICENSE: Final = "CC BY 4.0 - Instituto Nacional de Estadística y Censo (INEC), Contraloría General de la República de Panamá"
 
 STORE: Final = RawStore(RAW / "inec")
 CPI_FILE: Final = "ipc_anexo4.xlsx"
@@ -37,7 +37,7 @@ DOWNLOADS: Final = (
 
 CSV_ENCODING: Final = "cp850"
 DUPLICATE_PERIOD: Final = "periodo_duplicado"
-REPEATED_LABEL: Final = "etiqueta repetida en la fuente, se conserva la primera aparicion"
+REPEATED_LABEL: Final = "etiqueta repetida en la fuente, se conserva la primera aparición"
 UNPUBLISHED: Final = "mes_sin_publicar"
 
 MONTHS: Final = {
@@ -48,7 +48,7 @@ MONTHS: Final = {
     )
 }
 
-CPI_NAME: Final = "Indice de precios al consumidor, nacional urbano"
+CPI_NAME: Final = "Índice de precios al consumidor, nacional urbano"
 GDP_NAME: Final = "Producto interno bruto trimestral"
 
 
@@ -61,13 +61,13 @@ class Series:
 
 
 SERIES: Final = {
-    "ipc_indice": Series(CPI_NAME, "mensual", "indice", "2024=100"),
-    "ipc_var_mensual": Series(f"{CPI_NAME}, variacion mensual", "mensual", "% mensual", "2024=100"),
-    "ipc_var_interanual": Series(f"{CPI_NAME}, variacion interanual", "mensual", "% interanual", "2024=100"),
+    "ipc_indice": Series(CPI_NAME, "mensual", "índice", "2024=100"),
+    "ipc_var_mensual": Series(f"{CPI_NAME}, variación mensual", "mensual", "% mensual", "2024=100"),
+    "ipc_var_interanual": Series(f"{CPI_NAME}, variación interanual", "mensual", "% interanual", "2024=100"),
     "pib_constante": Series(f"{GDP_NAME}, precios constantes", "trimestral", "millones de balboas", "2018"),
     "pib_corriente": Series(f"{GDP_NAME}, precios corrientes", "trimestral", "millones de balboas", ""),
     "pib_constante_var_interanual": Series(
-        f"{GDP_NAME}, precios constantes, variacion interanual (calculada)", "trimestral", "% interanual", "2018"
+        f"{GDP_NAME}, precios constantes, variación interanual (calculada)", "trimestral", "% interanual", "2018"
     ),
 }
 
