@@ -79,17 +79,17 @@
     <div class="assistant__scroll">
       {% for key, label in cn_scopes %}
       <div class="prompts cn-prompts" data-prompts data-cn-prompts="{{ key }}">
-        {% for text in cn_prompts[key] %}<button type="button" class="prompt" data-assist="ask" data-action="rewrite">{{ text }}</button>{% endfor %}
+        {% for text in cn_prompts[key] %}<button type="button" class="prompt" data-assist="ask" data-action="rewrite"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>{{ text }}</button>{% endfor %}
       </div>
       {% endfor %}
       <div class="prompts cn-general" data-prompts>
-        <button type="button" class="prompt" data-assist="ask" data-action="rewrite">Mejora el borrador para televisión</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="rewrite"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>Mejora el borrador para televisión</button>
         <button type="button" class="prompt" data-assist="ask" data-action="articles">Busca otras noticias sobre este tema</button>
-        <button type="button" class="prompt" data-assist="ask" data-action="headlines">Propón 3 titulares alternativos</button>
-        <button type="button" class="prompt" data-assist="ask" data-action="shorten">Acorta el copy digital a 80 palabras</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="headlines"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>Propón 3 titulares alternativos</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="shorten"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>Acorta el copy digital a 80 palabras</button>
       </div>
       <details class="assistant__more cn-general"><summary>Más preguntas sugeridas</summary><div class="prompts">
-        <button type="button" class="prompt" data-assist="ask" data-action="neutral">Hazlo más neutral</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="neutral"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>Hazlo más neutral</button>
         <button type="button" class="prompt" data-assist="ask" data-action="gaps">¿Qué falta verificar antes de publicar?</button>
         <button type="button" class="prompt" data-assist="ask" data-action="contradictions">¿Hay contradicciones entre las fuentes?</button>
         {% for example in examples_nav %}<button type="button" class="prompt" data-assist="ask" data-action="ask">{{ example.consulta }}</button>{% endfor %}

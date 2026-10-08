@@ -166,3 +166,23 @@ def test_mobile_offline_assistant_abstains_without_overflow(page, editor_server)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     page.get_by_role("button", name="Cerrar", exact=True).click()
     expect(page.locator('.draft-assistant')).to_be_hidden()
+
+
+def test_co_news_free_text_edit_is_a_rewrite_sent_with_ctrl_enter_and_stale_sections_keep_the_suggestion(page, editor_server):
+    sent = []
+    page.on("request", lambda request: sent.append(json.loads(request.post_data)) if request.url.endswith("/assistant") else None)
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    box = page.locator('#ask-input')
+    box.fill("haz el titulo mas llamativo")
+    box.press("Control+Enter")
+    expect(page.locator('.reply__state--suggestion')).to_be_visible()
+    assert sent[-1]["action"] == "rewrite" and sent[-1]["field"] is None
+    box.fill("¿Qué falta verificar?")
+    box.press("Control+Enter")
+    expect(page.locator('.reply')).to_have_count(2)
+    assert sent[-1]["action"] == "ask"
+    page.locator('textarea[data-key="titulo"]').fill("Otra edición propia")
+    page.get_by_role("button", name="Aplicar", exact=True).click()
+    expect(page.locator('.option .diff--after')).to_be_visible()
+    expect(page.locator('.option').get_by_role("button", name="Aplicar", exact=True)).to_be_disabled()
+    expect(page.locator('.option').get_by_role("button", name="Copiar", exact=True)).to_be_enabled()

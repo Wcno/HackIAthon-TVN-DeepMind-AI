@@ -101,7 +101,7 @@ def test_headline_requests_constrain_the_provider_to_suggestions_or_abstention(t
         assert schema["properties"]["kind"]["enum"] == ["suggestion", "abstention"]
         assert payload["max_tokens"] <= 1200
         reply = {"kind": "suggestion", "text": "Un titular más directo.", "field": "titulo",
-                 "options": ["El Canal reduce a 32 los tránsitos diarios por la sequía"],
+                 "options": ["El Canal limita a 32 los tránsitos diarios por la sequía"],
                  "citations": [{"id_evidencia": "N-2cf673d2b74a", "campo": "titulo", "pasaje": "32"}], "missing": None}
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(reply)}}]})
     settings = Settings(database=tmp_path / "db.sqlite3", offline=False, gemini_api_key="test-secret")
@@ -116,7 +116,7 @@ def test_headline_requests_constrain_the_provider_to_suggestions_or_abstention(t
 
 def test_gemini_suggests_a_cited_title_without_overwriting_the_draft(tmp_path):
     reply = {"kind": "suggestion", "text": "Un titular más directo.", "field": "titulo",
-             "options": ["El Canal reduce a 32 los tránsitos diarios por la sequía"],
+             "options": ["El Canal limita a 32 los tránsitos diarios por la sequía"],
              "citations": [{"id_evidencia": "N-2cf673d2b74a", "campo": "titulo",
                             "pasaje": "El Canal de Panamá reduce a 32 los tránsitos diarios por el bajo nivel del lago Gatún"}]}
     transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(reply)}}]}))
@@ -128,7 +128,7 @@ def test_gemini_suggests_a_cited_title_without_overwriting_the_draft(tmp_path):
         })
         assert response.status_code == 200
         assert response.json()["kind"] == "suggestion"
-        assert response.json()["options"] == ["El Canal reduce a 32 los tránsitos diarios por la sequía"]
+        assert response.json()["options"] == ["El Canal limita a 32 los tránsitos diarios por la sequía"]
         assert client.get("/api/cases/CASO-001/draft").json() == before
 
 
