@@ -11,7 +11,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from urllib.parse import urlsplit
 
 from whoami.contracts import (
     EXCLUDED_NEWS_COLUMNS,
@@ -29,7 +28,7 @@ from whoami.contracts import (
 from whoami.ingest.news import channels
 from whoami.ingest.news.channels import gdelt, gdelt_gkg
 from whoami.ingest.news.article import Article
-from whoami.ingest.news.parsing import canonical_url
+from whoami.ingest.news.parsing import canonical_url, valid_http_url
 from whoami.ingest.news.sources import GDELT_FEED, GDELT_GKG_FEED, SOURCES, Channel, Source
 from whoami.ingest.output import iso, write_csv, write_json
 
@@ -102,13 +101,7 @@ def merge(articles: Iterable[Article]) -> list[NewsItem]:
 
 
 def exclusion(item: NewsItem, cutoff: datetime) -> Exclusion | None:
-    try:
-        parsed = urlsplit(item.url)
-        if (parsed.scheme.lower() not in ("http", "https") or not parsed.hostname or parsed.username
-                or any(char.isspace() or ord(char) < 32 for char in item.url)):
-            return Exclusion.INVALID_URL
-        parsed.port
-    except ValueError:
+    if not valid_http_url(item.url):
         return Exclusion.INVALID_URL
     if not item.title:
         return Exclusion.NO_TITLE

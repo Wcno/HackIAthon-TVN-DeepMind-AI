@@ -35,12 +35,16 @@ class EditorialService:
             groups = [g for g in groups if g.cobertura_tvn.estado != "cubierto"]
         if topic:
             groups = [group for group in groups if group.tema == topic]
-        return [self.group(group.id_grupo) for group in sort_inbox(groups)]
+        return [self._project_group(group) for group in sort_inbox(groups)]
 
     def group(self, group_id: str) -> dict:
-        if group_id not in self._assessed_groups():
+        assessed = self._assessed_groups()
+        if group_id not in assessed:
             return self.repository.record("group", group_id)
-        group = self._assessed_groups()[group_id].model_dump(mode="json")
+        return self._project_group(assessed[group_id])
+
+    def _project_group(self, assessed: Group) -> dict:
+        group = assessed.model_dump(mode="json")
         members = group["miembros"]
         group.update(n_noticias=len(members), n_medios=len({member["medio"] for member in members}),
                      n_procedencias=len({member["procedencia"] for member in members}),

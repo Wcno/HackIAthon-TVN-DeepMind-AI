@@ -39,11 +39,12 @@ def cited_ids(case: dict) -> list[str]:
     return list(dict.fromkeys(citation["id_evidencia"] for claim in case["afirmaciones"] for citation in claim["citas"]))
 
 
-def case_content_hash(case: dict, group: dict, evidence: dict[str, dict]) -> str:
+def case_content_hash(case: dict, group: dict, evidence: dict[str, dict], tvn_ids: set[str]) -> str:
     source_ids = set(cited_ids(case))
     source_ids.update(member["id_noticia"] for member in group["miembros"])
     source_ids.update(context["id_evidencia"] for context in group["contexto"])
     source_ids.update((group.get("cobertura_tvn") or {}).get("ids_tvn", []))
+    source_ids.update(tvn_ids)
     source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
                       for version in contradiction["versiones"])
     return content_hash({"case": {key: value for key, value in case.items() if key != "estado_revision"},
@@ -105,6 +106,10 @@ class EditorialRepository:
     def import_bundle(self, bundle: PipelineBundle) -> None:
         groups = {group["id_grupo"]: group for group in bundle.groups}
         evidence = {item["id_evidencia"]: item for item in bundle.evidence}
+        from whoami.pipeline.tvn_coverage import tvn_evidence_ids
+        from whoami.schemas import Group, Evidence
+        tvn_ids = tvn_evidence_ids([Group.model_validate(group) for group in bundle.groups],
+                                  {identity: Evidence.model_validate(source) for identity, source in evidence.items()})
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             from whoami.schemas import ReviewArchive
@@ -113,7 +118,7 @@ class EditorialRepository:
                 connection.execute("INSERT OR IGNORE INTO review_archives VALUES (?, ?)",
                                    (content_hash(validated), canonical_json(validated)))
             incoming_cases = {case["id_caso"] for case in bundle.cases}
-            incoming_hashes = {case["id_caso"]: case_content_hash(case, groups[case["id_grupo"]], evidence)
+            incoming_hashes = {case["id_caso"]: case_content_hash(case, groups[case["id_grupo"]], evidence, tvn_ids)
                                for case in bundle.cases}
             for previous in connection.execute("SELECT * FROM cases WHERE active = 1").fetchall():
                 if incoming_hashes.get(previous["id"]) != previous["content_hash"]:
@@ -224,7 +229,9 @@ class EditorialRepository:
                     historic.extend(review | {"version": 0, "content_version": 0,
                         "nota": (review["nota"] or "") + f" [Archived content {archive['contenido_sha256']}]"}
                         for review in archive["decisiones"]
-                        if not any(all(native[key] == value for key, value in review.items()) for native in active))
+                        if not any(datetime.fromisoformat(native["fecha"]) == datetime.fromisoformat(review["fecha"])
+                                   and all(native[key] == value for key, value in review.items() if key != "fecha")
+                                   for native in active))
             return sorted(historic + active, key=lambda review: (review["content_version"], review["fecha"]))
 
     @staticmethod
@@ -240,11 +247,10 @@ class EditorialRepository:
         if not decisions:
             return
         case = json.loads(row["body"])
-        group = json.loads(connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?",
-                                             (case["id_grupo"],)).fetchone()["body"])
+        groups = [json.loads(record["body"]) for record in connection.execute("SELECT body FROM records WHERE kind = 'group'")]
         evidence = {record["id"]: json.loads(record["body"]) for record in connection.execute(
             "SELECT id, body FROM records WHERE kind = 'evidence'")}
-        output = OutputSet.model_validate({"grupos": [group], "fichas": [case], "evidencias": evidence,
+        output = OutputSet.model_validate({"grupos": groups, "fichas": [case], "evidencias": evidence,
                                           "consultas": [], "revisiones": decisions})
         archive = review_snapshots(output)[row["id"]].model_dump(mode="json")
         connection.execute("INSERT OR IGNORE INTO review_archives VALUES (?, ?)",

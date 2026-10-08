@@ -9,7 +9,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from whoami.contracts import DATA, EVIDENCE_FILE, GROUPS_FILE, OUTPUTS, PROCESSED, REVIEWS_FILE
+from whoami.contracts import DATA, EVIDENCE_FILE, FICHAS_FILE, GROUPS_FILE, OUTPUTS, PROCESSED, REVIEWS_FILE
 from whoami.generation.case_files import (
     CaseGenerator,
     NoGroundedClaims,
@@ -22,7 +22,7 @@ from whoami.generation.prompting import CosineGate
 from whoami.generation.verifier import VerificationReport
 from whoami.llm import default_llm
 from whoami.schemas import CaseFile, Evidence, Group, OutputSet
-from whoami.store import read_jsonl, write
+from whoami.store import REVIEW_ARCHIVE_FILE, REVIEW_BINDINGS_FILE, case_file_from_record, read_jsonl, write
 
 DEFAULT_QUERIES = DATA / "consultas_demo.jsonl"
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
@@ -117,16 +117,24 @@ def load_queries(path: Path) -> list[tuple[str, str]]:
 
 
 def load_input(data: Path, outputs: Path) -> OutputSet:
-    """Groups and evidence from `data`; the review history from `outputs` if it exists. No case files yet, so the
-    set is not verified here: `build_outputs` verifies the result, after dropping reviews of cases not generated."""
+    """Load generation inputs together with previous cases and their bound review history.
+
+    Changed sources can make old claims stale, so cross-record validation happens
+    after regeneration. Original reviewed sources remain in the saved snapshots.
+    """
     reviews = outputs / REVIEWS_FILE
     return OutputSet.model_validate(
         {
             "grupos": read_jsonl(data / GROUPS_FILE),
             "evidencias": {record["id_evidencia"]: record for record in read_jsonl(data / EVIDENCE_FILE)},
-            "fichas": [],
+            "fichas": [case_file_from_record(record) for record in read_jsonl(outputs / FICHAS_FILE)]
+                       if (outputs / FICHAS_FILE).exists() else [],
             "consultas": [],
             "revisiones": read_jsonl(reviews) if reviews.exists() else [],
+            "historial_revisiones": read_jsonl(outputs / REVIEW_ARCHIVE_FILE)
+                                    if (outputs / REVIEW_ARCHIVE_FILE).exists() else [],
+            "revisiones_vinculadas": read_jsonl(outputs / REVIEW_BINDINGS_FILE)
+                                    if (outputs / REVIEW_BINDINGS_FILE).exists() else [],
         }
     )
 

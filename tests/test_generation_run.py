@@ -20,7 +20,7 @@ from whoami.store import load, read_jsonl
 MODEL = "gemma-4-26b-a4b-it"
 STATES = {g.id_grupo: g.estado_evidencia for g in DEMO.grupos}
 #: The command skips insufficient groups, so their demo case files are not expected.
-EXPECTED_FICHAS = [f for f in DEMO.fichas if STATES[f.id_grupo] != "insuficiente"]
+EXPECTED_FICHAS = [f for f in DEMO.fichas if f.id_caso in {"CASO-001", "CASO-002", "CASO-005"}]
 
 
 class FakeEmbedder:
@@ -44,6 +44,7 @@ def workspace(tmp_path):
     for name in (GROUPS_FILE, EVIDENCE_FILE):
         shutil.copy(DEMO_DIR / name, data / name)
     shutil.copy(DEMO_DIR / REVIEWS_FILE, outputs / REVIEWS_FILE)
+    shutil.copy(DEMO_DIR / FICHAS_FILE, outputs / FICHAS_FILE)
     queries = tmp_path / "consultas.jsonl"
     queries.write_text(
         "".join(json.dumps({"id": a.id_consulta, "consulta": a.consulta, "tipo": "demo"}) + "\n" for a in DEMO.consultas),
@@ -74,10 +75,27 @@ def test_the_written_output_loads_and_passes_verify(workspace):
     assert (outputs / FICHAS_FILE).exists() and (outputs / QUERIES_FILE).exists()
 
 
-def test_the_review_history_of_generated_cases_is_kept(workspace):
+def test_previous_review_history_is_kept_without_approving_regenerated_content(workspace):
     _, _, data, outputs = generar(workspace)
     written = load(data, outputs)
-    assert written.revisiones and {r.id_caso for r in written.revisiones} <= {f.id_caso for f in written.fichas}
+    assert not written.revisiones
+    assert written.historial_revisiones
+    assert all(written.review_state(case.id_caso) == "nuevo" for case in written.fichas)
+    assert any(snapshot.decisiones[-1].estado == "aprobado_como_borrador" for snapshot in written.historial_revisiones)
+
+
+def test_generar_reloads_bound_reviews_and_preserves_all_archives_across_runs(workspace):
+    from whoami.store import write
+    data, outputs, queries = workspace
+    write(DEMO, data, outputs)
+    first, _, _, _ = generar(workspace)
+    previous = load(data, outputs)
+    assert previous.review_state("CASO-005") == "nuevo"
+    assert previous.historial_revisiones
+    generar(workspace)
+    current = load(data, outputs)
+    assert current.historial_revisiones == previous.historial_revisiones
+    assert current.review_state("CASO-005") == "nuevo"
 
 
 def test_a_missing_reviews_file_is_an_empty_history(workspace):

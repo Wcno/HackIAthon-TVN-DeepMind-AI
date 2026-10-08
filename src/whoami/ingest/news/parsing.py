@@ -56,11 +56,26 @@ def section_of(url: str) -> str | None:
 
 def canonical_url(url: str) -> str:
     """Same article despite scheme, `www.`, query, fragment or trailing slash."""
+    if not valid_http_url(url):
+        return f"invalid:{url}"
     try:
         parts = urlsplit(url.strip())
     except ValueError:
         return f"invalid:{url}"  # Distinct malformed inputs must not abort or alias valid rows.
     return parts.netloc.lower().removeprefix("www.") + parts.path.rstrip("/")
+
+
+def valid_http_url(url: str) -> bool:
+    """Central ingestion validation, applied before valid URL aliases are merged."""
+    try:
+        parsed = urlsplit(url)
+        if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username
+                or any(char.isspace() or ord(char) < 32 for char in url)):
+            return False
+        parsed.port
+        return True
+    except ValueError:
+        return False
 
 
 def belongs_to_outlet(url: str | None, domain: str) -> bool:

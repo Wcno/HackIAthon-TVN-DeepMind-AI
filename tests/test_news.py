@@ -111,6 +111,16 @@ def test_channel_parsing_and_build_account_for_invalid_urls(tmp_path, monkeypatc
         assert report["excluidas_por_motivo"]["url_invalida"] == 1
 
 
+def test_invalid_scheme_cannot_hide_a_later_legitimate_http_article():
+    from whoami.ingest.news.build import exclusion
+    stamp = datetime(2026, 10, 7, tzinfo=UTC)
+    common = {"published_at": stamp, "published_at_origin": PublicationDateOrigin.FEED}
+    items = merge([article(Channel.RSS, url="ftp://example.test/news/item", **common),
+                   article(Channel.RSS, url="https://example.test/news/item", **common)])
+    retained = [item for item in items if exclusion(item, stamp) is None]
+    assert len(retained) == 1 and retained[0].url == "https://example.test/news/item"
+
+
 def test_feed_date_wins_over_page_and_lastmod():
     lastmod = datetime(2026, 10, 6, 12, tzinfo=UTC)
     feed_date = datetime(2026, 10, 6, 10, tzinfo=UTC)

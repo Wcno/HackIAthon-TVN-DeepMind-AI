@@ -8,7 +8,7 @@ from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence, cit
 
 
 def _contains_value(value: str, passage: str) -> bool:
-    return bool(re.search(r"\b" + re.escape(fold(value)) + r"\b", fold(passage)))
+    return bool(re.search(r"(?<!\w)" + re.escape(fold(value)) + r"(?!\w)", fold(passage)))
 
 
 def version_citations_valid(version: ContradictionVersion, evidence: Mapping[str, Evidence]) -> bool:
@@ -31,6 +31,12 @@ def support_version(version: ContradictionVersion, evidence: Mapping[str, Eviden
     required = value_numbers | set(normalize_numbers(version.alcance))
     selected = []
     if require_scope:
+        value_fields = [(field, text) for field, text in source.campos.items() if _contains_value(version.valor, text)]
+        if not value_fields:
+            return None  # A supported number must not license invented qualitative words.
+        field, text = min(value_fields, key=lambda item: (len(item[1]), item[0]))
+        selected.append(Citation(id_evidencia=source.id_evidencia, campo=field, pasaje=text))
+        required -= set(normalize_numbers(text))
         scope_fields = [(field, text) for field, text in source.campos.items() if _contains_value(version.alcance, text)]
         if not scope_fields:
             return None

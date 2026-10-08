@@ -27,6 +27,13 @@ def is_tvn(row: Mapping[str, str]) -> bool:
     return row.get("medio", "").strip().casefold() in {"tvn", "tvn noticias", "tvn media"} or host == "tvn-2.com" or host.endswith(".tvn-2.com")
 
 
+def tvn_evidence_ids(groups: Sequence[Group], evidence: Mapping[str, Evidence]) -> set[str]:
+    """All coverage dependencies, including stories not previously matched to a case."""
+    media = {member.id_noticia: member.medio for group in groups for member in group.miembros}
+    return {identity for identity, source in evidence.items() if source.tipo == "noticia"
+            and is_tvn(source.campos | {"url": source.url, "medio": media.get(identity, source.campos.get("medio", ""))})}
+
+
 def _text(row: Mapping[str, str]) -> str:
     return " ".join(filter(None, [row.get("titulo", ""), row.get("descripcion", "")]))
 

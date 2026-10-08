@@ -60,6 +60,41 @@ def test_human_decision_survives_restart_and_keeps_seed_files_untouched(settings
     assert (settings.output_directory / "fichas.jsonl").read_bytes() == seed
 
 
+def test_tvn_snapshot_updates_revoke_external_case_approval_even_before_a_new_match(settings):
+    from whoami.pipeline.tvn_coverage import is_tvn
+    repository = EditorialRepository(settings.database)
+    bundle = load_pipeline(settings.data_directory, settings.output_directory)
+    repository.import_bundle(bundle)
+    original = repository.case("CASO-005")
+    assert original["estado_revision"] == "aprobado_como_borrador"
+    owner = next(group for group in bundle.groups if group["id_caso"] == "CASO-005")
+    own = {member["id_noticia"] for member in owner["miembros"]}
+    media = {member["id_noticia"]: member["medio"] for group in bundle.groups for member in group["miembros"]}
+    source = next(item for item in bundle.evidence if item["tipo"] == "noticia" and item["id_evidencia"] not in own
+                  and is_tvn(item["campos"] | {"url": item["url"], "medio": media.get(item["id_evidencia"], "")}))
+    changed = source | {"campos": source["campos"] | {"titulo": owner["titulo"]}}
+    repository.import_bundle(replace(bundle, evidence=tuple(changed if item["id_evidencia"] == source["id_evidencia"] else item for item in bundle.evidence)))
+    case = repository.case("CASO-005")
+    assert case["estado_revision"] == "nuevo"
+    assert case["content_version"] > original["content_version"]
+
+
+def test_inbox_reads_each_full_corpus_table_only_once(settings):
+    from whoami.backend.service import EditorialService
+    class CountingRepository(EditorialRepository):
+        def __init__(self, database):
+            super().__init__(database)
+            self.reads = []
+        def records(self, kind):
+            self.reads.append(kind)
+            return super().records(kind)
+    repository = CountingRepository(settings.database)
+    repository.import_bundle(load_pipeline(settings.data_directory, settings.output_directory))
+    assert EditorialService(repository).inbox()
+    assert repository.reads.count("group") == 1
+    assert repository.reads.count("evidence") == 1
+
+
 def test_invalid_transitions_and_insufficient_evidence_are_blocked(settings):
     with TestClient(create_app(settings)) as client:
         repository = client.app.state.repository

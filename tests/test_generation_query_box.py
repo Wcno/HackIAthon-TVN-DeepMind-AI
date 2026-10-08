@@ -28,6 +28,25 @@ def test_contradictions_cannot_change_the_location_or_scope_of_supported_values(
                           evidence, FakeLLM([raw]), MODEL, structured=structured)
     assert answer.estado == "abstencion"
 
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize("titles, values", [
+    (["Hospital sigue abierto desde hace 3 meses", "Hospital sigue abierto desde hace 4 meses"],
+     ["cerrado durante 3 meses", "destruido hace 4 meses"]),
+    (["Hospital reporta 2 % (2,0 %) de ocupación", "Hospital reporta 2 % (2,0 %) de ocupación"],
+     ["2 %", "2,0 %"]),
+])
+def test_mixed_qualitative_inventions_and_equivalent_numbers_are_not_contradictions(structured, titles, values):
+    evidence = by_id(*(news(f"N-{i}", titulo=title) for i, title in enumerate(titles, 1)))
+    class Hits:
+        def search(self, query, k):
+            return [("N-1", 1.0), ("N-2", .9)][:k]
+    raw = model_answer(estado="contradiccion", respuesta=None, citas=[], afirmaciones=[], versiones=[
+        {"valor": value, "alcance": "Hospital", "id_evidencia": f"N-{i}"} for i, value in enumerate(values, 1)])
+    answer = answer_query("Q-1", "Hospital", Hits(), CosineGate(Hits(), min_cosine=.5),
+                          evidence, FakeLLM([raw]), MODEL, structured=structured)
+    assert answer.estado == "abstencion"
+
 from generation_fakes import FakeLLM, LLMError, by_id, indicator, news
 from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import UNVERIFIABLE_REASON, INVALID_ANSWER_REASON, answer_query

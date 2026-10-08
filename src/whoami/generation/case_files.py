@@ -266,12 +266,13 @@ def build_outputs(
     regenerated = {case.id_caso: case for case in case_files}
     groups = tuple(g.model_copy(update={"id_caso": case_ids.get(g.id_grupo)}) for g in assessed)
     bindings = {snapshot.ficha.id_caso: snapshot for snapshot in output_set_in.revisiones_vinculadas}
-    previous = review_snapshots(output_set_in)
+    legacy = output_set_in.model_copy(update={"revisiones": tuple(r for r in output_set_in.revisiones if r.id_caso not in bindings)})
+    previous = review_snapshots(legacy)
     archives = list(output_set_in.historial_revisiones)
     active_reviews = []
     for case_id in dict.fromkeys(r.id_caso for r in output_set_in.revisiones):
         reviews = tuple(r for r in output_set_in.revisiones if r.id_caso == case_id)
-        old = bindings.get(case_id, previous[case_id])
+        old = bindings[case_id] if case_id in bindings else previous[case_id]
         if case_id in regenerated and case_id in bindings:
             candidate = OutputSet(grupos=groups, evidencias=evidences, fichas=tuple(case_files),
                                   consultas=(), revisiones=reviews)

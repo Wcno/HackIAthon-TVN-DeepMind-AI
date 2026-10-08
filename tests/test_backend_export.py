@@ -37,6 +37,7 @@ def test_changed_content_exports_only_its_current_review_cycle(tmp_path):
     repository = EditorialRepository(settings.database)
     bundle = load_pipeline(settings.data_directory, settings.output_directory)
     repository.import_bundle(bundle)
+    previous_history = repository.review_history("CASO-005")
     changed = tuple(case | {"accion_recomendada": "Review the updated content"} if case["id_caso"] == "CASO-005" else case
                     for case in bundle.cases)
     repository.import_bundle(replace(bundle, cases=changed))
@@ -46,6 +47,7 @@ def test_changed_content_exports_only_its_current_review_cycle(tmp_path):
     assert output.review_state("CASO-005") == "nuevo"
     assert not any(review.id_caso == "CASO-005" for review in output.revisiones)
     assert any(review["estado"] == "aprobado_como_borrador" for review in repository.review_history("CASO-005"))
+    assert len(repository.review_history("CASO-005")) == len(previous_history)
     fresh = EditorialRepository(tmp_path / "fresh.sqlite3")
     fresh.import_bundle(load_pipeline(settings.data_directory, destination))
     assert fresh.case("CASO-005")["estado_revision"] == "nuevo"

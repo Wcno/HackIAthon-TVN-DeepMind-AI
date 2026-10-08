@@ -48,7 +48,11 @@ def demo_model(call: dict):
     """Looks up the demo case by the sources offered, or the demo answer by the question asked."""
     if call["purpose"] == "consulta":
         question = re.search(r"<consulta>(.*)</consulta>", call["messages"][1]["content"]).group(1)
-        return echo_answer(next(a for a in DEMO.consultas if a.consulta == question))
+        answer = echo_answer(next(a for a in DEMO.consultas if a.consulta == question))
+        for version in answer["versiones"]:
+            source = DEMO.evidencias[version["id_evidencia"]]
+            version["alcance"] = source.campos.get("descripcion", source.campos["titulo"])
+        return answer
     if call["purpose"] == "paquete":
         stated = set(re.findall(r"<afirmacion [^>]*>(.*)</afirmacion>", call["messages"][1]["content"]))
         case_file = next(f for f in DEMO.fichas if stated <= {c.texto for c in f.afirmaciones})
