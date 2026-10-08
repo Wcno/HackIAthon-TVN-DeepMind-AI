@@ -54,10 +54,10 @@
     {{ field('copy_digital', 'Copy digital', b.copy_digital, budgets['copy'], true) }}
   </form>
   <section class="claims-used"><h2 class="h2">Afirmaciones y evidencia citada</h2>
-    <p class="muted">Las citas se muestran por afirmación del caso, no oración por oración.</p>
+    <p class="muted">Las citas se muestran por afirmación de la ficha, no oración por oración.</p>
     {% include 'views/case/_claims.html' %}
   </section>
-  <section><h2 class="h2">Fuentes del caso</h2><div class="editor-sources" data-source-list>
+  <section><h2 class="h2">Fuentes de la ficha</h2><div class="editor-sources" data-source-list>
     {% for source_id in case.ids_fuente %}<button type="button" class="link" data-source="{{ source_id }}">Ver fuente {{ loop.index }}</button>{% endfor %}
   </div></section>
   {% set cn_scopes = [("titulo", "Título propuesto"), ("brief", "Brief"), ("enfoque_interes_publico", "Enfoque de interés público"), ("guion", "Guion"), ("copy_digital", "Copy digital")] %}

@@ -11,9 +11,11 @@ from urllib.parse import quote, urlencode, urlsplit
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from whoami.backend.assistant import DraftAssistant
 from whoami.backend.editor import AssistantRequest, SaveDraft
@@ -22,7 +24,8 @@ from whoami.backend.live_case_files import CaseFileUnavailable, LiveCaseFiles, N
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.panama_time import panama_time, short_date
-from whoami.backend.presentation import draft_budgets, latest_date, needs_investigation, snapshot_view
+from whoami.backend.presentation import (draft_budgets, evidence_card, field_label, latest_date, needs_investigation, pluralize,
+                                         snapshot_view, source_line)
 from whoami.backend.reports import methodology_view, quality_view, score_components
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
@@ -72,6 +75,10 @@ GENERATOR_UNAVAILABLE = ("No se pudo generar la ficha ahora: Gemini no respondi�
                          "No se guardó nada; reintenta en un momento.")
 GENERATOR_UNSUPPORTED = ("Se intentó generar la ficha, pero ninguna afirmación quedó respaldada por las fuentes citadas, así que no se creó. "
                          "Hacen falta más fuentes, o fuentes con más texto, sobre este tema.")
+#: Tab names of an open topic, used in the browser title so each tab is told apart in history and tab strips.
+PANE_LABELS = {"case": "Historia", "group": "Cobertura", "context": "Contexto", "draft": "Borrador", "review": "Revisión"}
+#: What a missing record is called to the editor, by the screen that asked for it.
+MISSING_SUBJECTS = (("/groups/", "tema"), ("/cases/", "ficha"), ("/evidence/", "fuente"))
 EVIDENCE_LABELS = {
     "suficiente_para_borrador": "Evidencia suficiente", "parcial": "Evidencia parcial", "insuficiente": "Evidencia insuficiente",
 }
@@ -111,7 +118,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, percent=percent,
                             short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
-    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components)
+    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components,
+                                 pluralize=pluralize, evidence_card=evidence_card,
+                                 source_line=lambda evidence_id: source_line(app.state.repository.record("evidence", evidence_id)))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -158,10 +167,11 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         if group is not None and case is None and group["id_caso"]:
             case = editorial.case(group["id_caso"])
         pane = pane or ("case" if case else "group")
+        document_title = f"{PANE_LABELS[pane]} · {(case or group)['titulo']}" if opened and group else title
         filters = urlencode({"topic": topic, "estado": estado, **({"q": topic_search} if topic_search else {})}) if topic or estado or topic_search else ""
         return render(request, "workspace", title, status_code=status_code, groups=groups, lead=ranked[0] if ranked else None,
                       rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado,
-                      topic_options=sorted({item["tema"] for item in ranked}), group=group, case=case, pane=pane, opened=opened,
+                      topic_options=sorted({item["tema"] for item in ranked}), group=group, case=case, pane=pane, opened=opened, document_title=document_title,
                       selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", topic_search=topic_search, **context)
 
     def case_screen(request: Request, case_id: str, pane: str, title: str | None = None, status_code: int = 200, **context):
@@ -177,8 +187,20 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.exception_handler(MissingRecord)
     async def missing_record(request: Request, error: MissingRecord):
         if request.url.path.startswith("/api/"):
-            return JSONResponse({"message": "El caso o la fuente ya no están disponibles."}, status_code=404)
-        return render(request, "error", "Registro no disponible", status_code=404, message=str(error))
+            return JSONResponse({"message": "La ficha o la fuente ya no están disponibles."}, status_code=404)
+        subject = next((name for prefix, name in MISSING_SUBJECTS if request.url.path.startswith(prefix)), None)
+        return render(request, "error", f"{subject.capitalize()} no encontrado" if subject else "Registro no disponible", status_code=404,
+                      message=f"No encontramos este {subject}. Puede que el enlace sea antiguo o esté incompleto." if subject else str(error))
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, error: StarletteHTTPException):
+        if request.url.path.startswith(("/api/", "/static/")):
+            return await http_exception_handler(request, error)
+        if error.status_code == 404:
+            return render(request, "error", "Página no encontrada", status_code=404,
+                          message="No encontramos esta página. Puede que el enlace sea antiguo o esté incompleto.")
+        return render(request, "error", "Página no disponible", status_code=error.status_code,
+                      message="Esta página no admite la acción solicitada.")
 
     @app.exception_handler(ReviewConflict)
     async def review_conflict(request: Request, error: ReviewConflict):
@@ -273,7 +295,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/evidence/{evidence_id}", response_class=HTMLResponse)
     def evidence(request: Request, evidence_id: str):
         item = request.app.state.repository.record("evidence", evidence_id)
-        return render(request, "evidence", item["titulo"], evidence=item)
+        return render(request, "evidence", item["titulo"], evidence=evidence_card(item))
 
     @app.get("/cases/{case_id}", response_class=HTMLResponse)
     def case(request: Request, case_id: str):
@@ -281,7 +303,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.get("/cases/{case_id}/draft", response_class=HTMLResponse)
     def draft(request: Request, case_id: str):
-        return case_screen(request, case_id, "draft", "Paquete editorial")
+        return case_screen(request, case_id, "draft", "Borrador")
 
     def editor_record(case: dict) -> dict:
         return {"draft": case["borrador"], "source_ids": case["ids_fuente"], "version": case["version"],
@@ -289,7 +311,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.get("/api/evidence/{evidence_id}")
     def get_evidence(request: Request, evidence_id: str):
-        return request.app.state.repository.record("evidence", evidence_id)
+        evidence = request.app.state.repository.record("evidence", evidence_id)
+        return {**evidence, "etiquetas": {key: field_label(key) for key in evidence["campos"]},
+                "fecha_texto": panama_time(evidence["fecha"]) if evidence["fecha"] else None}
 
     @app.post("/api/cases/{case_id}/assistant")
     async def draft_assistant(request: Request, case_id: str, payload: AssistantRequest):

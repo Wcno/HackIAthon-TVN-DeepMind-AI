@@ -2,7 +2,7 @@
   {% if query_status == "no_precomputed" %}
   <div class="answer answer--abstain">
     <p class="answer__state">No hay una respuesta precalculada para esta consulta</p>
-    {% if query_text %}<p>No hay respuesta guardada para «{{ query_text }}». Sin conexión solo se responden las consultas precalculadas que aparecen abajo.</p>{% endif %}
+    {% if query_text %}<p>No hay respuesta guardada para «{{ query_text }}». Sin conexión: solo se responden las consultas precalculadas que aparecen abajo.</p>{% endif %}
   </div>
   {% elif query_status == "unavailable" %}
   <div class="answer answer--offline">
@@ -46,7 +46,7 @@
   <section class="sources" aria-label="Fuentes">
     <h3 class="h2">Fuentes</h3>
     <ul class="sources__list">
-      {% for id in sources %}<li><a class="source-line" href="/evidence/{{ id|urlencode }}"><span class="source-line__n">{{ loop.index }}</span><span>{{ id }}</span><span class="source-line__d">Ver evidencia</span></a></li>{% endfor %}
+      {% for id in sources %}<li><a class="source-line" href="/evidence/{{ id|urlencode }}"><span class="source-line__n">{{ loop.index }}</span>{% set line = source_line(id) %}<span class="source-line__t"><span class="source-line__title">{{ line.titulo }}</span><span class="source-line__outlet">{{ line.detalle }}</span></span><span class="source-line__d">Ver evidencia</span></a></li>{% endfor %}
     </ul>
   </section>
   {% endif %}

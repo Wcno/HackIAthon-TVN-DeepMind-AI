@@ -30,8 +30,8 @@
       <li><span class="history__state">{{ review_labels[item.estado] }}</span>
         <span class="muted">{{ item.responsable or 'Revisión pendiente' }} · {{ item.fecha|panama_time }} (Panamá) · {% if item.content_version == case.content_version %}Contenido actual{% else %}Versión anterior: decisión histórica{% endif %}</span>
         {% if item.nota %}<span class="history__note">{{ item.nota }}</span>{% endif %}</li>{% endfor %}
-    </ol>{% else %}<p class="muted">Este caso todavía no tiene decisiones.</p>{% endif %}
-    {% for event in audit %}<p class="notice">{{ event.timestamp|panama_time }} (Panamá): cambió el contenido del caso. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}
+    </ol>{% else %}<p class="muted">Esta ficha todavía no tiene decisiones.</p>{% endif %}
+    {% for event in audit %}<p class="notice">{{ event.timestamp|panama_time }} (Panamá): cambió el contenido de la ficha. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}
   </section>
 </section>
 </div>

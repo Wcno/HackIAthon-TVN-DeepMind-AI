@@ -3,9 +3,9 @@
 <div class="panel" role="tabpanel">
   {% if not group.id_caso %}{% include 'views/case/_generator.html' %}{% endif %}
   <div class="tally">
-    <p><strong>{{ group.n_noticias|number }}</strong>noticias</p>
-    <p><strong>{{ group.n_medios|number }}</strong>medios</p>
-    <p><strong>{{ group.n_procedencias|number }}</strong>procedencias independientes</p>
+    <p><strong>{{ group.n_noticias|number }}</strong>{{ pluralize(group.n_noticias, "noticia", "noticias") }}</p>
+    <p><strong>{{ group.n_medios|number }}</strong>{{ pluralize(group.n_medios, "medio", "medios") }}</p>
+    <p><strong>{{ group.n_procedencias|number }}</strong>{{ pluralize(group.n_procedencias, "procedencia independiente", "procedencias independientes") }}</p>
   </div>
   <p class="lede">Repetición no significa corroboración: las réplicas de una misma agencia cuentan como una sola procedencia.</p>
   <section class="origin"><h2 class="h2">Quién publicó</h2>

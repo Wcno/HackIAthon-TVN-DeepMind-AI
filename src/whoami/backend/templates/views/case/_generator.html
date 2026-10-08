@@ -1,7 +1,7 @@
 {# Generator of a group's case file: what is pending, the button, its progress and the outcome of the last attempt.
    Needs group, offline and filter_query; `generator` carries the message (and `retry`) of a failed attempt. #}
 {% set pending = {
-  "suficiente_para_borrador": "Las fuentes bastan para un borrador, pero la ficha todavía no se ha generado: aún no hay afirmaciones citadas, vacíos ni paquete editorial.",
+  "suficiente_para_borrador": "Las fuentes bastan para un borrador, pero la ficha todavía no se ha generado: aún no hay afirmaciones citadas, vacíos ni borrador.",
   "parcial": "Las fuentes cubren el tema solo en parte. La ficha mostrará qué afirmaciones se respaldan, qué vacíos quedan y un borrador por verificar.",
   "insuficiente": "Las fuentes no bastan para un borrador. La ficha mostrará solo las afirmaciones que sí se respaldan y qué falta; no incluirá borrador.",
 } %}
@@ -20,10 +20,10 @@
     {% if generator %}<p class="form-error" role="alert">{{ generator.message }}</p>{% endif %}
     <p class="form-error generator__failure" role="alert" hidden>No se pudo generar la ficha: la conexión falló. No se guardó nada; reintenta.</p>
     <div class="generator__actions">
-      <button type="submit" class="btn btn--primary" {{ 'disabled' if offline }}>{{ 'Reintentar' if generator else 'Generar ficha' }}</button>
+      <button type="submit" class="btn btn--primary"{% if offline %} disabled aria-describedby="generator-hint"{% endif %}>{{ 'Reintentar' if generator else 'Generar ficha' }}</button>
       <p class="generator__progress" role="status"><span class="generator__spinner" aria-hidden="true"></span>Generando con Gemini. Puede tardar hasta un minuto; no cierres la página.</p>
     </div>
-    {% if offline %}<p class="hint generator__hint">Sin conexión: esta función necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generar la ficha.</p>{% endif %}
+    {% if offline %}<p class="hint generator__hint" id="generator-hint">Sin conexión: esta función necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generar la ficha.</p>{% endif %}
   </form>
   {% endif %}
 </section>

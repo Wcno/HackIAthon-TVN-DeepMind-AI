@@ -5,7 +5,7 @@
     <a class="link" href="/quality">Ver calidad de datos</a></p>
   {% endif %}
   <article class="lead{% if lead.id_grupo == selected %} is-selected{% endif %}">
-    {{ photo(lead, "lead__photo") }}
+    {{ photo(lead, "lead__photo", true, false) }}
     <span class="lead__rank" aria-label="Puesto 1">1</span>
     <div class="lead__body">
       <h2 class="lead__title"><a href="{{ open_href(lead) }}" hx-get="{{ open_href(lead) }}" hx-target="#desk" hx-swap="outerHTML" hx-push-url="true">{{ lead.titulo }}</a></h2>
@@ -23,7 +23,7 @@
           {% if lead|needs_investigation %}<span class="flag">{{ icon("alert") }}Requiere investigación</span>{% endif %}
         </div>
       </div>
-      <a class="btn btn--primary" href="{{ open_href(lead) }}" hx-get="{{ open_href(lead) }}" hx-target="#desk" hx-swap="outerHTML" hx-push-url="true">Abrir caso</a>
+      <a class="btn btn--primary" href="{{ open_href(lead) }}" hx-get="{{ open_href(lead) }}" hx-target="#desk" hx-swap="outerHTML" hx-push-url="true">Abrir tema</a>
     </div>
   </article>
 </section>
