@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from statistics import median
 
 from whoami.generation.prompting import leaks_canary
-from whoami.generation.verifier import fold, normalize_numbers
+from whoami.generation.verifier import fold, normalize_numbers, parse_digits
 from whoami.schemas import Answer, Evidence, citation_errors
 
 
@@ -52,7 +52,10 @@ def binary_counts(truth: Sequence[bool], predicted: Sequence[bool | None]) -> di
 
 def key_present(key: str, text: str) -> bool:
     if re.fullmatch(r"\d+(?:[.,]\d+)*", key):
-        return set(normalize_numbers(key)) <= set(normalize_numbers(text))
+        # Bare numeric gold anchors refer to the written coefficient (32 in
+        # "32 millones"); do not silently multiply it by the adjacent unit.
+        numbers = {number for token in re.findall(r"\d+(?:[.,]\d+)*", text) for number in parse_digits(token)}
+        return set(parse_digits(key)) <= numbers
     return fold(key) in fold(text)
 
 
@@ -102,6 +105,7 @@ def score_answer(case, answer: Answer | None, evidence: dict[str, Evidence]) -> 
         "ok": answer.estado in case.expected_states and keys_ok and safe and supported,
         "keys_ok": keys_ok, "safety": safe, "citations_valid": valid,
         "versions_valid": versions_valid,
+        "version_count": len(answer.versiones),
     }
 
 
@@ -110,11 +114,13 @@ def answer_metrics(cases, records: Sequence[dict]) -> dict:
     if len(by_id) != len(records) or set(by_id) != {case.id for case in cases}:
         raise ValueError("Benchmark results must include exactly one record per case, including failures")
     ids = [case.id for case in cases]
-    answerable = [case.id for case in cases if case.kind == "supported"]
+    answerable = [case.id for case in cases if "abstencion" not in case.expected_states]
+    supported_questions = [case.id for case in cases if case.kind == "supported"]
     unanswerable = [case.id for case in cases if case.kind == "unanswerable"]
     adversarial = [case.id for case in cases if case.kind == "adversarial"]
     emitted = [item for item in ids if by_id[item]["state"] == "respondida"]
     wrong = [item for item in answerable if by_id[item]["state"] == "abstencion"]
+    wrong_supported = [item for item in supported_questions if by_id[item]["state"] == "abstencion"]
     return {
         "correct": ratio([item for item in ids if by_id[item]["ok"]], ids),
         "by_kind": {
@@ -125,7 +131,20 @@ def answer_metrics(cases, records: Sequence[dict]) -> dict:
         "correct_abstentions": ratio([item for item in unanswerable if by_id[item]["state"] == "abstencion"], unanswerable),
         "wrong_abstentions": {"numerator": len(wrong), "denominator": len(answerable),
                               "value": len(wrong) / len(answerable) if answerable else None, "case_ids": wrong},
+        "wrong_abstentions_supported_only": {
+            "numerator": len(wrong_supported), "denominator": len(supported_questions),
+            "value": len(wrong_supported) / len(supported_questions) if supported_questions else None,
+            "case_ids": wrong_supported,
+        },
         "answer_citation_coverage": ratio([item for item in emitted if by_id[item]["citations_valid"]], emitted),
+        "query_factual_claim_coverage": {
+            "value": None,
+            "reason": "Query answers expose free text and shared citations, not a verified claim-to-citation map; answer-level coverage is not factual-claim coverage.",
+        },
+        "contradiction_version_coverage": {
+            "numerator": sum(by_id[item].get("version_count", 0) for item in ids if by_id[item]["state"] == "contradiccion" and by_id[item]["versions_valid"]),
+            "denominator": sum(by_id[item].get("version_count", 0) for item in ids if by_id[item]["state"] == "contradiccion"),
+        },
         "adversarial_safety": ratio([item for item in adversarial if by_id[item]["safety"]], adversarial),
         "missing": [item for item in ids if by_id[item]["state"] == "missing"],
         "errors": [item for item in ids if by_id[item]["state"] == "error"],

@@ -160,6 +160,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--human-reviews", type=Path, help="folder with topics, pairs, claims and optional benchmark reviews (JSONL/CSV)")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--generate-cases", type=int, default=20)
+    parser.add_argument("--reuse-generation", type=Path, help="rescore a saved run with original tokens/timings; no model calls")
     parser.add_argument("--skip-tests", action="store_true", help="reuse only while iterating; does not satisfy G7 acceptance")
 
 
@@ -217,7 +218,23 @@ def evaluate(args) -> dict:
     write_jsonl(output / "topic_predictions.jsonl", topic_predictions)
     write_jsonl(output / "group_predictions.jsonl", group_predictions)
     llm = None
-    if args.mode == "live":
+    saved = None
+    saved_answers, saved_scores = {}, {}
+    if args.reuse_generation:
+        if args.reuse_generation.resolve() == output:
+            raise ValueError("Replay output must differ from the original run directory")
+        saved = json.loads((args.reuse_generation / "metrics.json").read_text(encoding="utf-8"))
+        if saved["inputs"]["benchmark_sha256"] != sha256(benchmark_path) or saved["inputs"]["evidence_sha256"] != sha256(evidence_path):
+            raise ValueError("Saved generation belongs to different benchmark/evidence bytes")
+        if saved["inputs"]["vectors_sha256"] != sha256(vector_path):
+            raise ValueError("Saved generation used different news vectors")
+        from whoami.evaluation.datasets import unique_records
+
+        saved_answers = unique_records(read_records(args.reuse_generation / "answers.jsonl"), "id")
+        saved_scores = unique_records(read_records(args.reuse_generation / "query_scores.jsonl"), "id")
+        if set(saved_answers) != {case.id for case in cases} or set(saved_scores) != set(saved_answers):
+            raise ValueError("Saved run must retain every benchmark query, including failures")
+    elif args.mode == "live":
         from whoami.llm import default_llm
         llm = MeasuredLLM(default_llm())
     archive = {row["consulta"]: row for row in read_records(OUTPUTS / "consultas.jsonl")} if args.mode == "recorded" else {}
@@ -227,7 +244,12 @@ def evaluate(args) -> dict:
         print(f"G7: {args.mode} {case.id}", flush=True)
         started = time.perf_counter()
         before = len(llm.calls) if llm else 0
-        if llm is not None:
+        if saved is not None:
+            raw_answer = saved_answers[case.id]["answer"]
+            answer = Answer.model_validate(raw_answer) if raw_answer is not None else None
+            if answer is not None and answer.consulta != case.query:
+                raise ValueError(f"Saved answer query differs: {case.id}")
+        elif llm is not None:
             answer = answer_query(case.id, case.query, retrievers["hybrid"], gate, evidence, llm, args.model)
         elif case.query in archive:
             answer = Answer.model_validate(archive[case.query] | {"id_consulta": case.id})
@@ -238,12 +260,20 @@ def evaluate(args) -> dict:
             record.update(state="error", returned_state=answer.estado, ok=False, safety=None)
         record["generation_wall_s"] = time.perf_counter() - started if llm else None
         record["calls"] = llm.calls[before:] if llm else None
+        if saved is not None:
+            record["generation_wall_s"] = saved_scores[case.id]["generation_wall_s"]
+            record["calls"] = saved_scores[case.id]["calls"]
+            if saved_scores[case.id]["state"] == "error":
+                record.update(state="error", ok=False, safety=None)
         results.append(record)
         answers.append({"id": case.id, "answer": answer.model_dump(mode="json") if answer else None})
         # Save incrementally so interrupted live runs retain their evidence.
         write_jsonl(output / "answers.jsonl", answers)
         write_jsonl(output / "query_scores.jsonl", results)
-    if llm is not None and args.generate_cases:
+    if saved is not None:
+        generated, generation_errors = read_records(args.reuse_generation / "fichas.jsonl"), saved["generation_errors"]
+        write_jsonl(output / "fichas.jsonl", generated)
+    elif llm is not None and args.generate_cases:
         generated, generation_errors = generate_cases(output, evidence, llm, args.model, args.generate_cases)
     else:
         generated, generation_errors = read_records(OUTPUTS / "fichas.jsonl"), []
@@ -262,19 +292,22 @@ def evaluate(args) -> dict:
         "pairs_human": grouping["labels"]["provenance"] == "human",
         "benchmark_human": benchmark_review["complete"],
         "human_claim_sample": claims["reviewed_unique_claims"] >= 30,
+        "human_support_target": claims["meets_human_target"],
         "tests_and_acceptance": not args.skip_tests and tests["exit_code"] == 0 and all(item["passed"] for item in tests["acceptance"].values()),
     }
     report = {
-        "timestamp_utc": datetime.now(UTC).isoformat(), "mode": args.mode, "split": split,
+        "timestamp_utc": datetime.now(UTC).isoformat(), "mode": "saved generation" if saved else args.mode, "split": split,
+        "generation_origin": str(args.reuse_generation) if saved else None,
         "environment": {"python": platform.python_version(), "platform": platform.platform(), "cpu_count": os.cpu_count(),
                         "embedding_threads": os.environ.get("WHOAMI_EMBEDDING_THREADS", "ONNX default")},
         "inputs": {"benchmark_sha256": sha256(benchmark_path), "evidence_sha256": sha256(evidence_path),
                    "vectors_sha256": sha256(vector_path), "frozen_news": len(ids), "evidence_count": len(evidence)},
-        "model": {"generation": args.model if llm else "recorded product outputs; original timing/tokens unavailable",
+        "model": {"generation": saved["model"]["generation"] if saved else args.model if llm else "recorded product outputs; original timing/tokens unavailable",
                   "embedding": MODEL_NAME, "revision": MODEL_REVISION, "cosine_threshold": gate.min_cosine},
         "index_setup_s": index_s, "index_seeded_news": len(ids), "retrieval": retrieval, "answers": answer_metrics(cases, results),
         "generation_latency": latency([record["generation_wall_s"] for record in results if record["generation_wall_s"] is not None]),
-        "tokens": token_totals(llm.calls) if llm else None,
+        "tokens": saved["tokens"] if saved else token_totals(llm.calls) if llm else None,
+        "network_calls_this_run": sum(not call.get("cached", True) for call in llm.calls if call["status"] == "ok") if llm else 0,
         "classification": topics, "grouping": grouping, "claims": claims, "benchmark_review": benchmark_review,
         "generation_errors": generation_errors,
         "tests": tests, "prerequisites": prerequisites, "complete": all(prerequisites.values()),

@@ -153,7 +153,8 @@ def claim_evaluation(cases: list[dict], evidence: dict[str, Evidence], review_pa
                 if review["verdict"] not in ("supported", "unsupported", "unclear"):
                     raise ValueError("Claim verdict must be supported, unsupported or unclear")
                 # Repeating the same statement cannot satisfy the 30-claim requirement.
-                statement = subject_hash({"text": claim["texto"], "citations": claim["citas"]})
+                ordered_citations = sorted(claim["citas"], key=lambda citation: (citation["id_evidencia"], citation["campo"], citation["pasaje"]))
+                statement = subject_hash({"text": " ".join(claim["texto"].split()).casefold(), "citations": ordered_citations})
                 if statement in seen_text:
                     raise ValueError("Duplicate statement in human review sample")
                 seen_text.add(statement)

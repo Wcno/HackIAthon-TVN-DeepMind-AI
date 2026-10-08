@@ -5,4 +5,6 @@ data/processed/*.geojson text eol=lf
 data/processed/*.csv -text whitespace=cr-at-eol
 data/raw/** -text -whitespace
 data/manifest.json text eol=lf
+data/evaluation/*.json text eol=lf
+data/evaluation/*.jsonl text eol=lf
 tests/fixtures/evaluation/** -text -whitespace

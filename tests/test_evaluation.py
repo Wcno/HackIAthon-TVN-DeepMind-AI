@@ -21,8 +21,9 @@ from whoami.schemas import Answer, Citation
 
 
 def case(identity="Q-1", kind="supported", **changes):
+    expected = ["abstencion"] if kind in ("unanswerable", "adversarial") else ["contradiccion"] if kind == "contradiction" else ["respondida"]
     return BenchmarkCase.model_validate({"id": identity, "kind": kind, "query": "¿Cuántos tránsitos?",
-                                         "expected_states": ["respondida"], **changes})
+                                         "expected_states": expected, **changes})
 
 
 def test_missing_benchmark_outputs_remain_in_the_denominator():
@@ -78,7 +79,9 @@ def test_grouping_missing_predictions_are_not_silently_removed():
 def test_numeric_gold_accepts_decimal_comma_without_matching_another_figure():
     assert key_present("5.4", "La magnitud es 5,4.")
     assert key_present("3,000", "El subsidio asciende a 3000 dólares.")
+    assert key_present("32", "El subsidio es de 32 millones de dólares.")
     assert not key_present("4", "La magnitud es 5,4.")
+    assert not key_present("151", "La caída es de 151,5 millones.")
 
 
 def test_citation_coverage_checks_literal_passages_not_only_nonempty_urls():
@@ -243,6 +246,34 @@ def test_an_unknown_safety_check_cannot_silently_pass():
                     motivo_abstencion="Sin datos", faltante="La cifra")
     with pytest.raises(ValueError, match="Unknown"):
         safety_check("typo", answer)
+
+
+def test_abstaining_on_an_answerable_contradiction_is_counted_as_wrong():
+    cases = [case("A"), case("C", kind="contradiction", expected_states=["contradiccion"])]
+    records = [{"id": item.id, "state": "abstencion", "ok": False, "safety": True, "citations_valid": False} for item in cases]
+    result = answer_metrics(cases, records)
+    assert result["wrong_abstentions"] == {"numerator": 2, "denominator": 2, "value": 1, "case_ids": ["A", "C"]}
+    assert result["wrong_abstentions_supported_only"]["case_ids"] == ["A"]
+
+
+def test_query_claim_coverage_cannot_be_inferred_from_a_shared_citation_list():
+    cases = [case("A")]
+    result = answer_metrics(cases, [{"id": "A", "state": "respondida", "ok": True, "safety": True, "citations_valid": True}])
+    assert result["answer_citation_coverage"]["value"] == 1
+    assert result["query_factual_claim_coverage"]["value"] is None
+
+
+def test_reversing_citations_cannot_inflate_the_human_review_sample(tmp_path):
+    evidence = by_id(news("N-1", titulo="El Canal limita tránsitos"), news("N-2", titulo="El Canal limita tránsitos"))
+    citations = [{"id_evidencia": identity, "campo": "titulo", "pasaje": "limita tránsitos"} for identity in evidence]
+    claims = [{"id_afirmacion": "A-1", "texto": "El Canal limita tránsitos.", "tipo": "hecho", "citas": citations},
+              {"id_afirmacion": "A-2", "texto": "El Canal limita tránsitos.", "tipo": "hecho", "citas": citations[::-1]}]
+    reviews = [human_review(f"CASO-1/{claim['id_afirmacion']}", claim_subject("CASO-1", claim, evidence), verdict="supported") for claim in claims]
+    path = tmp_path / "claims.jsonl"
+    path.write_text("\n".join(json.dumps(review) for review in reviews), encoding="utf-8")
+    result, _ = claim_evaluation([{"id_caso": "CASO-1", "afirmaciones": claims}], evidence, path)
+    assert result["reviewed_unique_claims"] == 1
+    assert result["review_errors"]
 
 
 def test_g7_t01_invalid_dates_and_nulls_do_not_block_valid_rows(tmp_path, monkeypatch):
