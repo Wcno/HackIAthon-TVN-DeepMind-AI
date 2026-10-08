@@ -78,7 +78,7 @@ expectations remain provisional until a human reviews them.
 | Answers | Expected state, factual anchors and adversarial checks; correct/total including missing outputs. Bare numeric anchors match written coefficients: 32 matches 32 million, while 4 does not match 5.4. |
 | Abstention | Correct refusals on unanswerable cases; false refusals on every case whose accepted states exclude abstention, including contradictions. Supported-only false refusals are reported separately. |
 | Citations | Literal-reference coverage per structured case-file claim, answer-level references and contradiction-version references. These are distinct from semantic support. |
-| Query claim coverage | Unavailable when free-text answers share citations without an exhaustive claim-to-citation map. Answer-level reference coverage must never be called 100% factual-claim coverage. |
+| Query claim coverage | Live answers are composed only from individually verified, cited claims. Contradiction versions receive explicit literal fields/passages, including support for scope figures. Legacy free-text answers remain unavailable when their mapping is incomplete. |
 | Human support | Supported unique claims / reviewed claims, sample size and review errors. Minimum 30 claims, target 90%; both gate completion. |
 | Efficiency | Median and nearest-rank p95. Retrieval includes query embedding; warm-up and index setup are separate. Generation wall time includes retrieval, gating and provider/rate-limit waits. |
 | Tokens | Provider-reported usage, network calls and cache hits separately. Unknown failed-request usage and cost remain unavailable. |
@@ -129,3 +129,19 @@ contradictions; T06 abstention; T07 instruction/source separation; T08 explained
 scores and human control; T09 validated editorial packages; T10 real offline
 HTTP, restart, export and persistence. Local T10 evidence is saved in
 `http-runtime.json`. The event demo and its Notion evidence belong to G10.
+
+## Structured answer compatibility
+
+`Answer.afirmaciones` is optional when reading historical files. When present,
+the response text must be exactly the concatenation of its claims and its
+shared references must equal the union of their citations. Structured live G7
+generation ignores unbound free text, verifies each claim and abstains if none
+survive. Legacy query-box callers retain their existing mode.
+
+Contradictory versions can carry their own `citas`. The deterministic citation
+adapter selects literal source fields covering both value and scope figures;
+qualitative values require a literal anchor. A scope with unsupported figures
+does not receive citation credit. This adaptation makes no model calls and can
+enrich captured answers while preserving the original generation timings and
+provider token usage. Literal reference coverage remains distinct from human
+semantic support, which still requires review.
