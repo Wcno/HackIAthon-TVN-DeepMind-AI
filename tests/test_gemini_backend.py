@@ -60,7 +60,9 @@ def test_deadline_caps_slow_requests_and_retry_after(tmp_path):
             attempts += 1
             return httpx.Response(429, headers={"Retry-After": "3600"})
 
-        settings = Settings(database=tmp_path / "db.sqlite3", offline=False, gemini_api_key="test-secret", generation_timeout=0.03)
+        # SDK 3 and SQLite setup can consume 30 ms on Windows. Allow the first
+        # mocked 429 to happen while still capping a one-hour Retry-After.
+        settings = Settings(database=tmp_path / "db.sqlite3", offline=False, gemini_api_key="test-secret", generation_timeout=0.5)
         client = GeminiClient(EditorialRepository(settings.database), settings, transport=httpx.MockTransport(handler))
         with pytest.raises(GenerationUnavailable, match="deadline"):
             await client.generate(MESSAGES, EVIDENCE, validate=validate)

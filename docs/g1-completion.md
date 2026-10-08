@@ -86,6 +86,10 @@ GKG tienen publicación obtenida del medio y son utilizables por G3. Tras cambia
 el corpus, G3 debe regenerar sus vectores con `whoami embed` antes de ejecutar
 `whoami pipeline`; sus artefactos precalculados previos no son el nuevo corpus.
 
-Validación local: 153 pruebas pasan, el wheel se construye, y el validador
+Validación final sobre el `prod` actualizado: 635 pruebas pasan y 2 se omiten
+en Python 3.12, el wheel se construye, y el validador
 offline confirma dos reconstrucciones idénticas, los 55 hashes de crudo y todos
 los hashes procesados. Evidencia: `outputs/validation/g1-runtime.json`.
+El test del límite de reintentos del backend conserva la respuesta 429 y el
+`Retry-After` de una hora, con un plazo de 0,5 segundos para permitir la
+inicialización del SDK 3 en Windows. No se cambió el plazo del backend en producción.
