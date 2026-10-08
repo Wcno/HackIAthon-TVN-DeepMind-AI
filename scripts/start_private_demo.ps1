@@ -41,6 +41,19 @@ $previousDemo = $env:WHOAMI_DEMO
 $previousThreads = $env:WHOAMI_EMBEDDING_THREADS
 $appProcess = $null
 $tunnelProcess = $null
+function Get-LaunchProcessIds([int] $ProcessId) {
+    $ProcessId
+    foreach ($child in (Get-CimInstance Win32_Process -Filter "ParentProcessId = $ProcessId")) {
+        Get-LaunchProcessIds -ProcessId $child.ProcessId
+    }
+}
+function Stop-LaunchProcess($Process) {
+    if ($Process -and -not $Process.HasExited) {
+        $ownedIds = @(Get-LaunchProcessIds -ProcessId $Process.Id)
+        [Array]::Reverse($ownedIds)
+        foreach ($ownedId in $ownedIds) { Stop-Process -Id $ownedId -ErrorAction SilentlyContinue }
+    }
+}
 try {
     $env:WHOAMI_ENV_FILE = (Resolve-Path -LiteralPath $EnvFile).Path
     $env:WHOAMI_OFFLINE = '0'
@@ -81,7 +94,7 @@ try {
         $response = Invoke-WebRequest "$publicUrl$path" @arguments -MaximumRedirection 0 -SkipHttpErrorCheck -ErrorAction SilentlyContinue
         $loginRedirect = $false
         if ($response.Headers.Location) {
-            $destination = [Uri]::new([Uri]$publicUrl, [string]$response.Headers.Location[0])
+            $destination = [Uri]::new([Uri]$publicUrl, [string]@($response.Headers.Location)[0])
             $loginRedirect = $destination.Host.EndsWith('.cloudflareaccess.com') -and $destination.Scheme -eq 'https'
         }
         if ($response.StatusCode -notin @(301, 302, 303, 307, 308, 401, 403) -or
@@ -89,13 +102,14 @@ try {
             throw 'The public endpoint did not confirm an email/PIN access gate.'
         }
     }
-    $state = @{ url = $publicUrl; appPid = $appProcess.Id; tunnelPid = $tunnelProcess.Id; database = $Database; started = (Get-Date).ToUniversalTime().ToString('o') }
+    $appIds = @(Get-LaunchProcessIds -ProcessId $appProcess.Id)
+    $state = @{ url = $publicUrl; appPids = $appIds; tunnelPid = $tunnelProcess.Id; database = $Database; started = (Get-Date).ToUniversalTime().ToString('o') }
     $state | ConvertTo-Json | Set-Content -LiteralPath "$logs\session.json" -Encoding utf8
     Write-Output "Private temporary demo: $publicUrl"
-    Write-Output "Keep this PC connected. To stop only these processes: Stop-Process -Id $($appProcess.Id),$($tunnelProcess.Id)"
+    Write-Output "Keep this PC connected. To stop only these processes: Stop-Process -Id $(($appIds + $tunnelProcess.Id) -join ',')"
 } catch {
-    if ($tunnelProcess -and -not $tunnelProcess.HasExited) { Stop-Process -Id $tunnelProcess.Id }
-    if ($appProcess -and -not $appProcess.HasExited) { Stop-Process -Id $appProcess.Id }
+    Stop-LaunchProcess $tunnelProcess
+    Stop-LaunchProcess $appProcess
     throw
 } finally {
     $env:WHOAMI_ENV_FILE = $previousEnvFile

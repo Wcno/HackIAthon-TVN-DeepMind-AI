@@ -67,6 +67,7 @@ def test_blind_review_validates_actor_csrf_and_persists(tmp_path):
     page = client.get("/")
     assert page.status_code == 200
     assert "fp32" not in page.text and "q4" not in page.text
+    assert "01/10/2026 07:00 (Panamá)" in page.text
     item = frozen["items"][0]
     grade = "same_event" if item["kind"] == "pair" else "2"
     import re
@@ -77,3 +78,33 @@ def test_blind_review_validates_actor_csrf_and_persists(tmp_path):
     assert response.status_code == 200
     assert ReviewStore(database, frozen).labels()[item["id"]]["actor"] == "Ana"
     assert TestClient(create_review_app(frozen, database)).get("/").status_code == 200
+
+
+def test_candidate_resume_rejects_changed_model_files_and_other_builds():
+    from whoami.comparison_prepare import validate_cached_report
+    from whoami.embeddings import MODEL_REPO, MODEL_REVISION
+    context = {"full_rows": "fixture"}
+    expected = {"weights": "pinned-hash"}
+    cached = {"context": context, "provenance": {"files": {"weights": "different-hash"}, "model": "fp32",
+                                                  "revision": MODEL_REVISION, "repository": MODEL_REPO}}
+    with pytest.raises(ValueError, match="model identity"):
+        validate_cached_report(cached, "fp32", context, expected)
+    cached["provenance"]["files"] = expected
+    cached["provenance"]["model"] = "q4"
+    with pytest.raises(ValueError, match="model identity"):
+        validate_cached_report(cached, "fp32", context, expected)
+
+
+@pytest.mark.parametrize("field,new_value", [("fecha_publicacion", "2026-10-05T12:00:00Z"),
+                                           ("medio", "Changed outlet"), ("fecha_deteccion", "2026-10-07T12:00:00Z")])
+def test_resume_identity_includes_dates_and_lexical_metadata(monkeypatch, field, new_value):
+    from whoami import comparison_prepare as prepare
+    rows = list(snapshot()["documents"].values())
+    monkeypatch.setattr(prepare, "load_news_rows", lambda: rows)
+    previous = prepare.public_inputs()[3]
+    rows[0][field] = new_value
+    changed = prepare.public_inputs()[3]
+    assert previous["corpus"] == changed["corpus"]
+    assert previous["full_rows"] != changed["full_rows"]
+    with pytest.raises(ValueError, match="different corpus"):
+        prepare.validate_cached_report({"context": previous, "provenance": {}}, "q4", changed, {})

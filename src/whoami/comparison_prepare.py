@@ -48,13 +48,23 @@ def public_inputs():
     unique = {pair["id"]: pair for pair in pairs}
     pairs = sorted(unique.values(), key=fingerprint)[:50]
     queries = read_lines(QUERIES)
-    context = {"corpus": embeddings.corpus_fingerprint(rows), "queries": digest(QUERIES), "pairs": fingerprint(pairs),
+    context = {"corpus": embeddings.corpus_fingerprint(rows), "full_rows": fingerprint(rows),
+               "queries": digest(QUERIES), "pairs": fingerprint(pairs),
                "revision": embeddings.MODEL_REVISION, "storage_dtype": "float16", "query_dtype": "float32",
                "document_prefix": embeddings.DOCUMENT_PREFIX, "query_prefix": embeddings.QUERY_PREFIX,
                "max_tokens": embeddings.MAX_TOKENS, "pool": 20, "cosine_gate": MIN_COSINE,
                "group_distance": DISTANCE_THRESHOLD, "group_window_hours": 72,
                "production_vector_manifest": digest(PROCESSED / "embeddings/manifest.json")}
     return rows, queries, pairs, context
+
+
+def validate_cached_report(report: dict, name: str, context: dict, expected_files: dict) -> None:
+    provenance = report["provenance"]
+    if report["context"] != context:
+        raise ValueError("Candidate report has different corpus, queries, pairs or configuration")
+    if (provenance["files"] != expected_files or provenance["model"] != name
+            or provenance["revision"] != embeddings.MODEL_REVISION or provenance["repository"] != embeddings.MODEL_REPO):
+        raise ValueError("Cached candidate model identity differs from pinned files")
 
 
 def validate_vectors(vectors: np.ndarray, count: int) -> None:
@@ -132,7 +142,8 @@ def run_candidate(name: str, directory: Path, threads: int) -> None:
     if vectors is None:
         vector_file = directory / "fp32-vectors.npy"
         identity_file = directory / "fp32-vectors.json"
-        identity = {"context": context, "model_files": hashes}
+        identity = {"context": {key: context[key] for key in ("corpus", "document_prefix", "max_tokens", "storage_dtype")},
+                    "model_files": hashes}
         if vector_file.is_file() and identity_file.is_file():
             saved = json.loads(identity_file.read_text(encoding="utf-8"))
             if saved["identity"] != identity or saved["sha256"] != digest(vector_file):
@@ -196,8 +207,17 @@ def prepare(directory: Path, threads: int = 4) -> None:
             subprocess.run([sys.executable, "-m", "whoami.comparison_prepare", "--candidate", name,
                             "--directory", str(directory.resolve()), "--threads", str(threads)], check=True)
         report = json.loads(path.read_text(encoding="utf-8"))
-        if report["context"] != context:
-            raise ValueError("Candidate report has different corpus, queries, pairs or configuration")
+        if name == "fp32":
+            expected_files = FP32_HASHES
+            installed_files = {key: digest(embeddings.MODELS_CACHE / "local/embeddinggemma-300m-fp32" / key) for key in expected_files}
+        else:
+            expected_files = json.loads((PROCESSED / "embeddings/manifest.json").read_text(encoding="utf-8"))["archivos"]
+            layout = {"onnx/model_q4.onnx": "onnx/model.onnx", "onnx/model_q4.onnx_data": "onnx/model_q4.onnx_data",
+                      "tokenizer.json": "tokenizer.json"}
+            installed_files = {key: digest(embeddings.model_dir() / local) for key, local in layout.items()}
+        if installed_files != expected_files:
+            raise ValueError("Installed model differs from pinned candidate files")
+        validate_cached_report(report, name, context, expected_files)
         reports[name] = report
     if reports["q4"]["provenance"]["files"]["tokenizer.json"] != reports["fp32"]["provenance"]["files"]["tokenizer.json"]:
         raise ValueError("Candidate tokenizers differ")

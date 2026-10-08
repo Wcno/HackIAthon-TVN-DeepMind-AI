@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from jinja2 import Environment, select_autoescape
+from whoami.backend.panama_time import panama_time
 
 
 def fingerprint(value: object) -> str:
@@ -101,6 +102,8 @@ class ReviewStore:
 
 def score(snapshot: dict, store: ReviewStore) -> dict:
     """Only fully judged query pools count. Recall's denominator is ALL relevant pooled documents."""
+    if snapshot["fingerprint"] != store.snapshot["fingerprint"]:
+        raise ValueError("Labels belong to a different snapshot")
     labels = store.labels()
     usable = {key: value["grade"] for key, value in labels.items() if value["grade"] != "unknown"}
     retrieval, grouping = {}, {}
@@ -159,6 +162,7 @@ def source_url(value: str) -> str:
 
 
 _REVIEW_ENV.filters["source_url"] = source_url
+_REVIEW_ENV.filters["panama_time"] = panama_time
 _REVIEW_PAGE = _REVIEW_ENV.from_string('''
 <!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Evaluación humana de búsqueda y eventos</title><style>
@@ -168,7 +172,7 @@ label{display:block;margin:12px 0}input,select,button{font:inherit;padding:10px;
 button{background:#173e67;color:white;border:0;border-radius:6px}a{color:#173e67}small{color:#45576a}
 </style><h1>Revisión humana</h1><p>{{ submitted }} / {{ total }} decisiones guardadas. Los candidatos están ocultos.</p>
 {% if item %}<h2>{% if item.kind == 'retrieval' %}Consulta: {{ item.text }}{% else %}¿Informan del mismo hecho?{% endif %}</h2>
-{% for document in documents %}<article><h3>{{ document.titulo }}</h3><small>{{ document.medio }} · {{ document.fecha_publicacion }}</small>
+{% for document in documents %}<article><h3>{{ document.titulo }}</h3><small>{{ document.medio }} · {{ document.fecha_publicacion | panama_time }} (Panamá)</small>
 <p>{{ document.descripcion }}</p><a href="{{ document.url | source_url }}" target="_blank" rel="noopener noreferrer">Leer fuente</a></article>{% endfor %}
 <form method="post" action="/label"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="item" value="{{ item.id }}">
 <label>Responsable <input name="actor" value="{{ actor }}" maxlength="120" required autocomplete="name"></label>
