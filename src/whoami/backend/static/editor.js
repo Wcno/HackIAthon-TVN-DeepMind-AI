@@ -182,6 +182,7 @@
     function renderReply(row, result, snapshot) {
       const names = {answer: 'Respuesta con evidencia', suggestion: 'Edición sugerida', articles: 'Artículos relacionados', abstention: 'Abstención', contradiction: 'Contradicción'};
       row.append(element('p', `reply__state reply__state--${result.kind}`, names[result.kind]), element('p', '', result.text));
+      for (const warning of result.warnings || []) row.append(element('p', 'reply__state reply__state--abstention', `⚠ ${warning}`));
       if (result.missing) row.append(element('p', 'reply__h', 'Qué se necesitaría'), element('p', '', result.missing));
       if (result.kind === 'suggestion') {
         row.append(element('p', 'reply__h', labels[result.field]), element('p', 'diff__label', 'Antes'), element('p', 'diff diff--before', snapshot[result.field]));

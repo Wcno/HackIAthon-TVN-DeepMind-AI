@@ -133,7 +133,8 @@ def normalize_numbers(text: str) -> list[Decimal]:
             index += 1  # "por ciento" is a percent sign, not a hundred
         elif _is_number_word(token.text):
             words, index = _word_run(tokens, index, adjacent)
-            if words not in (["un"], ["uno"], ["una"]):
+            is_bare_scale = all(word in _MILLION for word in words)  # "millones en juego" names no figure
+            if words not in (["un"], ["uno"], ["una"]) and not is_bare_scale:
                 numbers.append(_evaluate_words(words))
         else:
             index += 1

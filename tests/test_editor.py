@@ -133,7 +133,7 @@ def test_gemini_suggests_a_cited_title_without_overwriting_the_draft(tmp_path):
 
 
 @pytest.mark.parametrize("invalid", ["invented-citation", "unsupported-number", "provider-failure"])
-def test_invalid_provider_results_are_controlled_and_never_saved(tmp_path, invalid):
+def test_invalid_provider_results_are_controlled_flagged_and_never_saved(tmp_path, invalid):
     def provider(request):
         if invalid == "provider-failure":
             return httpx.Response(401, text="test-secret")
@@ -148,11 +148,15 @@ def test_invalid_provider_results_are_controlled_and_never_saved(tmp_path, inval
         response = client.post("/api/cases/CASO-001/assistant", json={
             "question": "¿Cuántos tránsitos tendrá el Canal?", "draft": before["draft"],
         })
-        assert response.status_code == 503
         assert response.headers["content-type"].startswith("application/json")
         assert "test-secret" not in response.text
-        assert response.json()["message"]
+        if invalid == "provider-failure":
+            assert response.status_code == 503 and response.json()["message"]
+        else:
+            assert response.status_code == 200 and response.json()["warnings"]
         assert client.get("/api/cases/CASO-001/draft").json() == before
+        with client.app.state.repository.connection() as connection:
+            assert connection.execute("SELECT count(*) FROM generation_cache").fetchone()[0] == 0
 
 
 def test_offline_assistant_abstains_without_network_and_answers_saved_questions(tmp_path):

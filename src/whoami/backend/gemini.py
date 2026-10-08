@@ -26,6 +26,15 @@ class GenerationUnavailable(ValueError):
     pass
 
 
+class InvalidGeneration(GenerationUnavailable):
+    """The provider answered but `validate` rejected the reply; `content` is that reply (None if it was not JSON)."""
+
+    def __init__(self, content: dict | None, cause: Exception):
+        super().__init__("The provider returned an invalid structured response.")
+        self.content = content
+        self.cause = cause
+
+
 @dataclass(frozen=True)
 class GenerationResult:
     content: dict
@@ -59,7 +68,7 @@ class GeminiClient:
         await self.client.close()
 
     async def generate(self, messages: list[dict[str, str]], evidence: Mapping[str, dict], *,
-                       validate: Callable[[dict], None], prompt_version: str = "1", temperature: float = 0.0,
+                       validate: Callable[[dict], dict | None], prompt_version: str = "1", temperature: float = 0.0,
                        response_format: dict | None = None, max_tokens: int = 1000) -> GenerationResult:
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens < 1:
             raise GenerationUnavailable("Generation requires a positive token limit.")
@@ -76,8 +85,7 @@ class GeminiClient:
                         if cached is not None:
                             if not isinstance(cached, dict):
                                 raise ValueError("Expected cached JSON object")
-                            validate(cached)
-                            return GenerationResult(cached, True, 0)
+                            return GenerationResult(validate(cached) or cached, True, 0)
                     except _INVALID_RESPONSE_ERRORS:
                         self.repository.cache_delete(key)
                         if self.settings.offline:
@@ -96,7 +104,7 @@ class GeminiClient:
                 raise
             raise GenerationUnavailable("Generation bookkeeping or provider processing is unavailable.") from None
 
-    async def _request(self, request: dict, key: str, validate: Callable[[dict], None]) -> GenerationResult:
+    async def _request(self, request: dict, key: str, validate: Callable[[dict], dict | None]) -> GenerationResult:
         estimate = (len(json.dumps(request, ensure_ascii=False)) + 2) // 3 + request["max_tokens"]
         for attempt in range(1, self.settings.generation_attempts + 1):
             identifier = await asyncio.to_thread(self.quota.reserve, estimate)
@@ -122,15 +130,16 @@ class GeminiClient:
             prompt = getattr(usage, "prompt_tokens", 0) or 0
             completion = getattr(usage, "completion_tokens", 0) or 0
             total = (getattr(usage, "total_tokens", None) or prompt + completion) if usage is not None else None
+            content = None
             try:
                 content = json.loads(response.choices[0].message.content)
                 if not isinstance(content, dict):
                     raise ValueError("Expected a JSON object")
-                validate(content)
-            except Exception:
+                content = validate(content) or content
+            except Exception as error:
                 await asyncio.to_thread(self.quota.finish, identifier, status="error:invalid_response", latency=time.monotonic() - started,
                                         prompt_tokens=prompt, completion_tokens=completion, total_tokens=total)
-                raise GenerationUnavailable("The provider returned an invalid structured response.") from None
+                raise InvalidGeneration(content if isinstance(content, dict) else None, error) from None
             await asyncio.to_thread(self.quota.finish, identifier, status="ok", latency=time.monotonic() - started,
                                     prompt_tokens=prompt, completion_tokens=completion, total_tokens=total)
             self.repository.cache_put(key, content)
