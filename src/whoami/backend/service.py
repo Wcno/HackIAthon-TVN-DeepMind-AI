@@ -39,7 +39,8 @@ class EditorialService:
         group["estado_revision"] = self.repository.case(group["id_caso"])["estado_revision"] if group.get("id_caso") else "nuevo"
         for context in group["contexto"]:
             fields = self.repository.record("evidence", context["id_evidencia"])["campos"]
-            context.update(periodo=fields["periodo"], unidad=fields["unidad"], valor=fields["valor"] or None)
+            context.update(periodo=fields["periodo"], unidad=fields["unidad"], valor=fields["valor"] or None,
+                           base=fields.get("base"), frecuencia=fields.get("frecuencia"))
         return group
 
     def case(self, case_id: str) -> dict:
