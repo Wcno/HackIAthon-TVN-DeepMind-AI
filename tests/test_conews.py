@@ -6,6 +6,7 @@ It keeps the assistant's rules: cited, figures checked, and nothing changes unti
 import json
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from whoami.backend.app import create_app
@@ -123,6 +124,7 @@ def test_three_unbacked_replies_are_returned_with_a_warning_per_issue_and_never_
         assert response.status_code == 200 and len(seen) == 3
         assert response.json()["kind"] == "suggestion" and response.json()["options"] == UNBACKED["options"]
         assert response.json()["warnings"] == ["Cifra sin respaldo: 1.000.000"]
+        assert response.json()["option_warnings"] == [["Cifra sin respaldo: 1.000.000"]]
         assert cached_replies(client) == 0
 
 
@@ -165,3 +167,68 @@ def test_the_draft_tab_presents_co_news_with_a_scope_and_a_button_per_field(tmp_
         for field in TEXT_FIELDS:
             assert f'<option value="{field}">' in html and f'data-cn-field="{field}"' in html
         assert 'data-action="rewrite"' in html
+
+
+def test_a_warning_belongs_to_the_option_it_concerns(tmp_path):
+    two = suggestion("titulo", "El Canal reduce a 32 los tránsitos diarios") | {
+        "options": ["El Canal reduce a 32 los tránsitos diarios", UNBACKED["options"][0]]}
+    with client_with_replies(tmp_path, [two], []) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.json()["option_warnings"] == [[], ["Cifra sin respaldo: 1.000.000"]]
+
+
+def current_text(tmp_path, field):
+    with TestClient(create_app(Settings(database=tmp_path / "current.sqlite3"))) as client:
+        return client.get("/api/cases/CASO-001/draft").json()["draft"][field]
+
+
+def test_an_option_identical_to_the_current_text_is_rejected_and_retried_with_feedback(tmp_path):
+    seen = []
+    same = suggestion("titulo", current_text(tmp_path, "titulo"))
+    with client_with_replies(tmp_path, [same, GOOD], seen) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.json()["options"] == GOOD["options"] and len(seen) == 2
+        assert "idéntica" in seen[1]["messages"][3]["content"]
+
+
+def test_a_script_outside_the_broadcast_range_is_flagged_after_the_retries(tmp_path):
+    seen = []
+    short = suggestion("guion", "El Canal reduce a 32 los tránsitos diarios.")
+    with client_with_replies(tmp_path, [short], seen) as client:
+        response, _ = rewrite(client, "Ajústalo a 45-60 segundos", "guion")
+        assert len(seen) == 3 and "segundos" in seen[1]["messages"][3]["content"]
+        assert response.json()["option_warnings"] == [["Fuera del rango de 45-60 segundos: unos 3 s"]]
+
+
+def test_a_script_inside_the_broadcast_range_has_no_warning(tmp_path):
+    seen = []
+    text = " ".join(["El Canal reduce a 32 los tránsitos diarios."] * 17)
+    with client_with_replies(tmp_path, [suggestion("guion", text)], seen) as client:
+        response, _ = rewrite(client, "Ajústalo a 45-60 segundos", "guion")
+        assert len(seen) == 1 and not any(response.json()["option_warnings"])
+
+
+def test_offline_edit_requests_abstain_naming_the_action(tmp_path):
+    def no_network(request):
+        pytest.fail("Offline Co-News attempted a network request")
+    settings = Settings(database=tmp_path / "db.sqlite3", offline=True)
+    with TestClient(create_app(settings, gemini_transport=httpx.MockTransport(no_network))) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.json()["kind"] == "abstention"
+        assert "Haz el título más llamativo" in response.json()["text"] and "Sin conexión:" in response.json()["text"]
+
+
+def test_no_recorded_contradictions_is_an_answer_not_an_abstention(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3", offline=True))) as client:
+        record = client.get("/api/cases/CASO-001/draft").json()
+        if client.app.state.repository.case("CASO-001")["contradicciones"]:
+            pytest.skip("fixture case has contradictions")
+        response = client.post("/api/cases/CASO-001/assistant", json={"action": "contradictions", "question": "¿Hay contradicciones?", "draft": record["draft"]})
+        assert response.json()["kind"] == "answer" and "no registra contradicciones" in response.json()["text"]
+
+
+def test_offline_the_edit_chips_are_disabled_with_the_reason_and_search_chips_stay_enabled(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3", offline=True))) as client:
+        html = client.get("/cases/CASO-001/draft").text
+        assert 'class="prompt" data-assist="ask" data-action="rewrite" disabled' in html and "necesita conexión" in html
+        assert 'data-action="articles" disabled' not in html and 'data-action="gaps" disabled' not in html

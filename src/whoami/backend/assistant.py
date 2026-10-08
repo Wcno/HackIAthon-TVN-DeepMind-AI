@@ -49,15 +49,19 @@ class ReplyRejected(ValueError):
     """A reply the validator refused. `check` names the failed check and `feedback` tells the model how to fix it.
 
     A soft rejection (figures or quotes the sources do not back) keeps the repaired `reply` and one `warnings`
-    entry per issue, so the journalist can still see it; any other rejection is hard.
+    entry per issue (and the same issues per option), so the journalist can still see it; any other rejection is hard.
     """
 
-    def __init__(self, check: str, feedback: list[str], *, reply: dict | None = None, warnings: list[str] | None = None):
+    def __init__(self, check: str, feedback: list[str], *, reply: dict | None = None, option_warnings: list[list[str]] | None = None):
         super().__init__(f"{check}: {' '.join(feedback)}")
         self.check = check
         self.feedback = feedback
         self.reply = reply
-        self.warnings = warnings or []
+        self.option_warnings = option_warnings or []
+
+    @property
+    def warnings(self) -> list[str]:
+        return list(dict.fromkeys(warning for group in self.option_warnings for warning in group))
 
     @property
     def is_soft(self) -> bool:
@@ -78,6 +82,14 @@ def repaired_citations(citations: list[Citation], supplied: dict[str, Evidence])
         fixed = repair_passage(citation.pasaje, evidence.campos[citation.campo]) if evidence and citation.campo in evidence.campos else None
         repaired.append(citation.model_copy(update={"pasaje": fixed}) if fixed else citation)
     return repaired
+
+
+SCRIPT_SECONDS = (45, 60)
+WORDS_PER_SECOND = 2.5
+
+
+def script_seconds(text: str) -> int:
+    return round(len(text.split()) / WORDS_PER_SECOND)
 
 
 TEXT_FIELDS = ["titulo", "brief", "enfoque_interes_publico", "guion", "copy_digital"]
@@ -157,7 +169,8 @@ class DraftAssistant:
                 return {"kind": "contradiction", "text": "Las fuentes no coinciden; el sistema no elige una versión.",
                         "contradictions": case["contradicciones"],
                         "citations": [citation for claim in case["afirmaciones"] for citation in claim["citas"]]}
-            return abstention("La ficha no registra contradicciones.", "Compara fuentes independientes antes de concluir que coinciden.")
+            return {"kind": "answer", "text": "La ficha no registra contradicciones entre sus fuentes. Compara fuentes independientes antes de concluir que coinciden.",
+                    "citations": [citation for claim in case["afirmaciones"] for citation in claim["citas"]]}
         if request.action == "ask":
             normalized = " ".join(request.question.split()).casefold()
             for answer in self.repository.records("answer"):
@@ -189,6 +202,8 @@ class DraftAssistant:
                 raise ReplyRejected("question_edits_draft", ["Una pregunta se responde con kind=answer, sin field ni options."])
             if reply.kind == "suggestion":
                 for option in reply.options:
+                    if " ".join(option.split()) == " ".join(getattr(request.draft, reply.field).split()):
+                        raise ReplyRejected("no_change", [f"Una opción es idéntica al texto actual de {reply.field}: propón una versión realmente distinta."])
                     try:
                         type(request.draft).model_validate(request.draft.model_dump() | {reply.field: option})
                     except ValueError as error:
@@ -197,20 +212,32 @@ class DraftAssistant:
                         raise ReplyRejected("option_breaks_limits", ["El copy_digital debe tener 80 palabras o menos."])
             citations = repaired_citations(reply.citations, supplied)
             reply = reply.model_copy(update={"citations": citations})
-            checks, feedback, warnings = [], [], []
+            texts = reply.options if reply.kind == "suggestion" else [reply.text]
+            checks, feedback, option_warnings = [], [], [[] for _ in texts]
             for error in citation_errors(citations, supplied):
                 checks.append("citations_not_literal")
                 feedback.append(f"La cita no es literal ({error}): copia el pasaje exactamente como aparece en la fuente.")
-                warnings.append(f"Cita no verificable: {error}")
+                for group in option_warnings:
+                    group.append(f"Cita no verificable: {error}")
             backing = [citation for citation in citations if not citation_errors([citation], supplied)]
-            texts = reply.options if reply.kind == "suggestion" else [reply.text]
             for figure in dict.fromkeys(number for text in texts for number in unsupported_numbers(text, backing, supplied)):
                 checks.append("unsupported_figures")
                 feedback.append(f"La cifra {spanish_number(figure)} no aparece en las fuentes citadas: elimínala o cita el pasaje que la respalda.")
-                warnings.append(f"Cifra sin respaldo: {spanish_number(figure)}")
+                for text, group in zip(texts, option_warnings):
+                    if figure in unsupported_numbers(text, backing, supplied):
+                        group.append(f"Cifra sin respaldo: {spanish_number(figure)}")
+            if reply.kind == "suggestion" and reply.field == "guion":
+                low, high = SCRIPT_SECONDS
+                for text, group in zip(texts, option_warnings):
+                    seconds = script_seconds(text)
+                    if not low <= seconds <= high:
+                        checks.append("script_out_of_range")
+                        feedback.append(f"El guion debe durar entre {low} y {high} segundos ({round(low * WORDS_PER_SECOND)} a {round(high * WORDS_PER_SECOND)} palabras); "
+                                        f"una opción dura unos {seconds} s. Ajusta solo con lo que dicen las fuentes, sin relleno.")
+                        group.append(f"Fuera del rango de {low}-{high} segundos: unos {seconds} s")
             repaired = reply.model_dump(mode="json")
             if checks:
-                raise ReplyRejected("+".join(dict.fromkeys(checks)), feedback, reply=repaired, warnings=warnings)
+                raise ReplyRejected("+".join(dict.fromkeys(checks)), feedback, reply=repaired, option_warnings=option_warnings)
             return repaired
 
         system = (
@@ -230,6 +257,9 @@ class DraftAssistant:
             "field: titulo|brief|enfoque_interes_publico|guion|copy_digital|null, options: [string], "
             "citations: [{id_evidencia,campo,pasaje}], missing: string|null}. "
             "Toda respuesta o propuesta requiere citas literales de las fuentes suministradas. "
+            "No agregues relleno, contexto ni datos que las fuentes no respalden para alargar un texto: si no alcanza la extensión pedida, "
+            "entrega la versión más completa que puedas respaldar. Respeta los presupuestos: brief hasta 250 palabras, copy_digital hasta 80, "
+            "guion de 45 a 60 segundos (unas 113 a 150 palabras). La propuesta debe diferir del texto actual. "
             "Para abstention explica missing. Las sugerencias son opcionales, no cambies el sentido de los hechos."
         )
         messages = [{"role": "system", "content": system}, {"role": "user", "content": json.dumps({
@@ -243,6 +273,9 @@ class DraftAssistant:
             return await self.generate_checked(client, messages, evidence, validate, structured_format)
         except GenerationUnavailable:
             if client.settings.offline:
+                if request.action in EDIT_ACTIONS or request.action == "rewrite":
+                    return abstention(f"Sin conexión: no puedo redactar «{request.question}» sin Gemini.",
+                                      "Conecta Gemini para pedir ediciones, o edita el borrador a mano.")
                 return abstention("Sin conexión: solo respuestas precalculadas o guardadas en caché.",
                                   "Conecta Gemini para esta pregunta nueva, o usa las consultas precalculadas.")
             raise
@@ -257,9 +290,9 @@ class DraftAssistant:
         messages = list(messages)
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-4",
+                result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-5",
                                                response_format=structured_format, max_tokens=1200)
-                return result.content | {"cached": result.cached, "warnings": []}
+                return result.content | {"cached": result.cached, "warnings": [], "option_warnings": []}
             except InvalidGeneration as error:
                 rejection = error.cause if isinstance(error.cause, ReplyRejected) else ReplyRejected(
                     "reply_shape", ["Devuelve únicamente un objeto JSON con el formato pedido."])
@@ -267,5 +300,5 @@ class DraftAssistant:
                 messages += [{"role": "assistant", "content": json.dumps(error.content, ensure_ascii=False) if error.content else "{}"},
                              {"role": "user", "content": "Tu respuesta fue rechazada. " + " ".join(rejection.feedback) + " Devuelve el JSON corregido."}]
         if rejection.is_soft:
-            return rejection.reply | {"cached": False, "warnings": rejection.warnings}
-        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"cached": False, "warnings": []}
+            return rejection.reply | {"cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
+        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"cached": False, "warnings": [], "option_warnings": []}
