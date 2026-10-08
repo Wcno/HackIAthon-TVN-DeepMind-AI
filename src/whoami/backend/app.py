@@ -24,7 +24,7 @@ from whoami.backend.live_case_files import LiveCaseFiles, NoGroundedClaims
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.panama_time import panama_time, short_date
-from whoami.backend.presentation import abstention_copy, draft_budgets, latest_date, needs_investigation, snapshot_view
+from whoami.backend.presentation import NO_CASE_FILE, abstention_copy, draft_budgets, file_state, latest_date, needs_investigation, snapshot_view
 from whoami.backend.reports import methodology_view, quality_view, score_components
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
@@ -70,6 +70,9 @@ REVIEW_LABELS = {
     "nuevo": "Nuevo", "en_revision": "En revisión", "requiere_evidencia": "Requiere evidencia",
     "aprobado_como_borrador": "Aprobado como borrador", "descartado": "Descartado",
 }
+FILE_STATE_LABELS = {NO_CASE_FILE: "Sin ficha", **REVIEW_LABELS}
+INBOX_PAGE_SIZE = 50
+METHODOLOGY_OPTIONS = 25
 #: Screens whose every figure is real, so the synthetic-data banner would mislead.
 REAL_DATA_SCREENS = frozenset({"quality"})
 GENERATOR_OFFLINE = "Sin conexión: generar la ficha necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generarla."
@@ -92,6 +95,11 @@ def number(value: float | int | None, decimals: int | None = None) -> str:
     if decimals is None:
         decimals = 0 if float(value).is_integer() else 2
     return f"{value:,.{decimals}f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def score(value: float | int | None) -> str:
+    """A priority score or its points: always two decimals, so 61 and 84,83 line up."""
+    return number(value, 2)
 
 
 def percent(value: float | int | None, decimals: int = 2) -> str:
@@ -123,9 +131,10 @@ QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dic
 def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None, gemini_transport=None) -> FastAPI:
     settings = settings or Settings.from_environment()
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, percent=percent,
+    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, score=score, percent=percent,
                             short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
-    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components, abstention_copy=abstention_copy)
+    templates.env.globals.update(review_labels=REVIEW_LABELS, file_states=FILE_STATE_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets,
+                                 score_components=score_components, abstention_copy=abstention_copy)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -160,23 +169,35 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
              status_code: int = 200, **context):
         """Master/detail screen: ranked list plus the open workspace; with no group, the first listed one is selected."""
         editorial = request.app.state.editorial
-        topic = request.query_params.get("topic", "")
-        estado = request.query_params.get("estado", "")
-        topic_search = request.query_params.get("q", "").strip()[:2000]
         ranked = editorial.inbox()
+        topic_options = sorted({item["tema"] for item in ranked})
+        topic = request.query_params.get("topic", "")
+        topic = topic if topic in topic_options else ""
+        estado = request.query_params.get("estado", "")
+        estado = estado if estado in FILE_STATE_LABELS else ""
+        topic_search = request.query_params.get("q", "").strip()[:2000]
         groups = [item for item in ranked if (not topic or item["tema"] == topic)
-                  and (not estado or item["estado_revision"] == estado)
+                  and (not estado or file_state(item) == estado)
                   and (not topic_search or topic_search.casefold() in item["titulo"].casefold())]
+        filtering = bool(topic or estado or topic_search)
+        lead = None if filtering or not ranked else ranked[0]
+        listing = groups[1:] if lead else groups
+        offset = int(request.query_params["desde"]) if request.query_params.get("desde", "").isdecimal() else 0
+        end = offset + INBOX_PAGE_SIZE
+        is_more = request.headers.get("HX-Request") == "true" and request.headers.get("HX-Target") == "more-rows"
+        rows = listing[offset:end] if is_more else listing[:end]
+        active = {key: value for key, value in {"topic": topic, "estado": estado, "q": topic_search}.items() if value}
         opened = group is not None
         if group is None and groups:
             group = editorial.group(groups[0]["id_grupo"])
         if group is not None and case is None and group["id_caso"]:
             case = editorial.case(group["id_caso"])
         pane = pane or ("case" if case else "group")
-        filters = urlencode({"topic": topic, "estado": estado, **({"q": topic_search} if topic_search else {})}) if topic or estado or topic_search else ""
-        return render(request, "workspace", title, status_code=status_code, groups=groups, lead=ranked[0] if ranked else None,
+        filters = urlencode({"topic": topic, "estado": estado, **({"q": topic_search} if topic_search else {})}) if filtering else ""
+        return render(request, "workspace", title, status_code=status_code, groups=groups, rows=rows, total=len(groups), lead=lead,
+                      remaining=max(0, len(listing) - end), more_query=urlencode({**active, "desde": end}),
                       rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado,
-                      topic_options=sorted({item["tema"] for item in ranked}), group=group, case=case, pane=pane, opened=opened,
+                      topic_options=topic_options, group=group, case=case, pane=pane, opened=opened,
                       selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", topic_search=topic_search, **context)
 
     def case_screen(request: Request, case_id: str, pane: str, title: str | None = None, status_code: int = 200, **context):
@@ -243,9 +264,9 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         return desk(request, "Agenda priorizada")
 
     @app.get("/methodology", response_class=HTMLResponse)
-    def methodology(request: Request, grupo: str | None = None):
-        return render(request, "methodology", "Metodología",
-                      methodology=methodology_view(request.app.state.editorial.inbox(), grupo))
+    def methodology(request: Request, grupo: str | None = None, q: Annotated[str, Query(max_length=200)] = ""):
+        return render(request, "methodology", "Metodología", search=q.strip(),
+                      methodology=methodology_view(request.app.state.editorial.inbox(), grupo, q, METHODOLOGY_OPTIONS))
 
     @app.get("/groups/{group_id}", response_class=HTMLResponse)
     def group(request: Request, group_id: str):

@@ -67,13 +67,17 @@
     <div class="example">
       {% if demo %}<p class="notice example__notice" role="note">{{ report_icon("note") }}<span>El ejemplo usa datos sintéticos de demostración: las noticias son inventadas.</span></p>{% endif %}
       {% if example %}
-      <form class="example__pick" action="/methodology" method="get" hx-get="/methodology" hx-trigger="change" hx-target="#ejemplo" hx-select="#ejemplo" hx-swap="outerHTML" hx-push-url="true">
+      <form class="example__pick" action="/methodology" method="get" hx-get="/methodology" hx-trigger="change from:#pick, submit" hx-target="#ejemplo" hx-select="#ejemplo" hx-swap="outerHTML" hx-push-url="true">
+        <label for="pick-search">Buscar tema</label>
+        <input id="pick-search" class="example__search" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Palabra del titular" value="{{ search }}">
         <label for="pick">Tema</label>
         <span class="select">
           <select id="pick" name="grupo">{% for option in methodology.options %}<option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}</select>
           {{ report_icon("chevron", "icon select__chevron") }}
         </span>
-        <noscript><button class="btn btn--small" type="submit">Ver</button></noscript>
+        <button class="btn btn--small" type="submit">Ver</button>
+        {% if methodology.no_matches %}<p class="muted" role="status">Ningún tema coincide con «{{ search }}»; se muestra el primero de la agenda.</p>
+        {% else %}<p class="muted">Se muestran {{ methodology.options|length|number }} temas; escribe una palabra del titular para buscar otros.</p>{% endif %}
       </form>
       <div id="example" aria-live="polite">
         <div class="example__head">

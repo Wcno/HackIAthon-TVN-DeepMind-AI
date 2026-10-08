@@ -105,6 +105,7 @@
   .count { @apply ml-auto text-sm text-ink-3; }
 
   .rows { @apply grid gap-1; }
+  .row-more { @apply grid justify-items-center py-4; }
   .row__hit { @apply grid w-full grid-cols-[2.25rem_1fr_auto] gap-4 rounded-2xl px-4 py-3.5 text-left transition hover:bg-white/70; }
   .row.is-selected .row__hit { @apply bg-white shadow-[0_4px_16px_-6px_rgb(0_70_111/0.18)]; }
   .row__rank { @apply grid size-9 place-items-center rounded-full bg-white font-display text-lg font-bold text-navy ring-1 ring-line; }
@@ -341,6 +342,13 @@
   @media (min-width: 961px) and (max-width: 1180px) {
     .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) { @apply grid-cols-[minmax(0,38%)_minmax(0,1fr)]; }
     .body--desk:not(:has([data-editor])) .lead:has(.lead__photo) .lead__rank { @apply hidden; }
+  }
+  /* Phone and tablet: the page scrolls as a whole; the list is never a scroll box of its own. */
+  @media (max-width: 960px) {
+    .body--desk:not(:has([data-editor])) { @apply h-auto; }
+    .body--desk:not(:has([data-editor])) .workspace { @apply block; }
+    .body--desk:not(:has([data-editor])) .desk { grid-template-rows: auto; }
+    .body--desk:not(:has([data-editor])) .inbox { @apply overflow-visible; }
   }
   @media (max-width: 960px) {
     .case__facts { @apply ml-0; }
