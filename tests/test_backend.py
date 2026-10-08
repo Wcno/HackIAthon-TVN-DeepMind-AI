@@ -72,7 +72,7 @@ def test_invalid_transitions_and_insufficient_evidence_are_blocked(settings):
             if case["estado_revision"] != "en_revision":
                 repository.review(case["id_caso"], state="en_revision", actor="Reviewer", note="Check gaps", expected_version=case["version"])
                 case = repository.case(case["id_caso"])
-            with pytest.raises(InvalidReview, match="Approval requires"):
+            with pytest.raises(InvalidReview, match="evidencia que no sea insuficiente"):
                 repository.review(case["id_caso"], state="aprobado_como_borrador", actor="Reviewer", note=None,
                                   expected_version=case["version"])
             assert repository.case(case["id_caso"])["version"] == case["version"]

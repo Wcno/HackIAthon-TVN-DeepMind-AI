@@ -34,7 +34,7 @@ def test_edits_revoke_approval_and_stale_saves_do_not_overwrite(tmp_path):
     with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3"))) as client:
         for state in ("en_revision", "aprobado_como_borrador"):
             version = client.get("/api/cases/CASO-004/draft").json()["version"]
-            assert client.post("/cases/CASO-004/review", data={"state": state, "actor": "Editor", "expected_version": version}).status_code == 200
+            assert client.post("/cases/CASO-004/review", data={"state": state, "actor": "Editor", "note": "Verificado", "expected_version": version}).status_code == 200
         record = client.get("/api/cases/CASO-004/draft").json()
         assert record["review_state"] == "aprobado_como_borrador"
         payload = {"draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]}
@@ -221,3 +221,41 @@ def test_backend_loads_existing_env_file_without_overriding_explicit_flags(tmp_p
     assert not settings.offline
     monkeypatch.setenv("WHOAMI_OFFLINE", "1")
     assert Settings.from_environment().offline
+
+
+def save(client, case_id="CASO-001", **changes):
+    record = client.get(f"/api/cases/{case_id}/draft").json()
+    record["draft"].update(changes)
+    return client.put(f"/api/cases/{case_id}/draft", json={
+        "draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]})
+
+
+def test_saving_an_unchanged_draft_leaves_no_trace(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3"))) as client:
+        repository = client.app.state.repository
+        before = repository.case("CASO-001")["version"]
+        response = save(client)
+        assert response.status_code == 200 and response.json()["version"] == before
+        assert repository.audit_history("CASO-001") == []
+
+
+def test_each_real_edit_records_exactly_one_audit_event(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3"))) as client:
+        assert save(client, titulo="Primer titular").status_code == 200
+        assert save(client, titulo="Primer titular").status_code == 200
+        assert save(client, titulo="Segundo titular").status_code == 200
+        assert len(client.app.state.repository.audit_history("CASO-001")) == 2
+
+
+def test_invalid_draft_names_the_offending_field(tmp_path):
+    with TestClient(create_app(Settings(database=tmp_path / "db.sqlite3"))) as client:
+        response = save(client, titulo="   ")
+        assert response.status_code == 422
+        body = response.json()
+        assert body["field"] == "titulo" and "Título propuesto" in body["message"]
+        record = client.get("/api/cases/CASO-001/draft").json()
+        record["draft"]["preguntas"][1] = ""
+        response = client.put("/api/cases/CASO-001/draft", json={
+            "draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]})
+        body = response.json()
+        assert (body["field"], body["index"]) == ("preguntas", 1) and "Pregunta 2" in body["message"]

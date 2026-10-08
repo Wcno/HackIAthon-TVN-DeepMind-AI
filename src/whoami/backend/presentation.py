@@ -45,3 +45,22 @@ def draft_budgets(draft: dict) -> dict:
     return {"brief": budget(word_count(draft["brief"]), brief[0], brief[2]),
             "guion": budget(spoken_seconds(draft["guion"]), script[0], script[2], script[1]),
             "copy": budget(word_count(draft["copy_digital"]), copy[0], copy[2])}
+
+
+EDIT_EVENTS = {
+    "Editorial draft edited": "Contenido editado",
+    "Pipeline content changed": "Contenido actualizado por el pipeline",
+    "Case withdrawn": "Ficha retirada del análisis",
+}
+
+
+def review_timeline(history: list[dict], audit: list[dict]) -> list[dict]:
+    """Human decisions and content changes merged into one list, newest first."""
+    decisions = [{"kind": "decision", "when": item["fecha"], **item} for item in history]
+    edits = []
+    for event in audit:
+        title = next(label for prefix, label in EDIT_EVENTS.items() if event["reason"].startswith(prefix))
+        supersedes = any(item["content_version"] < event["content_version"] for item in history)
+        edits.append({"kind": "edit", "when": event["timestamp"], "title": title, "supersedes": supersedes,
+                      "content_version": event["content_version"]})
+    return sorted([*decisions, *edits], key=lambda item: datetime.fromisoformat(item["when"]), reverse=True)
