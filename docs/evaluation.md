@@ -28,7 +28,7 @@ To apply reviewed labels or revised scoring to a captured run while preserving
 its original token usage and generation timings:
 
 ```powershell
-uv run --locked whoami evaluar --reuse-generation outputs/evaluation/g7-live --output outputs/evaluation/g7-final --human-reviews C:/path/to/reviews
+uv run --locked whoami evaluar --reuse-generation outputs/evaluation/g7-structured-live --output outputs/evaluation/g7-final --human-reviews C:/path/to/reviews
 ```
 
 The replay checks benchmark, evidence and vector hashes, verifies query identity,

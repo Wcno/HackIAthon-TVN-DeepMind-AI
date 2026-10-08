@@ -1,7 +1,7 @@
 # G7 code review
 
 Fixed point: `16bf92c512678694cea69d3c5a0f4ce15673b0dc`.
-Final reviewed source: `e9fcc46`; command: `git diff 16bf92c...HEAD`.
+Final reviewed source: `f8d3c6c`; command: `git diff 16bf92c...HEAD`.
 Two independent sub-agents reviewed standards and specification separately,
 then rechecked the corrected source. No model calls or private held-out data
 were used in the review.
@@ -15,14 +15,21 @@ Corrections include English engineering documentation, LF preservation for
 hashed evaluation files, a 90% human-support completion gate, normalized claim
 identity independent of citation order, and rejection of replay into the
 original archive before any writes. The latter has a preservation regression.
+Nested contradiction citations now undergo cross-record literal verification;
+qualitative values require a literal anchor in their cited passages; rejected
+enrichment clears version citations; partial coverage reports the actual
+missing version ID. Each correction has a regression test.
 
 ## Spec
 
 No additional concrete implementation defects or scope creep remain. False
 abstentions include all answerable questions (27), with a supported-only
 breakdown (20). Citation reporting separates structured case-file claims,
-answer-level references and contradiction versions. Exhaustive factual-claim
-coverage for free-text answers remains explicitly unavailable.
+answer-level references and contradiction versions. Live query responses are
+composed exclusively from individually verified claims. All 33 query claims
+and versions have explicit literal references; legacy free-text answers remain
+unavailable when their mapping is incomplete. This does not establish human
+semantic support.
 
 Replay verifies benchmark, vector and complete evidence fingerprints, including
 both synthetic-source collections. A regression rejects synthetic-only source
@@ -35,10 +42,12 @@ Human topic, pair and benchmark decisions, and review of at least 30 generated
 claims with at least 90% support, remain unverified. No review path was supplied.
 The issue remains open and its results are provisional.
 
-Final local validation: 671 passing tests, all T01–T10 checks passed, wheel build
+Final local validation: 688 passing tests, all T01–T10 checks passed, wheel build
 passed, 40 measured development queries, 41 generated claims, no API failures.
-Generation used 70 real network calls and 73,614 tokens. Corrected replay added
-zero model calls and retained the original generation latency distribution.
+The structured generation capture used 30 real network calls, 46,280 network
+tokens and 40 cached completions. The earlier legacy capture remains separately
+archived. Corrected replay added zero model calls and retained the structured
+capture's generation latency distribution (median 1.420 s, p95 2.930 s).
 
 Summary: Standards — 0 unresolved findings. Spec — 0 unresolved implementation
-findings; human evidence and exhaustive query claim coverage remain pending.
+findings; human evidence remains pending.

@@ -1,8 +1,8 @@
 {
-  "timestamp_utc": "2026-10-08T03:15:15.860537+00:00",
-  "mode": "saved generation",
+  "timestamp_utc": "2026-10-08T02:32:48.770905+00:00",
+  "mode": "live",
   "split": "development",
-  "generation_origin": "outputs\\evaluation\\g7-structured-live",
+  "generation_origin": null,
   "environment": {
     "python": "3.14.3",
     "platform": "Windows-11-10.0.26200-SP0",
@@ -22,17 +22,16 @@
     "embedding": "embeddinggemma-300m-q4",
     "revision": "5090578d9565bb06545b4552f76e6bc2c93e4a66",
     "cosine_threshold": 0.62,
-    "version_citation_method": "literal-fields-v1",
     "query_prompt_version": "structured-claims-v1"
   },
-  "index_setup_s": 2.095196600013878,
+  "index_setup_s": 2.493170999980066,
   "index_seeded_news": 2941,
   "retrieval": {
     "bm25": {
       "latency": {
         "n": 120,
-        "median_s": 0.006049500007065944,
-        "p95_s": 0.010103500011609867,
+        "median_s": 0.006660150014795363,
+        "p95_s": 0.01017870000214316,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -49,8 +48,8 @@
     "emb": {
       "latency": {
         "n": 120,
-        "median_s": 0.06385234999470413,
-        "p95_s": 0.10096250000060536,
+        "median_s": 0.0713197499862872,
+        "p95_s": 0.10473180000553839,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -65,8 +64,8 @@
     "hybrid": {
       "latency": {
         "n": 120,
-        "median_s": 0.06888515000173356,
-        "p95_s": 0.11442249998799525,
+        "median_s": 0.07625655000447296,
+        "p95_s": 0.12298049998935312,
         "p95_method": "nearest rank"
       },
       "micro_recall_at_8": {
@@ -186,7 +185,7 @@
     "cost": null,
     "cost_note": "Token usage is measured; no price is inferred from a free-tier quota."
   },
-  "network_calls_this_run": 0,
+  "network_calls_this_run": 30,
   "classification": {
     "labels": {
       "reviewed": 0,
@@ -2303,7 +2302,7 @@
   "tests": {
     "exit_code": 0,
     "counts": {
-      "passed": 688
+      "passed": 675
     },
     "acceptance": {
       "T01": {
@@ -2382,8 +2381,6 @@
     "human_claim_sample": false,
     "human_support_target": false,
     "query_claim_mapping": true,
-    "query_citation_target": true,
-    "case_citation_target": true,
     "tests_and_acceptance": true
   },
   "complete": false,
