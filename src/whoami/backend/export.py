@@ -11,7 +11,7 @@ from whoami.store import case_file_to_record, write_jsonl
 
 
 def export_backend(repository: EditorialRepository, directory: Path) -> dict[str, int]:
-    bundle = repository.snapshot_bundle()
+    bundle, editorial_drafts = repository.snapshot_export()
     output = OutputSet.model_validate({
         "grupos": bundle.groups,
         "evidencias": {item["id_evidencia"]: item for item in bundle.evidence},
@@ -28,6 +28,9 @@ def export_backend(repository: EditorialRepository, directory: Path) -> dict[str
         REVIEWS_FILE: [review.model_dump(mode="json") for review in output.revisiones],
         QUERIES_FILE: [answer.model_dump(mode="json") for answer in output.consultas],
     }
+    companion = "borradores_editoriales.jsonl"
+    if editorial_drafts:
+        records[companion] = list(editorial_drafts)
     # Stop the server before exporting into a shared delivery directory. Each
     # individual file is replaced atomically; this is not a multi-file transaction.
     with tempfile.TemporaryDirectory(prefix=".backend-export-", dir=directory) as temporary:
@@ -36,4 +39,6 @@ def export_backend(repository: EditorialRepository, directory: Path) -> dict[str
             write_jsonl(staging / name, rows)
         for name in records:
             os.replace(staging / name, directory / name)
+        if not editorial_drafts:
+            (directory / companion).unlink(missing_ok=True)
     return {name: len(rows) for name, rows in records.items()}

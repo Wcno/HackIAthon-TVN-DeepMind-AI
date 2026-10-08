@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./fonts.css";
 @import "./report.css";
+@import "./editor.css";
 @source "../../templates";
 
 @theme {

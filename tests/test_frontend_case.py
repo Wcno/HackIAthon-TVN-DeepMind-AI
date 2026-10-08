@@ -86,7 +86,8 @@ def test_draft_blocks_show_budget_meters_and_copy_buttons(client):
     assert len(re.findall(r'class="budget[ "]', html)) == 3
     assert re.search(r"/ 250 palabras", html) and re.search(r"/ 45-60 s", html) and re.search(r"/ 80 palabras", html)
     assert html.count("Copiar</button>") >= 4
-    assert "Copiado" in html and "navigator.clipboard" in html
+    script = client.get("/static/editor.js").text
+    assert "Copiado" in script and "navigator.clipboard" in script
 
 
 def test_budget_flags_over_and_under_limits():

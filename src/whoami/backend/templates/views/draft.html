@@ -1,26 +1,93 @@
 {% set tab = 'borrador' %}
 {% include 'views/case/_header.html' %}
 <div class="panel" role="tabpanel">
-  {% macro copy_button(text) -%}
-<button type="button" class="btn btn--quiet btn--small" data-copy="{{ text }}"
-  hx-on:click="const button = this, label = button.textContent, block = button.closest('.block'); const settle = text => { button.textContent = text; setTimeout(() => button.textContent = label, 1400) }; (navigator.clipboard ? navigator.clipboard.writeText(button.dataset.copy) : Promise.reject()).then(() => settle('Copiado'), () => { getSelection().selectAllChildren(block.querySelector('.block__title, .block > p')); settle('Selecciona y copia') })">Copiar</button>
+{% if case.borrador %}
+{% set b = case.borrador %}{% set budgets = draft_budgets(b) %}
+{% macro meter(m, key) -%}
+<span class="budget {{ m.state }}" data-meter="{{ key }}"><span class="budget__track"><span class="budget__fill" style="width:{{ m.percent }}%"></span></span><span class="budget__text">{{ m.amount|number }} / {{ m.range }} {{ m.unit }}</span></span>
 {%- endmacro %}
-{% macro meter(m) -%}
-<span class="budget {{ m.state }}"><span class="budget__track"><span class="budget__fill" style="width:{{ m.percent }}%"></span></span>
-  <span class="budget__text">{{ m.amount|number }} / {{ m.range }} {{ m.unit }}</span></span>
+{% macro field(key, label, value, budget=none, copy=false) -%}
+<section class="block" data-section="{{ key }}">
+  <div class="block__head"><h2 class="h2" id="ed-{{ key }}">{{ label }}</h2>
+    {% if budget %}{{ meter(budget, key) }}{% endif %}
+    {% if copy %}<button type="button" class="btn btn--quiet btn--small" data-edit="copy" data-key="{{ key }}">Copiar</button>{% endif %}
+  </div>
+  <textarea class="ed {{ 'ed--title' if key == 'titulo' else 'ed--text' }}" rows="1" data-key="{{ key }}" aria-labelledby="ed-{{ key }}" maxlength="{{ 500 if key == 'titulo' else 20000 }}">{{ value }}</textarea>
+</section>
 {%- endmacro %}
-{% if case.borrador %}{% set b = case.borrador %}{% set budgets = draft_budgets(b) %}
-  <section class="block"><div class="block__head"><h2 class="h2">Titular</h2>{{ copy_button(b.titulo) }}</div><p class="block__title">{{ b.titulo }}</p>{% if b.leyenda %}<p class="muted">{{ b.leyenda }}</p>{% endif %}</section>
-  <section class="block"><h2 class="h2">Enfoque de interés público</h2><p>{{ b.enfoque_interes_publico }}</p></section>
-  <section class="block"><div class="block__head"><h2 class="h2">Brief</h2>{{ meter(budgets.brief) }}{{ copy_button(b.brief) }}</div><p>{{ b.brief }}</p></section>
-  <section class="block"><h2 class="h2">Preguntas para el reportero</h2><ol class="questions">{% for q in b.preguntas %}<li>{{ q }}</li>{% endfor %}</ol></section>
-  <section class="block"><div class="block__head"><h2 class="h2">Guion</h2>{{ meter(budgets.guion) }}{{ copy_button(b.guion) }}</div><p>{{ b.guion }}</p></section>
-  <section class="block"><div class="block__head"><h2 class="h2">Copy digital</h2>{{ meter(budgets["copy"]) }}{{ copy_button(b.copy_digital) }}</div><p>{{ b.copy_digital }}</p></section>
-  <section class="block gaps"><h2 class="h2">Fuentes y verificaciones pendientes</h2><ul>{% for item in b.fuentes_y_verificaciones %}<li>{{ item }}</li>{% endfor %}</ul></section>
-  {% else %}
-  <div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p></div>
-  {% endif %}
+<div data-editor="{{ case.id_caso }}" id="draft-editor">
+  <script type="application/json" data-editor-config>{{ {"draft": b, "source_ids": case.ids_fuente, "version": case.version}|tojson }}</script>
+  <form class="draft-form">
+    <div class="savebar">
+      <p class="savebar__state"><span class="savebar__dot" aria-hidden="true"></span><span data-save-state>Sin cambios</span></p>
+      <div class="savebar__actions">
+        <button type="button" class="btn btn--quiet btn--small" data-edit="discard" disabled>Descartar cambios</button>
+        <button type="submit" class="btn btn--primary btn--small" data-edit="save" disabled>Guardar cambios</button>
+      </div>
+      <p class="savebar__msg" data-save-message role="status" hidden></p>
+    </div>
+    {% if b.leyenda %}<p class="notice">{{ icon('alert') }}{{ b.leyenda }}</p>{% endif %}
+    <p class="ed-hint">Haz clic en cualquier texto para editarlo. Los cambios se guardan solo cuando eliges Guardar cambios.</p>
+    {{ field('titulo', 'Título propuesto', b.titulo, copy=true) }}
+    {{ field('brief', 'Brief', b.brief, budgets.brief, true) }}
+    {{ field('enfoque_interes_publico', 'Enfoque de interés público', b.enfoque_interes_publico) }}
+    <section class="block" data-section="preguntas">
+      <h2 class="h2">Preguntas de investigación</h2>
+      <ol class="ed-list" data-list="preguntas">{% for question in b.preguntas %}<li>
+        <span class="ed-num" aria-hidden="true">{{ loop.index }}.</span>
+        <textarea class="ed ed--text" rows="1" data-key="preguntas" aria-label="Pregunta {{ loop.index }}" maxlength="2000">{{ question }}</textarea>
+        <button type="button" class="btn btn--quiet btn--small" data-edit="remove" aria-label="Quitar pregunta {{ loop.index }}">Quitar</button>
+      </li>{% endfor %}</ol>
+      <button type="button" class="btn btn--quiet btn--small ed-add" data-edit="add" data-key="preguntas">Añadir pregunta</button>
+    </section>
+    <section class="block" data-section="fuentes_y_verificaciones">
+      <h2 class="h2">Fuentes y verificaciones pendientes</h2>
+      <ul class="ed-list" data-list="fuentes_y_verificaciones">{% for item in b.fuentes_y_verificaciones %}<li>
+        <span class="ed-num" aria-hidden="true">{{ loop.index }}.</span>
+        <textarea class="ed ed--text" rows="1" data-key="fuentes_y_verificaciones" aria-label="Verificación {{ loop.index }}" maxlength="2000">{{ item }}</textarea>
+        <button type="button" class="btn btn--quiet btn--small" data-edit="remove" aria-label="Quitar verificación {{ loop.index }}">Quitar</button>
+      </li>{% endfor %}</ul>
+      <button type="button" class="btn btn--quiet btn--small ed-add" data-edit="add" data-key="fuentes_y_verificaciones">Añadir verificación</button>
+    </section>
+    {{ field('guion', 'Guion', b.guion, budgets.guion, true) }}
+    {{ field('copy_digital', 'Copy digital', b.copy_digital, budgets['copy'], true) }}
+  </form>
   <section class="claims-used"><h2 class="h2">Afirmaciones y evidencia citada</h2>
     <p class="muted">Las citas se muestran por afirmación del caso, no oración por oración.</p>
-    {% include 'views/case/_claims.html' %}</section>
+    {% include 'views/case/_claims.html' %}
+  </section>
+  <section><h2 class="h2">Fuentes del caso</h2><div class="editor-sources" data-source-list>
+    {% for source_id in case.ids_fuente %}<button type="button" class="link" data-source="{{ source_id }}">Ver fuente {{ loop.index }}</button>{% endfor %}
+  </div></section>
+  <aside class="draft-assistant" aria-label="Asistente del borrador">
+    <div class="assistant__head"><h2 class="assistant__title">Asistente del borrador</h2><button type="button" class="btn btn--quiet btn--small assistant__close" data-assist="close">Cerrar</button></div>
+    <p class="assistant__note">Mejora el texto, consulta la evidencia o busca otras noticias. Tú decides qué aplicar.</p>
+    <p class="assistant__mode">{{ 'Sin conexión · corpus y respuestas precalculadas' if offline else 'Gemini · fuentes del corpus cargado' }}</p>
+    <div class="assistant__scroll">
+      <div class="prompts" data-prompts>
+        <button type="button" class="prompt" data-assist="ask" data-action="articles">Busca otras noticias sobre este tema</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="headlines">Propón 3 titulares alternativos</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="shorten">Acorta el copy digital a 80 palabras</button>
+      </div>
+      <details class="assistant__more"><summary>Más preguntas sugeridas</summary><div class="prompts">
+        <button type="button" class="prompt" data-assist="ask" data-action="neutral">Hazlo más neutral</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="gaps">¿Qué falta verificar antes de publicar?</button>
+        <button type="button" class="prompt" data-assist="ask" data-action="contradictions">¿Hay contradicciones entre las fuentes?</button>
+        {% for example in examples_nav %}<button type="button" class="prompt" data-assist="ask" data-action="ask">{{ example.consulta }}</button>{% endfor %}
+      </div></details>
+      <div class="assistant__welcome"><h3>Una segunda mirada a tu borrador</h3><p>Pide un título alternativo o encuentra una fuente. Ninguna sugerencia cambia el documento hasta que la apliques.</p></div>
+      <button type="button" class="link assistant__again" data-assist="prompts" hidden>Ver preguntas sugeridas</button>
+      <ol class="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
+    </div>
+    <form class="ask"><label class="ask__label" for="ask-input">Pregunta al asistente</label>
+      <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal"></textarea>
+      <button type="submit" class="btn btn--primary btn--small" disabled>Enviar</button>
+    </form>
+  </aside>
+  <aside class="editor-source" aria-label="Fuente" hidden><div class="source-head"><h2 class="assistant__title">Fuente</h2><button type="button" class="btn btn--quiet btn--small" data-edit="close-source">Volver al asistente</button></div><div data-source-body></div></aside>
+  <button type="button" class="btn btn--primary sheet-toggle" data-assist="open" aria-expanded="false">Abrir asistente</button>
+</div>
+{% else %}
+<div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p></div>
+{% endif %}
 </div>

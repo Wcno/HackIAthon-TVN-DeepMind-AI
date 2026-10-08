@@ -9,12 +9,14 @@ from typing import Annotated
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from whoami.backend.assistant import DraftAssistant
+from whoami.backend.editor import AssistantRequest, SaveDraft
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
@@ -92,7 +94,7 @@ def safe_url(value: str) -> str:
 QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dict]]
 
 
-def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None, gemini_transport=None) -> FastAPI:
     settings = settings or Settings.from_environment()
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, number=number, percent=percent,
@@ -107,7 +109,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.synthetic = any(group.get("sintetico", False) for group in repository.records("group"))
         app.state.editorial = EditorialService(repository)
         app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
-        app.state.gemini = GeminiClient(repository, settings)
+        app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
+        app.state.assistant = DraftAssistant(repository, None if settings.demo else settings.data_directory / "embeddings")
         try:
             yield
         finally:
@@ -118,7 +121,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
-            "screen": screen, "title": title, "demo": (settings.demo or request.app.state.synthetic) and screen not in REAL_DATA_SCREENS,
+            "screen": screen, "title": title, "offline": settings.offline, "demo": (settings.demo or request.app.state.synthetic) and screen not in REAL_DATA_SCREENS,
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
             "target": request.headers.get("HX-Target") if request.headers.get("HX-Request") == "true" else None,
             "workspace": screen == "workspace", "filter_query": "", "base_path": request.url.path,
@@ -131,19 +134,22 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         editorial = request.app.state.editorial
         topic = request.query_params.get("topic", "")
         estado = request.query_params.get("estado", "")
+        topic_search = request.query_params.get("q", "").strip()[:2000]
         ranked = editorial.inbox()
-        groups = [item for item in ranked if (not topic or item["tema"] == topic) and (not estado or item["estado_revision"] == estado)]
+        groups = [item for item in ranked if (not topic or item["tema"] == topic)
+                  and (not estado or item["estado_revision"] == estado)
+                  and (not topic_search or topic_search.casefold() in item["titulo"].casefold())]
         opened = group is not None
         if group is None and groups:
             group = editorial.group(groups[0]["id_grupo"])
         if group is not None and case is None and group["id_caso"]:
             case = editorial.case(group["id_caso"])
         pane = pane or ("case" if case else "group")
-        filters = urlencode({"topic": topic, "estado": estado}) if topic or estado else ""
+        filters = urlencode({"topic": topic, "estado": estado, **({"q": topic_search} if topic_search else {})}) if topic or estado or topic_search else ""
         return render(request, "workspace", title, status_code=status_code, groups=groups, lead=ranked[0] if ranked else None,
                       rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado,
                       topic_options=sorted({item["tema"] for item in ranked}), group=group, case=case, pane=pane, opened=opened,
-                      selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", **context)
+                      selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", topic_search=topic_search, **context)
 
     def case_screen(request: Request, case_id: str, pane: str, title: str | None = None, status_code: int = 200, **context):
         case = request.app.state.editorial.case(case_id)
@@ -157,6 +163,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.exception_handler(MissingRecord)
     async def missing_record(request: Request, error: MissingRecord):
+        if request.url.path.startswith("/api/"):
+            return JSONResponse({"message": "El caso o la fuente ya no están disponibles."}, status_code=404)
         return render(request, "error", "Registro no disponible", status_code=404, message=str(error))
 
     @app.exception_handler(ReviewConflict)
@@ -170,11 +178,15 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.exception_handler(GenerationUnavailable)
     async def unavailable(request: Request, error: GenerationUnavailable):
         logger.warning("Generation unavailable: %s", error)
+        if request.url.path.startswith("/api/"):
+            return JSONResponse({"message": "El asistente no pudo completar una respuesta verificable. Intenta de nuevo más tarde."}, status_code=503)
         return render(request, "error", "Consulta no disponible", status_code=503,
                       message="La consulta no pudo completarse. Intenta de nuevo más tarde.")
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError):
+        if request.url.path.startswith("/api/"):
+            return JSONResponse({"message": "Revisa los campos: no dejes textos ni preguntas vacíos y respeta los límites de longitud."}, status_code=422)
         case_id = request.path_params.get("case_id")
         if request.method == "POST" and case_id and request.url.path.endswith("/review"):
             form = dict((await request.form()).items())
@@ -225,6 +237,32 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/cases/{case_id}/draft", response_class=HTMLResponse)
     def draft(request: Request, case_id: str):
         return case_screen(request, case_id, "draft", "Paquete editorial")
+
+    def editor_record(case: dict) -> dict:
+        return {"draft": case["borrador"], "source_ids": case["ids_fuente"], "version": case["version"],
+                "review_state": case["estado_revision"]}
+
+    @app.get("/api/evidence/{evidence_id}")
+    def get_evidence(request: Request, evidence_id: str):
+        return request.app.state.repository.record("evidence", evidence_id)
+
+    @app.post("/api/cases/{case_id}/assistant")
+    async def draft_assistant(request: Request, case_id: str, payload: AssistantRequest):
+        return await request.app.state.assistant.respond(case_id, payload, request.app.state.gemini)
+
+    @app.get("/api/cases/{case_id}/draft")
+    def get_draft(request: Request, case_id: str):
+        return editor_record(request.app.state.repository.case(case_id))
+
+    @app.put("/api/cases/{case_id}/draft")
+    def save_draft(request: Request, case_id: str, payload: SaveDraft):
+        try:
+            case = request.app.state.repository.save_draft(case_id, **payload.model_dump())
+        except ReviewConflict as error:
+            return JSONResponse({"message": str(error)}, status_code=409)
+        except (MissingRecord, InvalidReview) as error:
+            return JSONResponse({"message": str(error)}, status_code=422)
+        return editor_record(case)
 
     @app.get("/cases/{case_id}/review", response_class=HTMLResponse)
     def review(request: Request, case_id: str):

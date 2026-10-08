@@ -10,7 +10,7 @@
 {% macro open_href(group) -%}
 {{ ("/cases/" ~ group.id_caso|urlencode) if group.id_caso else ("/groups/" ~ group.id_grupo|urlencode) }}{{ filter_query }}
 {%- endmacro %}
-{% set nav = [("/inbox", "Temas", "inbox"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
+{% set nav = [("/inbox", "Temas", "inbox"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
 {% if target == "case" %}{% include 'views/pane.html' %}
 {% elif target == "desk" %}{% include 'views/desk.html' %}
 {% else %}
@@ -23,6 +23,7 @@
   <title>{{ title }} · TVN DeepMind AI</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/editor.js" defer></script>
 </head>
 <body hx-boost="false"{% if workspace %} class="body--desk"{% endif %}>
   <header class="strap">
@@ -33,13 +34,9 @@
     <nav class="nav" aria-label="Principal">
       {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </nav>
-    <form class="search" role="search" action="/queries" method="get">
+    <form class="search" role="search" action="/inbox" method="get">
       {{ icon("search") }}
-      <input id="search" name="q" type="search" autocomplete="off" maxlength="2000" required placeholder="Pregunta sobre la agenda" aria-label="Preguntar sobre la agenda" value="{{ query_text or '' }}">
-      <div class="suggestions">
-        <p class="suggest__head">Consultas precalculadas</p>
-        {% for example in examples_nav %}<a class="suggest" href="/queries?q={{ example.consulta|urlencode }}">{{ icon("search") }}{{ example.consulta }}</a>{% endfor %}
-      </div>
+      <input id="search" name="q" type="search" autocomplete="off" maxlength="2000" placeholder="Buscar un tema" aria-label="Buscar un tema" value="{{ topic_search or '' }}">
     </form>
     {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
   </header>

@@ -55,6 +55,10 @@ class EditorialRepository:
                     active INTEGER NOT NULL DEFAULT 1,
                     content_version INTEGER NOT NULL DEFAULT 1
                 );
+                CREATE TABLE IF NOT EXISTS edited_drafts (
+                    case_id TEXT PRIMARY KEY REFERENCES cases(id), body TEXT NOT NULL,
+                    source_ids TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS reviews (
                     id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
                     state TEXT NOT NULL, actor TEXT, timestamp TEXT NOT NULL,
@@ -184,14 +188,39 @@ class EditorialRepository:
                 raise MissingRecord(f"Unknown case: {case_id}")
             review = self._current_review(connection, case_id)
             case = json.loads(row["body"])
+            edited = connection.execute("SELECT * FROM edited_drafts WHERE case_id = ?", (case_id,)).fetchone()
+            extra_sources = []
+            if edited is not None:
+                case["borrador"] = json.loads(edited["body"])
+                extra_sources = json.loads(edited["source_ids"])
             group_record = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
             if group_record is None:
                 raise MissingRecord(f"The group of case {case_id} is no longer available.")
             group = json.loads(group_record["body"])
             return case | {"titulo": group["titulo"], "tema": group["tema"], "estado_evidencia": group["estado_evidencia"],
                            "puntaje": group["puntaje"]["valor"], "componentes": group["puntaje"]["componentes"],
-                           "ids_fuente": cited_ids(case), "estado_revision": review["state"] if review else "nuevo",
+                           "ids_fuente": list(dict.fromkeys([*cited_ids(case), *extra_sources])), "estado_revision": review["state"] if review else "nuevo",
                            "version": row["version"], "content_version": row["content_version"]}
+
+    def save_draft(self, case_id: str, *, draft: dict, source_ids: list[str], expected_version: int) -> dict:
+        with self.connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute("SELECT * FROM cases WHERE id = ? AND active = 1", (case_id,)).fetchone()
+            if row is None:
+                raise MissingRecord(f"Unknown case: {case_id}")
+            if row["version"] != expected_version:
+                raise ReviewConflict("La ficha cambió. Recarga antes de guardar para no sobrescribir otra edición.")
+            seed = json.loads(row["body"])
+            if seed["borrador"] is None or draft["leyenda"] != seed["borrador"]["leyenda"]:
+                raise InvalidReview("No se puede crear un borrador sin evidencia ni cambiar su leyenda de alcance.")
+            for source_id in source_ids:
+                if connection.execute("SELECT 1 FROM records WHERE kind = 'evidence' AND id = ?", (source_id,)).fetchone() is None:
+                    raise MissingRecord(f"Fuente no disponible: {source_id}")
+            connection.execute("INSERT OR REPLACE INTO edited_drafts VALUES (?, ?, ?)",
+                               (case_id, canonical_json(draft), canonical_json(list(dict.fromkeys(source_ids)))))
+            connection.execute("UPDATE cases SET version = version + 1, content_version = content_version + 1 WHERE id = ?", (case_id,))
+            self._insert_audit(connection, case_id, "Editorial draft edited; human review required.", row["content_version"] + 1)
+        return self.case(case_id)
 
     def review_history(self, case_id: str) -> list[dict]:
         self.case(case_id)
@@ -255,6 +284,44 @@ class EditorialRepository:
     def cache_delete(self, key: str) -> None:
         with self.connection() as connection:
             connection.execute("DELETE FROM generation_cache WHERE key = ?", (key,))
+
+    def snapshot_export(self) -> tuple[PipelineBundle, tuple[dict, ...]]:
+        """Atomically separate strict seeds from human overlays and their reviews."""
+        with self.connection() as connection:
+            connection.execute("BEGIN")
+            records = {kind: tuple(json.loads(row["body"]) for row in connection.execute(
+                "SELECT body FROM records WHERE kind = ? ORDER BY id", (kind,)))
+                for kind in ("group", "evidence", "answer")}
+            cases = tuple(json.loads(row["body"]) for row in connection.execute(
+                "SELECT body FROM cases WHERE active = 1 ORDER BY id"))
+            current_reviews = tuple({
+                "id_caso": row["case_id"], "estado": row["state"], "responsable": row["actor"],
+                "fecha": row["timestamp"], "nota": row["note"], "version": row["version"],
+                "content_version": row["content_version"],
+            } for row in connection.execute("""
+                SELECT reviews.* FROM reviews JOIN cases ON cases.id = reviews.case_id
+                WHERE cases.active = 1 AND reviews.content_version = cases.content_version
+                ORDER BY reviews.timestamp, reviews.id
+            """))
+            overlays = []
+            for row in connection.execute("""
+                SELECT edited_drafts.*, cases.version, cases.content_version
+                FROM edited_drafts JOIN cases ON cases.id = edited_drafts.case_id
+                WHERE cases.active = 1 ORDER BY cases.id
+            """):
+                reviews = [review for review in current_reviews if review["id_caso"] == row["case_id"]]
+                overlays.append({
+                    "id_caso": row["case_id"], "draft": json.loads(row["body"]),
+                    "source_ids": json.loads(row["source_ids"]), "version": row["version"],
+                    "content_version": row["content_version"], "reviews": reviews,
+                    "review_state": reviews[-1]["estado"] if reviews else "nuevo",
+                })
+            edited_ids = {overlay["id_caso"] for overlay in overlays}
+            seed_reviews = tuple({key: value for key, value in review.items()
+                                  if key not in ("version", "content_version")}
+                                 for review in current_reviews if review["id_caso"] not in edited_ids)
+            return (PipelineBundle(records["group"], records["evidence"], cases,
+                                   records["answer"], seed_reviews), tuple(overlays))
 
     def snapshot_bundle(self) -> PipelineBundle:
         """Read current pipeline content and matching human decisions atomically."""

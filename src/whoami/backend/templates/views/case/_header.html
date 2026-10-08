@@ -39,8 +39,10 @@
   <a class="tab" role="tab" href="{{ href }}{{ filter_query }}" hx-get="{{ href }}{{ filter_query }}" hx-target="#case" hx-swap="innerHTML" hx-push-url="true" aria-selected="{{ 'true' if key == tab else 'false' }}">{{ label }}</a>
   {% endfor %}
 </nav>
+{% if tab != 'borrador' %}
 <aside class="drawer" id="source-panel" aria-label="Fuente" hx-on::after-swap="this.classList.add('is-open')">
   <div class="drawer__head"><p class="drawer__kind">Fuente</p>
     <button type="button" class="icon-btn" aria-label="Cerrar fuente" hx-on:click="this.closest('.drawer').classList.remove('is-open')">&times;</button></div>
   <div id="source-body"><p class="muted">Elige una cita numerada para ver la fuente aquí.</p></div>
 </aside>
+{% endif %}

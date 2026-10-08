@@ -74,11 +74,11 @@ uv sync --locked --link-mode copy
 uv run --locked uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-Abrir [la bandeja editorial](http://127.0.0.1:8000/inbox). Por defecto, la
-aplicación inicia con noticias sintéticas y consultas precalculadas, sin una
-clave de Gemini. El corpus real se procesa por separado; esta demo inicial no
-lo carga automáticamente. `--link-mode copy` evita problemas de enlaces de
-archivos cuando el repositorio está en OneDrive.
+Abrir [la bandeja editorial](http://127.0.0.1:8000/inbox).
+Por defecto, la aplicación carga el corpus real procesado y las fichas de `outputs`.
+Sin una clave de Gemini utiliza el modo offline; con una clave habilita generación verificable.
+Para la demo sintética independiente, configurar `WHOAMI_DEMO=1` y `WHOAMI_OFFLINE=1`.
+`--link-mode copy` evita problemas de enlaces de archivos cuando el repositorio está en OneDrive.
 
 Las decisiones humanas se guardan fuera del repositorio, en
 `%LOCALAPPDATA%/whoami/editorial.sqlite3` en Windows. La ruta puede configurarse
@@ -92,9 +92,9 @@ servidor con:
 uv run --locked --env-file .env uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-El servidor no carga `.env` implícitamente. No subir ese archivo al repositorio.
-Consultar [la documentación del backend](docs/backend.md) para configurar los
-directorios del corpus real, el modo online y la integración de consultas.
+El servidor carga el `.env` existente sin sobrescribir variables explícitas del entorno.
+No subir ese archivo al repositorio.
+Consultar [la documentación del backend](docs/backend.md) y [el editor G6](docs/g6-editor.md) para configurar datos, persistencia, recuperación local y cuotas.
 
 ## Datos y procesamiento
 

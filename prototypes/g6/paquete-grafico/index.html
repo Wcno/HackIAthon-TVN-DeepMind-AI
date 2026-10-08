@@ -302,7 +302,6 @@
       .savebar__state { @apply inline-flex items-center gap-2 text-[15px] font-semibold text-ink; }
       .savebar__dot { @apply size-2.5 shrink-0 rounded-full bg-emerald-500; }
       .savebar.is-dirty .savebar__dot { @apply bg-yellow ring-2 ring-yellow-soft; }
-      .savebar__extra { @apply font-medium text-rose-700; }
       .savebar__actions { @apply ml-auto flex flex-wrap gap-2; }
       .savebar__msg { @apply flex basis-full items-start gap-2 text-sm font-medium text-[#5a4300]; }
       .savebar__msg .icon { @apply mt-0.5; }
@@ -320,30 +319,54 @@
       .ed-num { @apply pt-1.5 text-[17px] leading-relaxed font-bold text-navy; }
       .ed-bullet { @apply mt-[0.95em] ml-1 size-1.5 rounded-full bg-blue; }
       .ed-questions .ed, .ed-list .ed { @apply mx-0 w-full px-2; }
-      .ed-list .btn { @apply mt-1 text-ink-3 hover:bg-rose-50 hover:text-rose-700; }
+      .ed-list .btn, .ed-questions .btn { @apply mt-1 text-ink-3 hover:bg-rose-50 hover:text-rose-700; }
       .ed-add { @apply mt-2 -ml-3; }
       .edited { @apply ml-2.5 inline-flex rounded-full bg-yellow-soft px-2.5 py-0.5 align-[2px] text-[13px] font-semibold text-[#5a4300]; }
-      .unsupported { @apply mt-2 flex items-start gap-2 text-[15px] font-medium text-rose-700; }
-      .unsupported .icon { @apply mt-1; }
       .is-flash { animation: flash 1400ms var(--ease-out-expo); }
       @keyframes flash { from { background-color: var(--color-yellow-soft); } }
 
       /* draft assistant: docked column on desktop, bottom sheet on mobile */
       .assistant, .sheet-toggle, .assistant__grip, .assistant__close { @apply hidden; }
-      .is-drafting .assistant { @apply flex min-h-0 flex-col overflow-y-auto rounded-t-3xl bg-white px-6 pt-6 pb-16 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .is-drafting .lead { @apply flex gap-4 rounded-xl px-5 py-3 shadow-none; }
+      .is-drafting .lead__rank { @apply text-3xl; }
+      .is-drafting .lead__body { @apply flex min-w-0 flex-1 items-center justify-between gap-4; }
+      .is-drafting .lead__title { @apply text-lg; }
+      .is-drafting .lead__body > .meta, .is-drafting .lead__why, .is-drafting .lead__facts { @apply hidden; }
+      .is-drafting .lead .btn { @apply h-8 shrink-0 px-3 text-sm; }
+      .is-drafting .lead-band { @apply pt-3; }
+      .is-drafting .snapshot { @apply mb-2; }
+      .is-drafting .case { @apply pt-6; }
+      .is-drafting .case__title { @apply text-[30px]; }
+      .is-drafting .case__facts { @apply mt-3; }
+      .is-drafting .case__facts .score { @apply hidden; }
+      .is-drafting .tabs { @apply mt-4 gap-5; }
+      .is-drafting .search { @apply invisible; }
+      .is-drafting .assistant { @apply flex min-h-0 flex-col overflow-hidden rounded-t-3xl bg-white px-5 pt-6 pb-0 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .assistant__demo { @apply mt-3 text-sm font-medium text-ink-3; }
+      .assistant__scroll { @apply min-h-0 flex-1 overflow-y-auto pb-5; }
+      .assistant__more { @apply mt-3 text-sm text-ink-3; }
+      .assistant__more summary { @apply cursor-pointer font-semibold text-blue; }
+      .assistant__more .prompts { @apply mt-2; }
+      .assistant__welcome { @apply mt-6 border-t border-line pt-5; }
+      .assistant__welcome h3 { @apply mb-2 font-title text-2xl font-semibold text-navy; }
+      .assistant__welcome p { @apply text-[15px] text-ink-3; }
       .assistant__head { @apply flex items-center justify-between gap-3; }
       .assistant__title { @apply font-title text-2xl leading-tight font-semibold text-navy; }
       .assistant__note { @apply mt-2 text-[15px] text-ink-3; }
       .prompts { @apply mt-5 flex flex-wrap gap-2; }
       .prompt { @apply rounded-2xl bg-blue-soft px-3.5 py-2 text-left text-[14.5px] leading-snug font-medium text-navy transition hover:bg-blue hover:text-white; }
-      .ask { @apply mt-5 grid gap-2; }
+      .ask { @apply mt-auto grid shrink-0 gap-2 border-t border-line bg-white pt-4 pb-5; }
       .ask__label { @apply text-[15px] font-semibold text-ink; }
       .ask__input { @apply w-full resize-none rounded-xl bg-white px-4 py-2.5 text-[15px] ring-1 ring-line transition outline-none placeholder:text-ink-3 focus:ring-2 focus:ring-blue; }
       .ask .btn { @apply justify-self-end; }
-      .replies { @apply mt-4 grid list-none; }
+      .replies { @apply mt-4 grid list-none gap-4; }
+      .assistant.has-replies #prompts, .assistant.has-replies .assistant__more { @apply hidden; }
+      .reply__q { @apply rounded-xl bg-navy px-4 py-3 text-white; }
+      .reply .reply__q { @apply text-white; }
+      .assistant__again { @apply mt-3 text-sm; }
       .replies__empty { @apply mt-6; }
-      .reply { @apply grid gap-3 border-t border-line py-5; }
-      .reply .reply__q { @apply font-semibold text-ink; }
+      .reply { @apply grid gap-3 border-b border-line pb-5; }
+      .reply .reply__q { @apply font-semibold text-white; }
       .reply__state { @apply justify-self-start rounded-full px-3 py-1 text-[13px] font-semibold; }
       .reply__state--ok { @apply bg-emerald-50 text-emerald-800; }
       .reply__state--warn, .reply__state--abstain { @apply bg-amber-50 text-amber-800; }
@@ -377,7 +400,7 @@
       .reply .result__passage { @apply text-[15px] text-ink-2; }
       .result .reply__actions { @apply mt-1; }
       .pending-bar { @apply block h-1 w-40 overflow-hidden rounded-full bg-ground; }
-      .pending-bar span { @apply block h-full w-1/3 rounded-full bg-blue; animation: seek 1.1s ease-in-out infinite alternate; }
+      .pending-bar span { @apply block h-full w-1/3 rounded-full bg-blue; animation: seek 700ms ease-in-out 1 alternate; }
       @keyframes seek { to { transform: translateX(200%); } }
 
       @media (min-width: 961px) {
@@ -390,12 +413,18 @@
         .is-drafting .desk, .is-drafting .desk:has(> .drawer:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); }
       }
       @media (max-width: 960px) {
-        .is-drafting .assistant { @apply fixed inset-x-0 bottom-0 z-40 max-h-[85dvh] px-5 pt-3 pb-10; box-shadow: 0 -16px 40px -16px rgb(0 70 111 / 0.45); transform: translateY(100%); visibility: hidden; transition: transform 320ms var(--ease-out-expo), visibility 0s linear 320ms; }
+        .is-drafting .assistant { @apply fixed inset-x-0 bottom-0 z-40 h-[85dvh] max-h-[85dvh] px-5 pt-3 pb-0; box-shadow: 0 -16px 40px -16px rgb(0 70 111 / 0.45); transform: translateY(100%); visibility: hidden; transition: transform 320ms var(--ease-out-expo), visibility 0s linear 320ms; }
         .is-drafting .assistant.is-open { transform: none; visibility: visible; transition: transform 320ms var(--ease-out-expo); }
         .is-drafting .assistant__grip { @apply mx-auto mb-3 block h-1 w-10 shrink-0 rounded-full bg-line; }
         .is-drafting .assistant__close { @apply inline-flex; }
         .is-drafting.show-case .sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
         .is-drafting .case { @apply pb-28; }
+        .is-drafting .case__title { @apply text-2xl; }
+        .is-drafting .tabs { @apply gap-3; }
+        .is-drafting .tab { @apply text-sm; }
+        .is-drafting .search { @apply hidden; }
+        .is-drafting .assistant__note { @apply text-sm; }
+        .is-drafting .assistant .ask { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
         .savebar { @apply -mx-2 px-3; }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -476,15 +505,20 @@
         <h2 class="assistant__title" id="assistant-title">Asistente del borrador</h2>
         <button type="button" class="btn btn--quiet btn--small assistant__close" data-as="close">Cerrar</button>
       </div>
-      <p class="assistant__note">Cada pregunta se responde por separado, con el borrador actual y la evidencia del caso.</p>
-      <div class="prompts" id="prompts" role="group" aria-label="Preguntas sugeridas"></div>
+      <p class="assistant__note">Mejora el texto, consulta la evidencia o busca otras noticias. Tú decides qué aplicar.</p>
+      <p class="assistant__demo">Prototipo visual · respuestas de demostración</p>
+      <div class="assistant__scroll">
+        <div class="prompts" id="prompts" role="group" aria-label="Preguntas sugeridas"></div>
+        <details class="assistant__more"><summary>Más preguntas sugeridas</summary><div class="prompts" id="more-prompts"></div></details>
+        <div class="assistant__welcome" id="replies-empty"><h3>Una segunda mirada a tu borrador</h3><p>Pide un título alternativo, revisa una cifra o encuentra una fuente. Las sugerencias no cambian el documento hasta que las apliques.</p></div>
+        <button type="button" class="link assistant__again" data-as="show-prompts" hidden>Ver preguntas sugeridas</button>
+        <ol class="replies" id="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
+      </div>
       <form class="ask" id="ask">
-        <label class="ask__label" for="ask-input">Otra pregunta</label>
+        <label class="ask__label" for="ask-input">Pregunta al asistente</label>
         <textarea class="ask__input" id="ask-input" rows="2" placeholder="Por ejemplo: ¿Hay datos oficiales sobre esto?"></textarea>
         <button type="submit" class="btn btn--primary btn--small" disabled>Enviar</button>
       </form>
-      <p class="replies__empty muted" id="replies-empty">Las respuestas aparecen aquí, la más reciente arriba.</p>
-      <ol class="replies" id="replies" aria-live="polite"></ol>
     </aside>
     <aside class="drawer" id="drawer" aria-label="Fuente" hidden></aside>
   </main>
@@ -595,7 +629,6 @@
       ];
       const labelOf = (key) => SECTIONS.find((s) => s.key === key).label;
       const PROMPTS = [
-        ["cifras", "¿Qué cifras de mi borrador no tienen respaldo?"],
         ["relacionados", "Busca otras noticias sobre este tema"],
         ["titulares", "Propón 3 titulares alternativos"],
         ["acortar", "Acorta el copy digital a 80 palabras"],
@@ -625,9 +658,7 @@
       let assistantCase = null;
       let seq = 0;
 
-      // ---------- evidence: numbers and corpus search ----------
-
-      const NUMBER = /\d+(?:[.,:]\d+)*/g;
+      // ---------- corpus search ----------
       const caseIds = (g, f) =>
         new Set([
           ...f.ids_fuente,
@@ -635,32 +666,6 @@
           ...g.contexto.map((c) => c.id_evidencia),
           ...f.afirmaciones.flatMap((a) => a.citas.map((c) => c.id_evidencia)),
         ]);
-
-      function evidenceNumbers(ids) {
-        const index = new Map();
-        const add = (n, hit) => {
-          if (!index.has(n)) index.set(n, []);
-          if (!index.get(n).some((h) => h.id === hit.id)) index.get(n).push(hit);
-        };
-        ids.forEach((id) => {
-          const e = D.evidencias[id];
-          if (!e) return;
-          Object.entries(e.campos).forEach(([field, text]) =>
-            (String(text).match(NUMBER) || []).forEach((n) => {
-              add(n, { id, field, passage: n });
-              if (n.includes(":")) add(n.split(":")[0], { id, field, passage: n });
-            }),
-          );
-        });
-        return index;
-      }
-      const missingIn = (text) => [...new Set(textOf(text).match(NUMBER) || [])].filter((n) => !ctx.d.numbers.has(n));
-      const audit = () =>
-        SECTIONS.map((s) => {
-          const found = [...new Set(textOf(ctx.d.current[s.key]).match(NUMBER) || [])];
-          return { s, unsupported: found.filter((n) => !ctx.d.numbers.has(n)), supported: found.filter((n) => ctx.d.numbers.has(n)) };
-        });
-      const unsupportedCount = () => audit().reduce((n, r) => n + r.unsupported.length, 0);
 
       const STOP = new Set("busca buscar otras otros noticias noticia sobre datos dato oficiales oficial fuentes fuente articulos articulo relacionados este esta esto tema para como cual cuales donde desde hasta entre tiene tienen".split(" "));
       const tokens = (s) =>
@@ -717,8 +722,10 @@
         const v = ctx.d.current[key];
         if (key === "preguntas")
           return `<ol class="ed-questions">${v
-            .map((q, i) => `<li><span class="ed-num" aria-hidden="true">${i + 1}.</span><textarea class="ed ed--text" rows="1" data-key="${key}" data-i="${i}" aria-label="Pregunta ${i + 1}">${esc(q)}</textarea></li>`)
-            .join("")}</ol>`;
+            .map((q, i) => `<li><span class="ed-num" aria-hidden="true">${i + 1}.</span><textarea class="ed ed--text" rows="1" data-key="${key}" data-i="${i}" aria-label="Pregunta ${i + 1}">${esc(q)}</textarea>
+              <button type="button" class="btn btn--quiet btn--small" data-ed="remove-question" data-i="${i}" aria-label="Quitar pregunta ${i + 1}">${icon("close")}Quitar</button></li>`)
+            .join("")}</ol>
+            <button type="button" class="btn btn--quiet btn--small ed-add" data-ed="add-question">Añadir pregunta</button>`;
         if (key === "fuentes_y_verificaciones")
           return `<ul class="ed-list">${v
             .map(
@@ -738,7 +745,6 @@
             ${s.copy ? `<button type="button" class="btn btn--quiet btn--small" data-ed="copy" data-key="${s.key}">${icon("copy")}Copiar</button>` : ""}
           </div>
           <div data-body>${fieldHtml(s.key)}</div>
-          <p class="unsupported" data-warn hidden></p>
         </section>`;
 
       const editorHtml = () => `${ctx.f.borrador.leyenda ? `<p class="notice">${icon("alert")}${esc(ctx.f.borrador.leyenda)}</p>` : ""}
@@ -759,7 +765,12 @@
           <button type="button" class="btn btn--small" data-ed="restore-yes">Restaurar</button>
           <button type="button" class="btn btn--quiet btn--small" data-ed="restore-no">Cancelar</button>
         </div>
-        ${SECTIONS.map(sectionHtml).join("")}`;
+        ${SECTIONS.map(sectionHtml).join("")}
+        <section class="claims">
+          <h2 class="h2">Afirmaciones y evidencia del caso</h2>
+          <p class="muted">Las citas se muestran por afirmación del caso, no oración por oración.</p>
+          <ul class="mt-4">${ctx.f.afirmaciones.map((a) => `<li class="claim"><p>${esc(a.texto)} ${cites(a.citas.map((c) => ({ id: c.id_evidencia, field: c.campo, passage: c.pasaje })))}</p><p class="claim__by">${esc(a.tipo)}</p></li>`).join("")}</ul>
+        </section>`;
 
       function refreshSection(key) {
         const el = caseEl.querySelector(`[data-section="${key}"]`);
@@ -767,24 +778,14 @@
         const v = ctx.d.current[key];
         el.querySelector("[data-edited]").hidden = !isDirty(key);
         if (METERS[key]) el.querySelector("[data-meter]").innerHTML = METERS[key](v);
-        const missing = missingIn(v);
-        const warn = el.querySelector("[data-warn]");
-        warn.hidden = !missing.length;
-        warn.innerHTML = missing.length
-          ? `${icon("alert")}<span>${missing.length === 1 ? "Cifra sin respaldo" : "Cifras sin respaldo"}: ${missing
-              .map((n) => `<strong>${esc(n)}</strong>`)
-              .join(", ")} no ${missing.length === 1 ? "aparece" : "aparecen"} en la evidencia del caso.</span>`
-          : "";
       }
 
       function refreshStatus() {
         const dirty = SECTIONS.filter((s) => isDirty(s.key)).length;
-        const unsupported = unsupportedCount();
         const bar = document.getElementById("savebar");
         bar.classList.toggle("is-dirty", dirty > 0);
-        bar.querySelector("[data-state]").innerHTML =
-          (dirty ? `Cambios sin guardar en ${plural(dirty, "sección", "secciones")}` : "Sin cambios") +
-          (unsupported ? ` <span class="savebar__extra">· ${plural(unsupported, "cifra sin respaldo", "cifras sin respaldo")}</span>` : "");
+        bar.querySelector("[data-state]").textContent =
+          dirty ? `Cambios sin guardar en ${plural(dirty, "sección", "secciones")}` : "Sin cambios";
         bar.querySelector('[data-ed="save"]').disabled = !dirty;
         bar.querySelector('[data-ed="discard"]').disabled = !dirty;
         caseEl.querySelector('[data-ed="restore"]').disabled = same(ctx.d.current, ctx.d.ai);
@@ -830,16 +831,36 @@
         const action = btn.dataset.ed;
         const confirm = caseEl.querySelector("[data-confirm]");
         if (action === "copy") {
-          navigator.clipboard?.writeText(textOf(d.current[btn.dataset.key]));
           const old = btn.innerHTML;
-          btn.textContent = "Copiado";
+          navigator.clipboard.writeText(textOf(d.current[btn.dataset.key]))
+            .then(() => { btn.textContent = "Copiado"; })
+            .catch(() => { btn.textContent = "No se pudo copiar"; });
           setTimeout(() => (btn.innerHTML = old), 1400);
         }
         if (action === "save") showMsg(true);
-        if (action === "discard") (d.current = structuredClone(d.saved)), mountEditor();
+        if (action === "discard") {
+          d.current = structuredClone(d.saved);
+          d.added.clear();
+          mountEditor();
+          assistantCase = null;
+          resetAssistant(ctx.f.id_caso);
+        }
         if (action === "restore") confirm.hidden = false;
         if (action === "restore-no") confirm.hidden = true;
         if (action === "restore-yes") (d.current = structuredClone(d.ai)), mountEditor();
+        if (action === "remove-question") {
+          const index = Number(btn.dataset.i);
+          d.current.preguntas.splice(index, 1);
+          renderBody("preguntas");
+          const remaining = caseEl.querySelectorAll('textarea[data-key="preguntas"]');
+          const next = remaining[Math.min(index, remaining.length - 1)] || caseEl.querySelector('[data-ed="add-question"]');
+          next.focus({ preventScroll: true });
+        }
+        if (action === "add-question") {
+          d.current.preguntas.push("");
+          renderBody("preguntas");
+          goTo("preguntas", true);
+        }
         if (action === "add") d.current.fuentes_y_verificaciones.push(""), renderBody("fuentes_y_verificaciones"), goTo("fuentes_y_verificaciones", true);
         if (action === "remove") d.current.fuentes_y_verificaciones.splice(Number(btn.dataset.i), 1), renderBody("fuentes_y_verificaciones");
       }
@@ -879,33 +900,15 @@
         <p>Esta petición necesita el modelo. Cuando el asistente esté conectado, responderá con citas a las fuentes, dirá «No hay evidencia suficiente» si no puede responder, o propondrá una edición que podrás aplicar o descartar.</p>`;
 
       const ANSWERS = {
-        cifras() {
-          const rows = audit();
-          const missing = rows.flatMap((r) => r.unsupported.map((n) => ({ n, s: r.s })));
-          const backed = new Map();
-          rows.forEach((r) => r.supported.forEach((n) => backed.set(n, ctx.d.numbers.get(n))));
-          if (!missing.length && !backed.size) return `${STATE("ok", "Sin cifras")}<p>Tu borrador no contiene cifras.</p>`;
-          return `${missing.length ? STATE("warn", plural(missing.length, "cifra sin respaldo", "cifras sin respaldo")) : STATE("ok", "Respuesta con evidencia")}
-            ${missing.length ? `<p>No aparecen en la evidencia del caso:</p><ul>${missing
-              .map((m) => `<li><strong>${esc(m.n)}</strong> en ${m.s.label} · <button type="button" class="link" data-as="goto" data-key="${m.s.key}">Ir a la sección</button></li>`)
-              .join("")}</ul>` : ""}
-            ${backed.size ? `<p>${missing.length ? "Sí tienen respaldo:" : "Todas las cifras aparecen en la evidencia del caso:"}</p><ul>${[...backed]
-              .map(([n, hits]) => `<li><strong>${esc(n)}</strong> ${cites(hits)}</li>`)
-              .join("")}</ul>` : ""}
-            <p class="reply__foot">Comprobación local: busca cada cifra del borrador en las fuentes del caso. No reemplaza al verificador.</p>`;
-        },
-
         falta() {
           const f = ctx.f;
           const pending = ctx.d.current.fuentes_y_verificaciones.filter((v) => v.trim());
-          const missing = unsupportedCount();
           return `${STATE("info", "Según la ficha del caso")}
             ${f.alcance_texto === "titular_metadatos" ? `<p class="notice">${icon("alert")}Basado únicamente en titular/metadatos.</p>` : ""}
             <p class="reply__h">Verificaciones pendientes en tu borrador</p>
             ${pending.length ? `<ul>${pending.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : `<p>Tu borrador no tiene verificaciones anotadas.</p>`}
             ${f.vacios.length ? `<p class="reply__h">Lo que la ficha marca como faltante</p><ul>${f.vacios.map((v) => `<li>${esc(v)}</li>`).join("")}</ul>` : ""}
             ${f.contradicciones.length ? `<p class="reply__h">Contradicciones sin resolver</p><ul>${f.contradicciones.map((c) => `<li>${esc(c.descripcion)}</li>`).join("")}</ul>` : ""}
-            ${missing ? `<p class="reply__h">Cifras sin respaldo</p><p>${plural(missing, "cifra", "cifras")} del borrador no ${missing === 1 ? "aparece" : "aparecen"} en la evidencia. <button type="button" class="link" data-as="prompt" data-p="cifras">Ver cuáles</button></p>` : ""}
             <p class="reply__h">Acción recomendada</p><p>${esc(f.accion_recomendada)}</p>`;
         },
 
@@ -952,7 +955,7 @@
                   ${best.text !== e.titulo ? `<p class="result__passage">«${esc(best.text)}»</p>` : ""}
                   <div class="reply__actions">
                     <button type="button" class="btn btn--small" data-ev="${esc(e.id_evidencia)}">Ver fuente</button>
-                    <button type="button" class="btn btn--quiet btn--small" data-as="add-source" data-id="${esc(e.id_evidencia)}" ${added ? "disabled" : ""}>${added ? "Añadida a la ficha" : "Añadir a la ficha"}</button>
+                    <button type="button" class="btn btn--quiet btn--small" data-as="add-source" data-id="${esc(e.id_evidencia)}" ${added ? "disabled" : ""}>${added ? "Añadida · sin guardar" : "Añadir a la ficha"}</button>
                   </div>
                 </li>`;
               })
@@ -994,6 +997,8 @@
 
       function ask(kind, question) {
         repliesEmpty.hidden = true;
+        assistant.classList.add("has-replies");
+        assistant.querySelector('[data-as="show-prompts"]').hidden = false;
         const li = document.createElement("li");
         li.className = "reply";
         li.innerHTML = `<p class="reply__q">${esc(question)}</p>${STATE("pending", "Buscando evidencia…")}<span class="pending-bar" aria-hidden="true"><span></span></span>`;
@@ -1022,6 +1027,12 @@
         const action = btn.dataset.as;
         if (action === "open") return setSheet(true);
         if (action === "close") return setSheet(false);
+        if (action === "show-prompts") {
+          assistant.classList.remove("has-replies");
+          btn.hidden = true;
+          assistant.querySelector(".assistant__scroll").scrollTop = 0;
+          return;
+        }
         if (!ctx) return;
         if (action === "prompt") return ask(btn.dataset.p, PROMPTS.find(([k]) => k === btn.dataset.p)[1]);
         if (action === "goto") return goTo(btn.dataset.key);
@@ -1041,7 +1052,7 @@
           ctx.d.added.add(e.id_evidencia);
           ctx.d.current.fuentes_y_verificaciones.push(`Revisar fuente añadida: «${e.titulo}» (${m ? m.medio : KIND[e.tipo]}, ${when}).`);
           btn.disabled = true;
-          btn.textContent = "Añadida a la ficha";
+          btn.textContent = "Añadida · sin guardar";
           showMsg(false);
           renderBody("fuentes_y_verificaciones");
           return goTo("fuentes_y_verificaciones", true);
@@ -1063,6 +1074,8 @@
           desk.appendChild(drawer);
         }
         replies.innerHTML = "";
+        assistant.classList.remove("has-replies");
+        assistant.querySelector('[data-as="show-prompts"]').hidden = true;
         suggestions.clear();
         repliesEmpty.hidden = false;
         askInput.value = "";
@@ -1070,9 +1083,9 @@
         assistantCase = id;
       }
 
-      document.getElementById("prompts").innerHTML = PROMPTS.map(
-        ([k, t]) => `<button type="button" class="prompt" data-as="prompt" data-p="${k}">${esc(t)}</button>`,
-      ).join("");
+      const promptHtml = ([k, t]) => `<button type="button" class="prompt" data-as="prompt" data-p="${k}">${esc(t)}</button>`;
+      document.getElementById("prompts").innerHTML = PROMPTS.slice(0, 3).map(promptHtml).join("");
+      document.getElementById("more-prompts").innerHTML = PROMPTS.slice(3).map(promptHtml).join("");
       askInput.addEventListener("input", () => (askButton.disabled = !askInput.value.trim()));
       askForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
@@ -1111,7 +1124,6 @@
           ai: structuredClone(f.borrador),
           saved: structuredClone(f.borrador),
           current: structuredClone(f.borrador),
-          numbers: evidenceNumbers(caseIds(g, f)),
           added: new Set(),
         });
         ctx = { g, f, d };
@@ -1121,9 +1133,10 @@
 
       new MutationObserver(sync).observe(caseEl, { childList: true });
       if (autosize) new ResizeObserver(() => caseEl.querySelectorAll("textarea.ed").forEach(fit)).observe(caseEl);
-      addEventListener("beforeunload", (ev) => {
-        if (Object.values(drafts).some((d) => !same(d.current, d.saved))) ev.preventDefault();
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && assistant.classList.contains("is-open")) setSheet(false);
       });
+      if (location.hash.includes("/borrador")) document.body.classList.add("show-case");
       sync();
     })();
   </script>

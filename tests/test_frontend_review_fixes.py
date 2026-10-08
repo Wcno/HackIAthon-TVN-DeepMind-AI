@@ -103,7 +103,10 @@ def test_failed_source_load_shows_a_message_inside_the_drawer(client, path):
     html = client.get(path).text
     case = re.search(r'<section class="case[^"]*" id="case"[^>]*>', html).group(0)
     assert "hx-on::response-error" in case and "Fuente no disponible" in case
-    assert 'id="source-body"' in html
+    if path.endswith('/draft'):
+        assert 'data-source-body' in html and '/static/editor.js' in html
+    else:
+        assert 'id="source-body"' in html
 
 
 def test_missing_evidence_is_a_404_the_drawer_can_react_to(client):
@@ -111,11 +114,10 @@ def test_missing_evidence_is_a_404_the_drawer_can_react_to(client):
 
 
 def test_copy_button_confirms_only_after_the_clipboard_resolves_and_falls_back_to_selection(client):
-    html = client.get("/cases/CASO-001/draft").text
-    handler = re.search(r'data-copy="[^"]*"\s+hx-on:click="([^"]*)"', html).group(1)
-    assert handler.index("writeText") < handler.index(".then(") < handler.index("Copiado")
-    assert "Selecciona y copia" in handler and "selectAllChildren" in handler
-    assert "navigator.clipboard ?" in handler
+    script = client.get("/static/editor.js").text
+    assert "await navigator.clipboard.writeText" in script
+    assert script.index("await navigator.clipboard.writeText") < script.index("target.textContent = 'Copiado'")
+    assert "Selecciona y copia" in script and "field.select()" in script
 
 
 def test_successful_review_updates_the_list_row_badge_out_of_band(client):

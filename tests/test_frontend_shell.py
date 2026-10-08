@@ -24,9 +24,10 @@ def test_spanish_number_format():
 
 def test_layout_has_nav_search_banner_and_local_assets(client):
     html = client.get("/inbox").text
-    for label in ("Temas", "Consultas", "Calidad de datos", "Metodología"):
+    for label in ("Temas", "Calidad de datos", "Metodología"):
         assert f">{label}</a>" in html
-    assert 'role="search"' in html
+    assert '>Consultas</a>' not in html
+    assert 'role="search"' in html and 'action="/inbox"' in html
     assert "Demostración" in html
     assert 'href="/static/app.css"' in html and 'src="/static/htmx.min.js"' in html
     assert 'aria-current="page">Temas' in html

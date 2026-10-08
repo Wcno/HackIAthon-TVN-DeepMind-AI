@@ -26,6 +26,7 @@ whoami = "whoami.cli:main"
 [dependency-groups]
 dev = [
     "httpx2>=2.0,<3",
+    "playwright>=1.55,<2",
     "pytest>=8.0",
 ]
 experiments = [
@@ -44,3 +45,4 @@ packages = ["src/whoami"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["browser: real browser editor flows (requires Playwright Chromium or system Chrome)"]
