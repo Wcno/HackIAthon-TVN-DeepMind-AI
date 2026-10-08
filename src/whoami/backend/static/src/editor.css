@@ -58,6 +58,7 @@
   .assistant__mode { @apply mt-3 text-sm font-medium text-ink-3; }
   .assistant__scroll { @apply min-h-0 flex-1 overflow-y-auto pb-5; }
   .prompts { @apply mt-5 flex flex-wrap gap-2; }
+  .prompt:disabled { @apply cursor-not-allowed opacity-50 hover:bg-blue-soft hover:text-navy; }
   .prompt { @apply rounded-2xl bg-blue-soft px-3.5 py-2 text-left text-[14.5px] leading-snug font-medium text-navy transition hover:bg-blue hover:text-white; }
   .assistant__more { @apply mt-3 text-sm text-ink-3; }
   .assistant__more summary { @apply cursor-pointer font-semibold text-blue; }
@@ -72,12 +73,14 @@
   .ask__input { @apply w-full resize-none rounded-xl bg-white px-4 py-2.5 text-[15px] ring-1 ring-line transition placeholder:text-ink-3 focus:ring-2 focus:ring-blue; }
   .ask .btn { @apply justify-self-end; }
   .replies { @apply mt-4 grid list-none gap-4; }
-  .reply { @apply grid gap-3 border-b border-line pb-5 text-[15.5px]; }
+  .reply { @apply grid gap-4 border-b border-line py-5 text-[15.5px] leading-relaxed; }
   .reply > p:not(.reply__q) { @apply whitespace-pre-line; }
   .reply__q { @apply rounded-xl bg-navy px-4 py-3 font-semibold text-white; }
   .reply__state { @apply justify-self-start rounded-full bg-blue-soft px-3 py-1 text-[13px] font-semibold text-navy; }
   .reply__state--abstention { @apply bg-amber-50 text-amber-800; }
   .reply__state--contradiction { @apply bg-rose-50 text-rose-700; }
+  .reply__state--cached { @apply bg-ground text-ink-2; }
+  .reply__warn { @apply rounded-xl bg-amber-50 px-3.5 py-2 text-sm font-medium text-amber-800; }
   .reply__h { @apply font-semibold text-navy; }
   .reply__actions { @apply flex flex-wrap gap-2; }
   .diff__label { @apply text-[13px] text-ink-3; }
@@ -107,5 +110,8 @@
     .sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
     .savebar { @apply -mx-2 px-3; }
     .ask { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+    .draft-assistant .prompt, .draft-assistant .btn, .draft-assistant .cite, .draft-assistant .assistant__more summary, .editor-source .btn { @apply min-h-11; }
+    .draft-assistant .cite { @apply min-w-11; }
+    .draft-assistant .reply__actions { @apply gap-3; }
   }
 }

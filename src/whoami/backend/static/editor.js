@@ -15,6 +15,12 @@
     node.addEventListener('click', action);
     return node;
   };
+  const panamaDate = value => new Intl.DateTimeFormat('es-PA', {timeZone: 'America/Panama', day: '2-digit', month: '2-digit', year: 'numeric'}).format(new Date(value));
+  const SEARCH_REQUEST = /busca|buscar|noticias|art[ií]culos/i;
+  const QUESTION = /\?\s*$|^\s*¿|^\s*(qu[eé]|cu[aá]l(es)?|c[oó]mo|por qu[eé]|qui[eé]n(es)?|cu[aá]ndo|d[oó]nde|cu[aá]nt[oa]s?|hay|existe|es|son)(?=\s|$)/i;
+  // In the whole-draft scope a typed request is an edit unless it is clearly a search or a question.
+  const requestAction = (question, field) => field ? 'rewrite' : SEARCH_REQUEST.test(question) ? 'articles' : QUESTION.test(question) ? 'ask' : 'rewrite';
+  const pendingLabels = {rewrite: 'Redactando…', headlines: 'Redactando…', shorten: 'Redactando…', neutral: 'Redactando…', articles: 'Buscando noticias…'};
   const labels = {titulo: 'Título propuesto', brief: 'Brief', guion: 'Guion', copy_digital: 'Copy digital', enfoque_interes_publico: 'Enfoque de interés público'};
 
   function mount(root) {
@@ -182,17 +188,22 @@
     function renderReply(row, result, snapshot) {
       const names = {answer: 'Respuesta con evidencia', suggestion: 'Edición sugerida', articles: 'Artículos relacionados', abstention: 'Abstención', contradiction: 'Contradicción'};
       row.append(element('p', `reply__state reply__state--${result.kind}`, names[result.kind]), element('p', '', result.text));
-      for (const warning of result.warnings || []) row.append(element('p', 'reply__state reply__state--abstention', `⚠ ${warning}`));
+      if (result.cached) row.append(element('p', 'reply__state reply__state--cached', 'Respuesta guardada'));
+      const warn = text => element('p', 'reply__warn', `⚠ Verifica antes de aplicar: ${text}`);
+      if (result.kind !== 'suggestion') for (const warning of result.warnings || []) row.append(warn(warning));
       if (result.missing) row.append(element('p', 'reply__h', 'Qué se necesitaría'), element('p', '', result.missing));
       if (result.kind === 'suggestion') {
         row.append(element('p', 'reply__h', labels[result.field]), element('p', 'diff__label', 'Antes'), element('p', 'diff diff--before', snapshot[result.field]));
         const options = element('div', 'suggestion');
-        result.options.forEach(value => {
+        result.options.forEach((value, index) => {
           const option = element('div', 'option');
           option.append(element('p', 'diff__label', 'Después'), element('p', 'diff diff--after', value));
-          option.append(button('Aplicar', () => {
+          for (const warning of (result.option_warnings || [])[index] || []) option.append(warn(warning));
+          const actions = element('div', 'reply__actions');
+          const apply = button('Aplicar', () => {
             if (collect()[result.field] !== snapshot[result.field]) {
-              options.replaceChildren(element('p', 'notice', 'Esta sección cambió desde la consulta. Pide una sugerencia nueva para no sobrescribir tu edición.'));
+              if (!options.querySelector('.notice')) options.prepend(element('p', 'notice', 'Esta sección cambió desde la consulta. Copia la sugerencia o pide una nueva para no sobrescribir tu edición.'));
+              options.querySelectorAll('.option .btn--apply').forEach(node => { node.disabled = true; });
               return;
             }
             const field = form.querySelector(`textarea[data-key="${result.field}"]`);
@@ -203,7 +214,14 @@
             setAssistant(false);
             field.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
             field.focus({preventScroll: true});
-          }));
+          }, 'btn btn--small btn--apply');
+          const copy = button('Copiar', async () => {
+            try { await navigator.clipboard.writeText(value); copy.textContent = 'Copiado'; }
+            catch { copy.textContent = 'Copia el texto de arriba'; }
+            setTimeout(() => { copy.textContent = 'Copiar'; }, 1400);
+          }, 'btn btn--quiet btn--small');
+          actions.append(apply, copy);
+          option.append(actions);
           options.append(option);
         });
         options.append(button('Descartar', () => options.replaceChildren(element('p', 'reply__done', 'Sugerencia descartada.')), 'btn btn--quiet btn--small'));
@@ -212,7 +230,7 @@
       if (result.kind === 'articles') {
         for (const article of result.articles) {
           const card = element('div', 'result');
-          card.append(element('p', 'meta', `${article.medio}${article.fecha ? ' · ' + new Intl.DateTimeFormat('es-PA', {timeZone: 'America/Panama', dateStyle: 'medium'}).format(new Date(article.fecha)) : ''}`), element('p', 'result__title', article.titulo), element('p', 'result__passage', article.passage));
+          card.append(element('p', 'meta', `${article.medio}${article.fecha ? ' · ' + panamaDate(article.fecha) : ''}`), element('p', 'result__title', article.titulo), element('p', 'result__passage', article.passage));
           const actions = element('div', 'reply__actions');
           actions.append(button('Ver fuente', () => openSource(article.id_evidencia)));
           const add = button(sources.includes(article.id_evidencia) ? 'Ya está en la ficha' : 'Añadir a la ficha', () => {
@@ -241,20 +259,29 @@
       }
       citations(row, result.citations);
     }
-    async function ask(question, action = 'ask') {
+    const askButton = askForm.querySelector('button');
+    let pausedPrompts = [];
+    function setBusy(busy) {
+      if (busy) {
+        pausedPrompts = [...assistant.querySelectorAll('.prompt:not(:disabled)')];
+        pausedPrompts.forEach(node => { node.disabled = true; });
+      } else pausedPrompts.forEach(node => { node.disabled = false; });
+      askButton.disabled = busy || !input.value.trim();
+      if (busy) assistant.setAttribute('aria-busy', 'true'); else assistant.removeAttribute('aria-busy');
+    }
+    async function ask(question, action = 'ask', field = action === 'rewrite' ? chosenField() : null) {
       if (asking || !question.trim()) return;
       asking = true;
+      setBusy(true);
       showPrompts(false);
       const snapshot = collect();
       const row = element('li', 'reply');
       row.append(element('p', 'reply__q', question));
-      const pending = element('p', 'reply__state', 'Buscando evidencia…');
+      const pending = element('p', 'reply__state', pendingLabels[action] || 'Buscando evidencia…');
       row.append(pending);
       replies.prepend(row);
-      assistant.setAttribute('aria-busy', 'true');
       assistant.querySelector('.assistant__scroll').scrollTop = 0;
       try {
-        const field = action === 'rewrite' ? chosenField() : null;
         const result = await request(`${api}/assistant`, {method: 'POST', body: JSON.stringify({question, action, field, draft: snapshot, source_ids: sources.slice()})});
         pending.remove();
         renderReply(row, result, snapshot);
@@ -262,11 +289,11 @@
         if (error.name !== 'AbortError') {
           pending.textContent = error.message;
           pending.setAttribute('role', 'alert');
-          row.append(button('Reintentar', () => { row.remove(); ask(question, action); }));
+          row.append(button('Reintentar', () => { row.remove(); ask(question, action, field); }));
         }
       } finally {
         asking = false;
-        assistant.removeAttribute('aria-busy');
+        setBusy(false);
       }
     }
 
@@ -351,15 +378,17 @@
       if (action === 'ask') ask(target.textContent, target.dataset.action);
       if (action === 'scope') { setScope(target.dataset.cnField); setAssistant(true); input.focus({preventScroll: true}); }
     }, {capture: true, signal: abort.signal});
-    input.addEventListener('input', () => { askForm.querySelector('button').disabled = !input.value.trim(); }, {signal: abort.signal});
+    input.addEventListener('input', () => { askButton.disabled = asking || !input.value.trim(); }, {signal: abort.signal});
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); askForm.requestSubmit(); }
+    }, {signal: abort.signal});
     scope.addEventListener('change', () => setScope(scope.value), {signal: abort.signal});
     askForm.addEventListener('submit', event => {
       event.preventDefault();
       if (asking || !input.value.trim()) return;
       const question = input.value.trim();
-      // With a field chosen the request is an edit for that field; for the whole draft, searches stay searches.
-      ask(question, chosenField() ? 'rewrite' : /busca|buscar|noticias|art[ií]culos/i.test(question) ? 'articles' : 'ask');
-      input.value = ''; askForm.querySelector('button').disabled = true;
+      ask(question, requestAction(question, chosenField()));
+      input.value = '';
     }, {signal: abort.signal});
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') { source.hidden = true; if (assistant.classList.contains('is-open')) setAssistant(false); }
