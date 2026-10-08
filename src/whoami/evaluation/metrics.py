@@ -100,12 +100,18 @@ def score_answer(case, answer: Answer | None, evidence: dict[str, Evidence]) -> 
         for version in answer.versiones
     )
     supported = valid if answer.estado == "respondida" else versions_valid if answer.estado == "contradiccion" else True
+    mapped = bool(answer.afirmaciones) and answer.respuesta == " ".join(claim.texto for claim in answer.afirmaciones)
+    factual = [claim for claim in answer.afirmaciones if claim.tipo in ("hecho", "declaracion")]
+    mapped_citations_valid = [claim.id_afirmacion for claim in factual if not citation_errors(claim.citas, evidence)]
     return {
         "id": case.id, "state": answer.estado,
         "ok": answer.estado in case.expected_states and keys_ok and safe and supported,
         "keys_ok": keys_ok, "safety": safe, "citations_valid": valid,
         "versions_valid": versions_valid,
         "version_count": len(answer.versiones),
+        "claim_mapping_complete": mapped,
+        "factual_claim_ids": [claim.id_afirmacion for claim in factual],
+        "cited_factual_claim_ids": mapped_citations_valid,
     }
 
 
@@ -121,6 +127,19 @@ def answer_metrics(cases, records: Sequence[dict]) -> dict:
     emitted = [item for item in ids if by_id[item]["state"] == "respondida"]
     wrong = [item for item in answerable if by_id[item]["state"] == "abstencion"]
     wrong_supported = [item for item in supported_questions if by_id[item]["state"] == "abstencion"]
+    unmapped = [item for item in emitted if not by_id[item].get("claim_mapping_complete")]
+    claim_ids = [f"{item}/{claim}" for item in emitted for claim in by_id[item].get("factual_claim_ids", [])]
+    cited_claims = [f"{item}/{claim}" for item in emitted for claim in by_id[item].get("cited_factual_claim_ids", [])]
+    contradiction_ids = [f"{item}/V-{number}" for item in ids if by_id[item]["state"] == "contradiccion"
+                         for number in range(by_id[item].get("version_count", 0))]
+    cited_versions = [f"{item}/V-{number}" for item in ids if by_id[item]["state"] == "contradiccion" and by_id[item]["versions_valid"]
+                      for number in range(by_id[item].get("version_count", 0))]
+    query_claims = ratio(cited_claims + cited_versions, claim_ids + contradiction_ids)
+    query_claims["unmapped_query_ids"] = unmapped
+    query_claims["mapping_method"] = "Response text is composed only of individually verified claims; contradiction versions identify their supporting source records."
+    if unmapped:
+        query_claims["value"] = None
+        query_claims["reason"] = "Legacy free-text answers have no exhaustive claim-to-citation map."
     return {
         "correct": ratio([item for item in ids if by_id[item]["ok"]], ids),
         "by_kind": {
@@ -137,10 +156,7 @@ def answer_metrics(cases, records: Sequence[dict]) -> dict:
             "case_ids": wrong_supported,
         },
         "answer_citation_coverage": ratio([item for item in emitted if by_id[item]["citations_valid"]], emitted),
-        "query_factual_claim_coverage": {
-            "value": None,
-            "reason": "Query answers expose free text and shared citations, not a verified claim-to-citation map; answer-level coverage is not factual-claim coverage.",
-        },
+        "query_factual_claim_coverage": query_claims,
         "contradiction_version_coverage": {
             "numerator": sum(by_id[item].get("version_count", 0) for item in ids if by_id[item]["state"] == "contradiccion" and by_id[item]["versions_valid"]),
             "denominator": sum(by_id[item].get("version_count", 0) for item in ids if by_id[item]["state"] == "contradiccion"),

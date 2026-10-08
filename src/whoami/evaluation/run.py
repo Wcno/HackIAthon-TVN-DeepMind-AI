@@ -257,7 +257,7 @@ def evaluate(args) -> dict:
             if answer is not None and answer.consulta != case.query:
                 raise ValueError(f"Saved answer query differs: {case.id}")
         elif llm is not None:
-            answer = answer_query(case.id, case.query, retrievers["hybrid"], gate, evidence, llm, args.model)
+            answer = answer_query(case.id, case.query, retrievers["hybrid"], gate, evidence, llm, args.model, structured=True)
         elif case.query in archive:
             answer = Answer.model_validate(archive[case.query] | {"id_consulta": case.id})
         else:
@@ -300,6 +300,7 @@ def evaluate(args) -> dict:
         "benchmark_human": benchmark_review["complete"],
         "human_claim_sample": claims["reviewed_unique_claims"] >= 30,
         "human_support_target": claims["meets_human_target"],
+        "query_claim_mapping": not answer_metrics(cases, results)["query_factual_claim_coverage"]["unmapped_query_ids"],
         "tests_and_acceptance": not args.skip_tests and tests["exit_code"] == 0 and all(item["passed"] for item in tests["acceptance"].values()),
     }
     report = {
@@ -311,7 +312,8 @@ def evaluate(args) -> dict:
                    "vectors_sha256": sha256(vector_path), "evaluation_corpus_sha256": corpus_fingerprint,
                    "frozen_news": len(ids), "evidence_count": len(evidence)},
         "model": {"generation": saved["model"]["generation"] if saved else args.model if llm else "recorded product outputs; original timing/tokens unavailable",
-                  "embedding": MODEL_NAME, "revision": MODEL_REVISION, "cosine_threshold": gate.min_cosine},
+                  "embedding": MODEL_NAME, "revision": MODEL_REVISION, "cosine_threshold": gate.min_cosine,
+                  "query_prompt_version": "structured-claims-v1" if llm else saved["model"].get("query_prompt_version", "legacy-free-text") if saved else "legacy-free-text"},
         "index_setup_s": index_s, "index_seeded_news": len(ids), "retrieval": retrieval, "answers": answer_metrics(cases, results),
         "generation_latency": latency([record["generation_wall_s"] for record in results if record["generation_wall_s"] is not None]),
         "tokens": saved["tokens"] if saved else token_totals(llm.calls) if llm else None,

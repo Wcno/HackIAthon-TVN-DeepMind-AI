@@ -82,9 +82,9 @@ def package_schema() -> Schema:
     )
 
 
-def answer_schema(allowed_ids: Sequence[str]) -> Schema:
+def answer_schema(allowed_ids: Sequence[str], *, structured: bool = False) -> Schema:
     version = _object({"valor": _STRING, "alcance": _STRING, "id_evidencia": _id_enum(allowed_ids)})
-    return _object(
+    schema = _object(
         {
             "estado": {"type": "string", "enum": list(ANSWER_STATES)},
             "respuesta": _NULLABLE_STRING,
@@ -94,6 +94,10 @@ def answer_schema(allowed_ids: Sequence[str]) -> Schema:
             "versiones": _array(version),
         }
     )
+    if structured:
+        schema["properties"]["afirmaciones"] = _array(_claim_schema(allowed_ids))
+        schema["required"].append("afirmaciones")
+    return schema
 
 
 def entailment_schema() -> Schema:
@@ -173,6 +177,8 @@ def to_answer(data: Mapping[str, Any], id_consulta: str, consulta: str) -> Answe
     fields: dict[str, Any] = {}
     if state == "respondida":
         fields = {"respuesta": _text_or_none(data.get("respuesta")), "citas": tuple(_citation(c) for c in data["citas"])}
+        if data.get("afirmaciones"):
+            fields["afirmaciones"] = to_claims(data)
     elif state == "abstencion":
         fields = {
             "motivo_abstencion": _text_or_none(data.get("motivo_abstencion")),

@@ -17,7 +17,7 @@ from whoami.evaluation.tasks import SeededEmbedder, aligned_vectors, claim_evalu
 from whoami.embeddings import MODEL_NAME, MODEL_REVISION
 from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import answer_query
-from whoami.schemas import Answer, Citation
+from whoami.schemas import Answer, Citation, Claim
 
 
 def case(identity="Q-1", kind="supported", **changes):
@@ -295,6 +295,20 @@ def test_replay_cannot_use_original_timings_against_changed_synthetic_sources():
     validate_saved_inputs(saved, saved)
     with pytest.raises(ValueError, match="evaluation_corpus"):
         validate_saved_inputs(saved, {"evidence_sha256": "unchanged-real-file", "evaluation_corpus_sha256": fingerprint(changed)})
+
+
+def test_structured_answer_coverage_counts_claims_instead_of_queries():
+    evidence = by_id(news("N-1", titulo="El Canal tendrá 33 tránsitos diarios desde octubre."))
+    citation = Citation(id_evidencia="N-1", campo="titulo", pasaje="33 tránsitos diarios")
+    claims = (Claim(id_afirmacion="A-1", texto="El Canal tendrá 33 tránsitos diarios.", tipo="hecho", citas=(citation,)),
+              Claim(id_afirmacion="A-2", texto="El anuncio aplica desde octubre.", tipo="hecho", citas=(citation,)))
+    answer = Answer(id_consulta="Q-1", consulta="¿Cuántos tránsitos?", estado="respondida",
+                    respuesta=" ".join(claim.texto for claim in claims), citas=(citation,), afirmaciones=claims)
+    result = answer_metrics([case()], [score_answer(case(), answer, evidence)])
+    assert result["query_factual_claim_coverage"]["numerator"] == 2
+    assert result["query_factual_claim_coverage"]["denominator"] == 2
+    assert result["query_factual_claim_coverage"]["unmapped_query_ids"] == []
+    assert result["answer_citation_coverage"]["denominator"] == 1
 
 
 def test_g7_t01_invalid_dates_and_nulls_do_not_block_valid_rows(tmp_path, monkeypatch):
