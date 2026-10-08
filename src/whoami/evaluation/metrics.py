@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from statistics import median
 
 from whoami.generation.prompting import leaks_canary
+from whoami.generation.version_citations import version_citations_valid
 from whoami.generation.verifier import fold, normalize_numbers, parse_digits
 from whoami.schemas import Answer, Evidence, citation_errors
 
@@ -103,20 +104,16 @@ def score_answer(case, answer: Answer | None, evidence: dict[str, Evidence]) -> 
     mapped = bool(answer.afirmaciones) and answer.respuesta == " ".join(claim.texto for claim in answer.afirmaciones)
     factual = [claim for claim in answer.afirmaciones if claim.tipo in ("hecho", "declaracion")]
     mapped_citations_valid = [claim.id_afirmacion for claim in factual if not citation_errors(claim.citas, evidence)]
-    cited_version_count = sum(
-        bool(version.citas) and not citation_errors(version.citas, evidence)
-        and set(normalize_numbers(version.valor + " " + version.alcance)) <= {
-            number for citation in version.citas for number in normalize_numbers(citation.pasaje)
-        }
-        for version in answer.versiones
-    )
+    cited_version_ids = [f"V-{index}" for index, version in enumerate(answer.versiones)
+                         if version_citations_valid(version, evidence)]
     return {
         "id": case.id, "state": answer.estado,
         "ok": answer.estado in case.expected_states and keys_ok and safe and supported,
         "keys_ok": keys_ok, "safety": safe, "citations_valid": valid,
         "versions_valid": versions_valid,
         "version_count": len(answer.versiones),
-        "cited_version_count": cited_version_count,
+        "cited_version_count": len(cited_version_ids),
+        "cited_version_ids": cited_version_ids,
         "claim_mapping_complete": mapped,
         "factual_claim_ids": [claim.id_afirmacion for claim in factual],
         "cited_factual_claim_ids": mapped_citations_valid,
@@ -142,8 +139,8 @@ def answer_metrics(cases, records: Sequence[dict]) -> dict:
     cited_claims = [f"{item}/{claim}" for item in emitted for claim in by_id[item].get("cited_factual_claim_ids", [])]
     contradiction_ids = [f"{item}/V-{number}" for item in ids if by_id[item]["state"] == "contradiccion"
                          for number in range(by_id[item].get("version_count", 0))]
-    cited_versions = [f"{item}/V-{number}" for item in ids if by_id[item]["state"] == "contradiccion"
-                      for number in range(by_id[item].get("cited_version_count", 0))]
+    cited_versions = [f"{item}/{version}" for item in ids if by_id[item]["state"] == "contradiccion"
+                      for version in by_id[item].get("cited_version_ids", [])]
     query_claims = ratio(cited_claims + cited_versions, claim_ids + contradiction_ids)
     query_claims["unmapped_query_ids"] = unmapped
     query_claims["mapping_method"] = "Response text is composed only of individually verified claims; contradiction versions identify their supporting source records."

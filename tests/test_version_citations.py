@@ -49,3 +49,32 @@ def test_version_coverage_requires_its_cited_passage_to_support_scope_figures():
     measured = answer_metrics([case], [score_answer(case, answer, evidence)])
     assert measured["contradiction_version_coverage"] == {"numerator": 0, "denominator": 2}
     assert measured["query_factual_claim_coverage"]["value"] is None
+
+
+def test_forged_qualitative_values_receive_no_credit_and_lose_saved_citations():
+    from whoami.evaluation.datasets import BenchmarkCase
+    from whoami.evaluation.metrics import score_answer
+
+    evidence = by_id(news("N-1", titulo="El Canal informa en 2026."),
+                     news("N-2", titulo="El Canal informa en 2026."))
+    answer = Answer(id_consulta="Q-1", consulta="Estado", estado="contradiccion", versiones=tuple(
+        ContradictionVersion(valor=value, alcance="en 2026", id_evidencia=identity,
+                             citas=(Citation(id_evidencia=identity, campo="titulo", pasaje="El Canal informa en 2026."),))
+        for identity, value in (("N-1", "cierre definitivo"), ("N-2", "apertura total"))))
+    case = BenchmarkCase(id="Q-1", kind="contradiction", query="Estado", expected_states=("contradiccion",))
+    assert score_answer(case, answer, evidence)["cited_version_count"] == 0
+    assert all(not version.citas for version in enrich_version_citations(answer, evidence).versiones)
+
+
+def test_partial_version_coverage_reports_the_actual_missing_version():
+    from whoami.evaluation.datasets import BenchmarkCase
+    from whoami.evaluation.metrics import answer_metrics, score_answer
+
+    evidence = by_id(news("N-1", titulo="33 transitos"), news("N-2", titulo="32 transitos"))
+    answer = Answer(id_consulta="Q-1", consulta="Cantidad", estado="contradiccion", versiones=(
+        ContradictionVersion(valor="33", alcance="anuncio", id_evidencia="N-1"),
+        ContradictionVersion(valor="32", alcance="anuncio", id_evidencia="N-2",
+                             citas=(Citation(id_evidencia="N-2", campo="titulo", pasaje="32 transitos"),))))
+    case = BenchmarkCase(id="Q-1", kind="contradiction", query="Cantidad", expected_states=("contradiccion",))
+    measured = answer_metrics([case], [score_answer(case, answer, evidence)])
+    assert measured["query_factual_claim_coverage"]["failures"] == ["Q-1/V-0"]

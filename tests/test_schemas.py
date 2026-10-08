@@ -456,6 +456,19 @@ def test_a_coherent_output_set_verifies():
     verify(output_set())
 
 
+@pytest.mark.parametrize("location", ["query", "case_file"])
+def test_version_citations_cannot_bypass_cross_record_literal_verification(location):
+    version = ContradictionVersion(valor="33", alcance="anuncio", id_evidencia=NEWS_ID,
+                                   citas=(Citation(id_evidencia=NEWS_ID, campo="titulo", pasaje="Invented passage"),))
+    if location == "query":
+        output = output_set(consultas=(Answer(id_consulta="Q-1", consulta="Cantidad", estado="contradiccion",
+                                              versiones=(version, version)),))
+    else:
+        output = output_set(fichas=(case_file(contradicciones=(Contradiction(descripcion="Conflicto",
+                                                                          versiones=(version, version)),)),))
+    assert "literal" in problems(output)
+
+
 def test_a_citation_that_does_not_resolve_is_reported():
     broken = case_file(afirmaciones=(claim(citas=(Citation(id_evidencia=NEWS_ID, campo="titulo", pasaje="no está"),)),))
 

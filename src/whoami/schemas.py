@@ -486,6 +486,7 @@ def verify(output: OutputSet) -> None:
 
     versions = [v for f in output.fichas for contradiction in f.contradicciones for v in contradiction.versiones]
     versions += [v for answer in output.consultas for v in answer.versiones]
+    problems += citation_errors([citation for version in versions for citation in version.citas], evidences)
     problems += [
         f"{v.id_evidencia}: la versión contradictoria cita una evidencia que no existe"
         for v in versions
