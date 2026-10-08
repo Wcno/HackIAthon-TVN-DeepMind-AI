@@ -87,10 +87,18 @@ def main(argv: list[str] | None = None) -> int:
 
     commands.add_parser("imagenes-locales")
 
+    from whoami import offline
+    offline.add_arguments(commands.add_parser("offline-demo", help="prepare, verify or serve the frozen G10 demo"))
+
     export_command = commands.add_parser("export-backend")
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
+    if args.command == "offline-demo":
+        try:
+            return offline.main(args)
+        except (OSError, ValueError, KeyError) as error:
+            parser.error(str(error))
     if args.command == "download-model":
         try:
             print(fetch_model(args.directory, offline=args.offline))

@@ -103,6 +103,11 @@ Consultar [la documentación del backend](docs/backend.md) y [el editor G6](docs
 
 ## Datos y procesamiento
 
+Para preparar y arrancar la demo completa sin internet, consulta [G10: modo offline](docs/g10-offline.md).
+`whoami offline-demo prepare --output offline-demo` congela el snapshot validado;
+`whoami offline-demo serve --bundle offline-demo` lo verifica y fuerza el modo sin conexión,
+sin llamadas a Gemini ni carga de modelos locales.
+
 Las capturas originales se conservan en `data/raw/`; los archivos normalizados
 se escriben en `data/processed/` y sus hashes en `data/manifest.json`. La
 reconstrucción del corpus funciona sin red a partir de las capturas guardadas:
