@@ -11,7 +11,7 @@
 {# A topic's photo. Larger renditions carry the credit; list thumbnails are decorative beside their title. #}
 {% macro photo(group, cls, credit=true) -%}
 {% if group.imagen %}{% set image = group.imagen %}
-<figure class="photo {{ cls }}"><img src="{{ image.url|image_src }}" alt="{{ (image.alt or 'Foto: ' ~ group.titulo) if credit else '' }}" loading="lazy" referrerpolicy="no-referrer">
+<figure class="photo {{ cls }}"><img src="{{ (image.local or image.url)|image_src }}" alt="{{ (image.alt or 'Foto: ' ~ group.titulo) if credit else '' }}" loading="lazy" referrerpolicy="no-referrer">
   {%- if credit %}<figcaption class="photo__credit"><a href="{{ image.enlace|safe_url }}" target="_blank" rel="noopener">{{ image.credito }}</a></figcaption>{% endif %}</figure>
 {%- endif %}
 {%- endmacro %}

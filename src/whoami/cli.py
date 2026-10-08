@@ -12,7 +12,8 @@
                                         news + embeddings to data/processed/grupos.jsonl and evidencias.jsonl;
                                         --sin-llm makes it fully offline (logistic topics, embedding-only grouping)
     whoami imagenes [--top N]           photo (og:image) of the news of the first N agenda topics to
-                                        data/processed/imagenes.json (network)
+                                        data/processed/imagenes.json and vendors a resized copy of each (network)
+    whoami imagenes-locales             vendor the photos already in imagenes.json (idempotent; network only for new ones)
     whoami export-backend               export persisted case files and human reviews (offline)
 """
 
@@ -73,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     images_command = commands.add_parser("imagenes")
     images_command.add_argument("--top", type=int, default=40, help="photos for the news of the first N topics of the agenda")
 
+    commands.add_parser("imagenes-locales")
+
     export_command = commands.add_parser("export-backend")
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
@@ -111,8 +114,19 @@ def main(argv: list[str] | None = None) -> int:
         groups = sort_inbox([Group.model_validate_json(line) for line in
                              (PROCESSED / "grupos.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()])
         found = images.collect([group.model_dump(mode="json") for group in groups], images.fetch_html, limit=args.top)
-        path = images.write(PROCESSED, found)
-        print(f"{path}: {len(found)} fotos de {sum(len(group.miembros) for group in groups[:args.top])} noticias")
+        vendored = images.vendor(found, images.VENDOR_DIRECTORY, images.fetch_image)
+        path = images.write(PROCESSED, vendored)
+        print(f"{path}: {len(found)} fotos de {sum(len(group.miembros) for group in groups[:args.top])} noticias, "
+              f"{sum('local' in photo for photo in vendored.values())} con copia local")
+        return 0
+
+    if args.command == "imagenes-locales":
+        from whoami.contracts import PROCESSED
+        from whoami.ingest import images
+
+        vendored = images.vendor(images.load(PROCESSED), images.VENDOR_DIRECTORY, images.fetch_image)
+        path = images.write(PROCESSED, vendored)
+        print(f"{path}: {sum('local' in photo for photo in vendored.values())} de {len(vendored)} fotos con copia local")
         return 0
 
     if args.command == "export-backend":

@@ -59,3 +59,86 @@ def test_the_demo_agenda_shows_labelled_illustrative_photos(tmp_path):
         assert html.count('class="photo row__photo"') >= 5
         case = client.get("/cases/CASO-001").text
         assert 'class="photo case__photo' in case
+
+
+def _jpeg(width: int, height: int) -> bytes:
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (width, height), "tomato").save(buffer, "JPEG")
+    return buffer.getvalue()
+
+
+def _photo(url: str) -> dict:
+    return {"url": url, "credito": "Foto: TVN", "enlace": "https://a.test/n", "ilustrativa": False}
+
+
+def test_vendor_stores_a_resized_webp_copy_and_records_its_local_path(tmp_path):
+    from PIL import Image
+
+    from whoami.ingest.images import vendor
+
+    images = {"N-1": _photo("https://cdn.test/big.jpg")}
+    vendored = vendor(images, tmp_path, lambda url: _jpeg(2000, 1000))
+    assert vendored["N-1"]["local"] == "/static/img/news/N-1.webp"
+    assert vendored["N-1"]["url"] == "https://cdn.test/big.jpg" and vendored["N-1"]["credito"] == "Foto: TVN"
+    with Image.open(tmp_path / "N-1.webp") as stored:
+        assert stored.format == "WEBP" and stored.size == (800, 400)
+
+
+def test_vendor_does_not_upscale_small_photos(tmp_path):
+    from PIL import Image
+
+    from whoami.ingest.images import vendor
+
+    vendor({"N-1": _photo("https://cdn.test/s.jpg")}, tmp_path, lambda url: _jpeg(300, 200))
+    with Image.open(tmp_path / "N-1.webp") as stored:
+        assert stored.size == (300, 200)
+
+
+def test_vendor_is_idempotent_and_skips_failures_and_static_images(tmp_path):
+    from whoami.ingest.images import vendor
+
+    requested = []
+
+    def fetch(url):
+        requested.append(url)
+        if "broken" in url:
+            raise OSError("down")
+        if "garbage" in url:
+            return b"not an image"
+        return _jpeg(900, 900)
+
+    images = {"N-1": _photo("https://cdn.test/a.jpg"), "N-2": _photo("https://cdn.test/broken.jpg"),
+              "N-3": _photo("https://cdn.test/garbage.jpg"), "N-4": {**_photo("/static/img/demo/x.jpg"), "ilustrativa": True}}
+    first = vendor(images, tmp_path, fetch)
+    assert "local" in first["N-1"] and "local" not in first["N-2"] and "local" not in first["N-3"] and "local" not in first["N-4"]
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["N-1.webp"]
+
+    requested.clear()
+    assert vendor(first, tmp_path, fetch)["N-1"] == first["N-1"]
+    assert "https://cdn.test/a.jpg" not in requested
+
+
+def test_an_entry_whose_vendored_file_vanished_is_downloaded_again(tmp_path):
+    from whoami.ingest.images import vendor
+
+    images = {"N-1": {**_photo("https://cdn.test/a.jpg"), "local": "/static/img/news/N-1.webp"}}
+    assert vendor(images, tmp_path, lambda url: _jpeg(100, 100))["N-1"]["local"] == "/static/img/news/N-1.webp"
+    assert (tmp_path / "N-1.webp").is_file()
+
+
+def test_pages_never_reference_an_external_photo(tmp_path):
+    external = {"url": "https://cdn.test/x.jpg", "credito": "Foto: TVN", "enlace": "https://a.test/x", "ilustrativa": False}
+    with TestClient(create_app(Settings(database=tmp_path / "editorial.sqlite3"))) as client:
+        repository = client.app.state.repository
+        members = [m["id_noticia"] for g in repository.records("group") for m in g["miembros"]]
+        client.app.state.editorial.images = {member: external for member in members}
+        html = client.get("/inbox").text
+        assert "cdn.test" not in html
+        assert "/static/img/photo-placeholder.svg" in html
+        local = {**external, "local": "/static/img/demo/canal-agua-clara.jpg"}
+        client.app.state.editorial.images = {member: local for member in members}
+        assert "/static/img/demo/canal-agua-clara.jpg" in client.get("/inbox").text
