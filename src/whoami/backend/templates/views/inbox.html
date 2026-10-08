@@ -1,6 +1,61 @@
-<form method="get"><label>Tema <select name="topic"><option value="">Todos</option>{% for slug, label in topics.items() %}<option value="{{ slug }}">{{ label }}</option>{% endfor %}</select></label><button>Filtrar</button></form>
-  {% for group in groups %}<article><h2><a href="/groups/{{ group.id_grupo|urlencode }}">{{ group.titulo }}</a></h2>
-  <p>{{ group.tema_etiqueta }} · Prioridad {{ group.puntaje.valor }} ({{ group.puntaje.rango }}) · Evidencia {{ group.estado_evidencia }} · {{ group.estado_revision }}</p>
-  <p>{{ group.n_noticias }} noticias · {{ group.n_medios }} medios · {{ group.n_procedencias }} procedencias</p>
-  <dl>{% for name, value in group.puntaje.componentes.items() %}<dt>{{ name }}: {{ value }}</dt><dd>{{ group.puntaje.justificaciones[name] }}</dd>{% endfor %}</dl>
-  <p>Reglas: {{ group.puntaje.version_reglas }}</p>{% if group.id_caso %}<a href="/cases/{{ group.id_caso|urlencode }}">Abrir ficha</a>{% endif %}</article>{% else %}<p>No hay grupos para este filtro.</p>{% endfor %}
+{# Master list: filters and ranked rows. Needs groups, rank, selected, topic, estado, filter_query, base_path. #}
+{% set unfiltered = not topic and not estado %}
+{% set shown = groups | rejectattr("id_grupo", "equalto", lead.id_grupo if (unfiltered and lead) else "") | list %}
+<section class="inbox" id="inbox" aria-label="Temas priorizados">
+  <form class="filters" method="get" action="{{ base_path }}" role="group" aria-label="Filtrar temas"
+        hx-get="{{ base_path }}" hx-trigger="change" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">
+    <label class="select">
+      <span class="select__label">Tema</span>
+      <select name="topic">
+        <option value="">Todos los temas</option>
+        {% for slug in topic_options %}<option value="{{ slug }}"{% if slug == topic %} selected{% endif %}>{{ topics.get(slug, slug) }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    <label class="select">
+      <span class="select__label">Estado</span>
+      <select name="estado">
+        <option value="">Todos los estados</option>
+        {% for key, label in review_labels.items() %}<option value="{{ key }}"{% if key == estado %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {{ icon("chevron", "icon select__chevron") }}
+    </label>
+    <noscript><button class="btn btn--small" type="submit">Filtrar</button></noscript>
+    {% set n = shown|length %}
+    <span class="count">{{ n|number }} {{ ("tema más" if n == 1 else "temas más") if unfiltered else ("tema" if n == 1 else "temas") }}</span>
+  </form>
+
+  {% if shown %}
+  <ol class="rows">
+    {% for group in shown %}
+    <li class="row{% if group.id_grupo == selected %} is-selected{% endif %}">
+      <a class="row__hit" href="{{ open_href(group) }}" hx-get="{{ open_href(group) }}" hx-target="#desk" hx-swap="outerHTML" hx-push-url="true"{% if group.id_grupo == selected %} aria-current="true"{% endif %}>
+        <span class="row__rank">{{ rank[group.id_grupo] }}</span>
+        <span class="row__main">
+          <span class="row__title">{{ group.titulo }}</span>
+          <span class="meta">
+            <span class="topic">{{ group.tema_etiqueta }}</span>
+            <span class="dateline">{{ group|latest_date|short_date }}</span>
+            <span class="row__coverage">{{ group.n_procedencias|number }} {{ "origen" if group.n_procedencias == 1 else "orígenes" }}</span>
+          </span>
+          <span class="row__badges">
+            <span class="badge evidence--{{ group.estado_evidencia }}">{{ evidence_labels[group.estado_evidencia] }}</span>
+            <span id="review-badge-{{ group.id_grupo }}" class="badge review review--{{ group.estado_revision }}">{{ review_labels[group.estado_revision] }}</span>
+            {% if group|needs_investigation %}<span class="flag">{{ icon("alert") }}Requiere investigación</span>{% endif %}
+          </span>
+        </span>
+        <span class="row__score">
+          <span class="score__value">{{ group.puntaje.valor|number }}</span>
+          <span class="score__range">{{ group.puntaje.rango }}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <div class="empty">
+    <p>No hay temas con estos filtros.</p>
+    <a class="btn" href="{{ base_path }}">Quitar filtros</a>
+  </div>
+  {% endif %}
+</section>

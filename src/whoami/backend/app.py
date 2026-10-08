@@ -1,16 +1,16 @@
-"""FastAPI views for the eight G2 screens. G6 can replace the small templates."""
+"""FastAPI app for the TVN DataMind AI editorial desk: routes, error handlers and Jinja filters."""
 
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlsplit
-from zoneinfo import ZoneInfo
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,9 +18,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
-from whoami.backend.service import EditorialService, quality_report
+from whoami.backend.panama_time import panama_time, short_date
+from whoami.backend.presentation import draft_budgets, latest_date, needs_investigation, snapshot_view
+from whoami.backend.reports import methodology_view, quality_view, score_components
+from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
-from whoami.contracts import PROCESSED, REVIEW_STATES, TOPIC_LABELS, ReviewState
+from whoami.contracts import PROCESSED, REVIEW_STATES, REVIEW_TRANSITIONS, TOPIC_LABELS, ReviewState
+
+logger = logging.getLogger(__name__)
 
 
 class ReviewRequest(BaseModel):
@@ -38,10 +43,42 @@ class ReviewRequest(BaseModel):
         return value.strip()
 
 
-def panama_time(value: str | None) -> str:
+REVIEW_FIELD_ERRORS = {
+    "state": "Elige una decisión válida para registrar la revisión.",
+    "actor": "Escribe el nombre del responsable para registrar la decisión.",
+    "expected_version": "La versión de la ficha no es válida. Recarga la página y vuelve a decidir.",
+}
+
+
+def review_field_error(error: RequestValidationError) -> str:
+    for problem in error.errors():
+        if problem["loc"][-1] in REVIEW_FIELD_ERRORS:
+            return REVIEW_FIELD_ERRORS[problem["loc"][-1]]
+    return "Revisa la decisión, el responsable y la versión de la ficha."
+
+
+REVIEW_LABELS = {
+    "nuevo": "Nuevo", "en_revision": "En revisión", "requiere_evidencia": "Requiere evidencia",
+    "aprobado_como_borrador": "Aprobado como borrador", "descartado": "Descartado",
+}
+#: Screens whose every figure is real, so the synthetic-data banner would mislead.
+REAL_DATA_SCREENS = frozenset({"quality"})
+EVIDENCE_LABELS = {
+    "suficiente_para_borrador": "Evidencia suficiente", "parcial": "Evidencia parcial", "insuficiente": "Evidencia insuficiente",
+}
+
+
+def number(value: float | int | None, decimals: int | None = None) -> str:
+    """Spanish number format: 30.823 and 44,36."""
     if value is None:
-        return "Fecha desconocida"
-    return datetime.fromisoformat(value).astimezone(ZoneInfo("America/Panama")).strftime("%d/%m/%Y %H:%M")
+        return "-"
+    if decimals is None:
+        decimals = 0 if float(value).is_integer() else 2
+    return f"{value:,.{decimals}f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def percent(value: float | int | None, decimals: int = 2) -> str:
+    return "-" if value is None else f"{number(value, decimals)} %"
 
 
 def safe_url(value: str) -> str:
@@ -58,7 +95,9 @@ QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dic
 def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None) -> FastAPI:
     settings = settings or Settings.from_environment()
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url)
+    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, number=number, percent=percent,
+                            short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
+    templates.env.globals.update(review_labels=REVIEW_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets, score_components=score_components)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -67,6 +106,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.repository = repository
         app.state.synthetic = any(group.get("sintetico", False) for group in repository.records("group"))
         app.state.editorial = EditorialService(repository)
+        app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
         app.state.gemini = GeminiClient(repository, settings)
         try:
             yield
@@ -74,13 +114,46 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             await app.state.gemini.close()
 
     app = FastAPI(title="TVN DataMind AI", lifespan=lifespan)
+    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
-            "screen": screen, "title": title, "demo": settings.demo or request.app.state.synthetic,
+            "screen": screen, "title": title, "demo": (settings.demo or request.app.state.synthetic) and screen not in REAL_DATA_SCREENS,
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
-            "review_states": REVIEW_STATES, **context,
+            "target": request.headers.get("HX-Target") if request.headers.get("HX-Request") == "true" else None,
+            "workspace": screen == "workspace", "filter_query": "", "base_path": request.url.path,
+            "snapshot": request.app.state.snapshot, "examples_nav": request.app.state.repository.records("answer"), "review_states": REVIEW_STATES, "transitions": REVIEW_TRANSITIONS, **context,
         }, status_code=status_code)
+
+    def desk(request: Request, title: str, pane: str | None = None, *, group: dict | None = None, case: dict | None = None,
+             status_code: int = 200, **context):
+        """Master/detail screen: ranked list plus the open workspace; with no group, the first listed one is selected."""
+        editorial = request.app.state.editorial
+        topic = request.query_params.get("topic", "")
+        estado = request.query_params.get("estado", "")
+        ranked = editorial.inbox()
+        groups = [item for item in ranked if (not topic or item["tema"] == topic) and (not estado or item["estado_revision"] == estado)]
+        opened = group is not None
+        if group is None and groups:
+            group = editorial.group(groups[0]["id_grupo"])
+        if group is not None and case is None and group["id_caso"]:
+            case = editorial.case(group["id_caso"])
+        pane = pane or ("case" if case else "group")
+        filters = urlencode({"topic": topic, "estado": estado}) if topic or estado else ""
+        return render(request, "workspace", title, status_code=status_code, groups=groups, lead=ranked[0] if ranked else None,
+                      rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado,
+                      topic_options=sorted({item["tema"] for item in ranked}), group=group, case=case, pane=pane, opened=opened,
+                      selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", **context)
+
+    def case_screen(request: Request, case_id: str, pane: str, title: str | None = None, status_code: int = 200, **context):
+        case = request.app.state.editorial.case(case_id)
+        group = request.app.state.editorial.group(case["id_grupo"])
+        return desk(request, title or case["titulo"], pane, group=group, case=case, status_code=status_code, **context)
+
+    def review_screen(request: Request, case_id: str, status_code: int = 200, error: str | None = None, form: dict | None = None):
+        return case_screen(request, case_id, "review", "Revisión humana", status_code, error=error, form=form or {},
+                           history=request.app.state.repository.review_history(case_id),
+                           audit=request.app.state.repository.audit_history(case_id))
 
     @app.exception_handler(MissingRecord)
     async def missing_record(request: Request, error: MissingRecord):
@@ -96,10 +169,16 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.exception_handler(GenerationUnavailable)
     async def unavailable(request: Request, error: GenerationUnavailable):
-        return render(request, "error", "Consulta no disponible", status_code=503, message=str(error))
+        logger.warning("Generation unavailable: %s", error)
+        return render(request, "error", "Consulta no disponible", status_code=503,
+                      message="La consulta no pudo completarse. Intenta de nuevo más tarde.")
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError):
+        case_id = request.path_params.get("case_id")
+        if request.method == "POST" and case_id and request.url.path.endswith("/review"):
+            form = dict((await request.form()).items())
+            return review_screen(request, case_id, 422, review_field_error(error), form)
         return render(request, "error", "Revisa los campos", status_code=422,
                       message="La solicitud contiene campos ausentes o no válidos. Revisa la decisión y el responsable.")
 
@@ -114,20 +193,25 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.get("/quality", response_class=HTMLResponse)
     def quality(request: Request):
-        return render(request, "quality", "Calidad de los datos", reports=quality_report(PROCESSED if settings.demo else settings.data_directory))
+        return render(request, "quality", "Calidad de datos", quality=quality_view(PROCESSED if settings.demo else settings.data_directory))
 
     @app.get("/inbox", response_class=HTMLResponse)
-    def inbox(request: Request, topic: str | None = None):
-        return render(request, "inbox", "Agenda priorizada", groups=request.app.state.editorial.inbox(topic=topic))
+    def inbox(request: Request):
+        return desk(request, "Agenda priorizada")
+
+    @app.get("/methodology", response_class=HTMLResponse)
+    def methodology(request: Request, grupo: str | None = None):
+        return render(request, "methodology", "Metodología",
+                      methodology=methodology_view(request.app.state.editorial.inbox(), grupo))
 
     @app.get("/groups/{group_id}", response_class=HTMLResponse)
     def group(request: Request, group_id: str):
         item = request.app.state.editorial.group(group_id)
-        return render(request, "group", item["titulo"], group=item)
+        return desk(request, item["titulo"], "group", group=item)
 
     @app.get("/groups/{group_id}/context", response_class=HTMLResponse)
     def context(request: Request, group_id: str):
-        return render(request, "context", "Contexto oficial", group=request.app.state.editorial.group(group_id))
+        return desk(request, "Contexto oficial", "context", group=request.app.state.editorial.group(group_id))
 
     @app.get("/evidence/{evidence_id}", response_class=HTMLResponse)
     def evidence(request: Request, evidence_id: str):
@@ -136,47 +220,58 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     @app.get("/cases/{case_id}", response_class=HTMLResponse)
     def case(request: Request, case_id: str):
-        item = request.app.state.editorial.case(case_id)
-        return render(request, "case", item["titulo"], case=item)
+        return case_screen(request, case_id, "case")
 
     @app.get("/cases/{case_id}/draft", response_class=HTMLResponse)
     def draft(request: Request, case_id: str):
-        return render(request, "draft", "Paquete editorial", case=request.app.state.editorial.case(case_id))
+        return case_screen(request, case_id, "draft", "Paquete editorial")
 
     @app.get("/cases/{case_id}/review", response_class=HTMLResponse)
     def review(request: Request, case_id: str):
-        return render(request, "review", "Revisión humana", case=request.app.state.editorial.case(case_id),
-                      history=request.app.state.repository.review_history(case_id),
-                      audit=request.app.state.repository.audit_history(case_id))
+        return review_screen(request, case_id)
 
     @app.post("/cases/{case_id}/review", response_class=HTMLResponse)
     def update_review(request: Request, case_id: str, decision: Annotated[ReviewRequest, Form()]):
-        request.app.state.repository.review(case_id, **decision.model_dump())
-        return review(request, case_id)
+        try:
+            request.app.state.repository.review(case_id, **decision.model_dump())
+        except ReviewConflict:
+            return review_screen(request, case_id, 409, "Otra persona actualizó esta ficha mientras la revisabas. Revisa el estado actual y vuelve a decidir.", decision.model_dump())
+        except InvalidReview as error:
+            return review_screen(request, case_id, 422, str(error), decision.model_dump())
+        return review_screen(request, case_id)
 
     @app.get("/queries", response_class=HTMLResponse)
     async def queries(request: Request, q: Annotated[str | None, Query(max_length=2000)] = None):
         answer = None
-        if q and q.strip():
-            try:
-                answer = request.app.state.editorial.query(q)
-            except GenerationUnavailable:
-                if settings.offline:
-                    raise
-                if query_provider is None:
-                    raise GenerationUnavailable("Live query generation is not configured by the G4 pipeline.") from None
+        examples = request.app.state.repository.records("answer")
+        try:
+            if q and q.strip():
                 try:
-                    async with asyncio.timeout(settings.generation_timeout):
-                        answer = await query_provider(q, request.app.state.gemini, request.app.state.repository)
-                except TimeoutError:
-                    raise GenerationUnavailable("The query deadline was exceeded.") from None
-                evidence = {item["id_evidencia"]: item for item in request.app.state.repository.records("evidence")}
-                try:
-                    validate_answer(answer, evidence)
-                except (ValueError, TypeError, AttributeError):
-                    raise GenerationUnavailable("The query pipeline returned an invalid answer.") from None
-        return render(request, "queries", "Consulta con evidencia", answer=answer,
-                      examples=request.app.state.repository.records("answer"))
+                    answer = request.app.state.editorial.query(q)
+                except GenerationUnavailable:
+                    if settings.offline:
+                        raise
+                    if query_provider is None:
+                        raise GenerationUnavailable("Live query generation is not configured by the G4 pipeline.") from None
+                    try:
+                        async with asyncio.timeout(settings.generation_timeout):
+                            answer = await query_provider(q, request.app.state.gemini, request.app.state.repository)
+                    except TimeoutError:
+                        raise GenerationUnavailable("The query deadline was exceeded.") from None
+                    evidence = {item["id_evidencia"]: item for item in request.app.state.repository.records("evidence")}
+                    try:
+                        validate_answer(answer, evidence)
+                    except (ValueError, TypeError, AttributeError):
+                        raise GenerationUnavailable("The query pipeline returned an invalid answer.") from None
+        except GenerationUnavailable as error:
+            if settings.offline:
+                # Offline, a question outside the precomputed set is an honest abstention, not a server fault.
+                return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples,
+                              query_status="no_precomputed", query_text=q)
+            logger.warning("Query unavailable: %s", error)
+            return render(request, "queries", "Consulta con evidencia", status_code=503, answer=None, examples=examples,
+                          query_status="unavailable", query_text=q)
+        return render(request, "queries", "Consulta con evidencia", answer=answer, examples=examples, query_text=q)
 
     return app
 

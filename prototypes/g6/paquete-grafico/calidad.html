@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calidad de datos · TVN DeepMind AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Prototype only: the app builds Tailwind with the standalone CLI (ADR 0002). -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-navy: #00466f;
+      --color-red: #e00710;
+      --color-ground: #f3f5f9;
+      --color-ink: #0e1a2b;
+      --color-ink-2: #3f4d63;
+      --color-ink-3: #56647a;
+      --color-line: #e3e8ef;
+      --color-blue: #0077c8;
+      --color-blue-dark: #00609f;
+      --color-blue-soft: #e8f3fb;
+      --color-yellow: #fec526;
+      --color-yellow-soft: #fff1c7;
+      --font-sans: "Barlow", system-ui, sans-serif;
+      --font-display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+      --font-title: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @layer base {
+      html { @apply bg-ground text-ink font-sans antialiased; font-variant-numeric: tabular-nums; caret-color: var(--color-blue); scrollbar-color: #b9c3d0 transparent; }
+      body { @apply min-h-dvh text-base leading-relaxed; }
+      ::selection { @apply bg-yellow-soft text-ink; }
+      :focus-visible { @apply outline-2 outline-offset-2 outline-blue; }
+      button, summary { @apply cursor-pointer; }
+    }
+
+    @layer components {
+      .icon { @apply size-[1.1em] shrink-0; }
+      .muted { @apply text-[15px] text-ink-3; }
+      .link { @apply font-semibold text-blue underline decoration-blue/30 underline-offset-4 hover:decoration-blue; }
+
+      /* strap (same as index.html) */
+      .strap { @apply flex min-h-16 items-center gap-8 bg-navy px-8 text-white; }
+      .brand { @apply inline-flex items-center gap-3 text-white no-underline; }
+      .brand__bug { @apply h-6 w-2.5 rounded-full bg-red; }
+      .brand__name { @apply whitespace-nowrap font-display text-2xl font-extrabold tracking-wide; }
+      .nav { @apply flex gap-1; }
+      .nav a { @apply whitespace-nowrap rounded-full px-3.5 py-1.5 text-[15px] font-medium text-white/70 no-underline transition hover:text-white; }
+      .nav a[aria-current="page"] { @apply bg-white/12 text-white; }
+      .search { @apply relative ml-auto flex max-w-xl flex-1 items-center; }
+      .search > .icon { @apply pointer-events-none absolute left-4 text-white/60; }
+      .search input { @apply h-10 w-full min-w-0 rounded-full bg-white/10 pr-4 pl-11 text-[15px] text-white placeholder:text-white/55 transition outline-none focus:bg-white focus:text-ink focus:placeholder:text-ink-3; }
+      .search:focus-within > .icon { @apply text-ink-3; }
+      .corte { @apply whitespace-nowrap text-sm text-white/65; }
+
+      /* page */
+      .page { @apply mx-auto max-w-6xl px-8 pt-12 pb-24; }
+      .page__title { @apply font-title text-[52px] leading-[1.02] font-semibold text-balance text-navy; }
+      .lede { @apply mt-4 max-w-[64ch] text-[18px] text-ink-2; }
+      .snapshot { @apply mt-5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-3; }
+      .snapshot strong { @apply font-semibold text-ink-2; }
+
+      .section { @apply mt-20; }
+      .section__title { @apply font-title text-[34px] leading-tight font-semibold text-navy; }
+      .section__lede { @apply mt-2 max-w-[64ch] text-[16.5px] text-ink-2; }
+      .h3 { @apply mt-12 mb-2 font-title text-[22px] leading-snug font-semibold text-navy; }
+
+      .tally { @apply mt-10 flex flex-wrap gap-x-14 gap-y-6; }
+      .tally p { @apply text-[15px] text-ink-3; }
+      .tally strong { @apply block font-display text-5xl leading-none font-bold text-navy; }
+
+      .flow { @apply mt-10 rounded-3xl bg-white px-8 py-7 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .flow__bar { @apply flex h-4 overflow-hidden rounded-full bg-ground; }
+      .flow__seg--kept { @apply bg-navy; }
+      .flow__seg--window { @apply bg-[#8cc6ec]; }
+      .flow__seg--dup { @apply bg-yellow; }
+      .flow__legend { @apply mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-3; }
+      .flow__legend li { @apply grid grid-cols-[0.875rem_1fr] gap-x-3 text-[15px] text-ink-2; }
+      .flow__legend li > span:first-child { @apply mt-1.5 size-3.5 rounded-sm; }
+      .flow__legend b { @apply font-semibold text-ink; }
+      .flow__legend small { @apply col-start-2 text-sm text-ink-3; }
+
+      .checks { @apply mt-6 flex flex-wrap gap-2; }
+      .check { @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[14px] font-medium text-emerald-800 ring-1 ring-emerald-200; }
+
+      .notice { @apply mt-8 flex max-w-3xl items-start gap-3 rounded-2xl bg-yellow-soft/70 px-5 py-4 text-[15.5px] text-[#5a4300]; }
+      .notice .icon { @apply mt-1; }
+      .notice strong { @apply font-semibold; }
+
+      /* coverage */
+      .coverage { @apply mt-6 grid gap-1; }
+      .coverage__axis, .source { @apply grid grid-cols-[minmax(13rem,17rem)_1fr_7.5rem] items-center gap-x-6; }
+      .coverage__axis { @apply px-4 pb-1 text-[13px] font-medium text-ink-3; }
+      .coverage__axis span:nth-child(2) { @apply flex justify-between; }
+      .coverage__axis span:last-child { @apply text-right; }
+      .source { @apply rounded-2xl px-4 py-3 transition hover:bg-white/70; }
+      .source__name { @apply text-[16.5px] font-semibold leading-snug; }
+      .source__kind { @apply block text-sm font-normal text-ink-3; }
+      .days { @apply flex gap-[3px]; }
+      .day { @apply h-6 flex-1 rounded-[3px] bg-line; }
+      .day.is-on { @apply bg-navy; }
+      .source__count { @apply text-right; }
+      .source__count b { @apply block font-display text-2xl leading-none font-bold text-navy; }
+      .source__count span { @apply text-[13px] text-ink-3; }
+      .source__range { @apply col-start-2 mt-1.5 text-[13px] text-ink-3; }
+      .source.is-empty .source__range { @apply font-medium text-rose-700; }
+      .group-label { @apply mt-6 px-4 text-[13px] font-semibold text-ink-3; }
+
+      .bars { @apply mt-4 grid max-w-2xl gap-3; }
+      .bars li { @apply grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5; }
+      .bars__label { @apply text-[15px] text-ink-2; }
+      .bars__value { @apply text-[15px] font-semibold text-navy; }
+      .bars__track { @apply col-span-2 h-2 overflow-hidden rounded-full bg-white; }
+      .bars__fill { @apply block h-full rounded-full bg-navy; }
+
+      /* official data */
+      .official { @apply mt-8 grid gap-x-12 gap-y-14 lg:grid-cols-3; }
+      .official__head { @apply flex items-baseline justify-between gap-3 border-b border-line pb-3; }
+      .official__name { @apply font-title text-[22px] font-semibold text-navy; }
+      .official dl { @apply mt-4 grid gap-0.5; }
+      .official dl div { @apply flex items-baseline justify-between gap-4 py-1.5; }
+      .official dt { @apply text-[15px] text-ink-2; }
+      .official dd { @apply text-[17px] font-semibold text-navy; }
+      .official dd.is-zero { @apply text-ink-3; }
+      .official p { @apply mt-4 text-[15px] text-ink-3; }
+
+      .nulls { @apply mt-6 rounded-3xl bg-white px-8 py-7 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .nulls__title { @apply font-title text-[22px] font-semibold text-navy; }
+      .nulls__lede { @apply mt-1 max-w-[62ch] text-[16px] text-ink-2; }
+      .table { @apply mt-5 w-full border-collapse text-left text-[15px]; }
+      .table th { @apply border-b border-line pb-2 text-[13px] font-medium text-ink-3; }
+      .table td { @apply border-b border-line py-3 pr-4 align-top; }
+      .table tr:last-child td { @apply border-b-0; }
+      .table td:first-child { @apply font-semibold text-ink; }
+      .pill { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium whitespace-nowrap ring-1; }
+      .pill--null { @apply bg-ground text-ink-2 ring-line; }
+      .pill--excluded { @apply bg-rose-50 text-rose-700 ring-rose-200; }
+      .pill--ok { @apply bg-emerald-50 text-emerald-800 ring-emerald-200; }
+      .pills { @apply flex flex-wrap gap-1.5; }
+
+      /* provenance */
+      .prov { @apply mt-6 grid gap-1; }
+      .prov__row { @apply grid grid-cols-[minmax(12rem,1fr)_6rem_minmax(10rem,13rem)_minmax(0,1.4fr)] items-baseline gap-x-6 rounded-2xl px-4 py-3.5 transition hover:bg-white/70; }
+      .prov__head { @apply px-4 pb-1 text-[13px] font-medium text-ink-3 hover:bg-transparent; }
+      .prov__name { @apply text-[16px] font-semibold; }
+      .prov__name a { @apply block text-sm font-normal break-all text-ink-3 no-underline hover:text-blue hover:underline; }
+      .prov__files { @apply text-[15px] text-ink-2; }
+      .prov__when { @apply text-[15px] text-ink-2; }
+      .prov__license { @apply text-sm text-ink-3; }
+
+      .steps { @apply mt-6 grid max-w-3xl list-none gap-3; }
+      .steps li { @apply relative pl-6 text-[16.5px]; }
+      .steps li::before { @apply absolute top-[0.7em] left-1 size-1.5 rounded-full bg-blue content-['']; }
+      .steps b { @apply font-semibold text-navy; }
+
+      .hashes { @apply mt-10 max-w-4xl; }
+      .hashes summary { @apply inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[15px] font-semibold text-blue ring-1 ring-blue/30 transition hover:bg-blue-soft; }
+      .hashes summary::-webkit-details-marker { display: none; }
+      .hashes[open] summary .icon { @apply rotate-180; }
+      .hashes ul { @apply mt-4 grid gap-0.5; }
+      .hashes li { @apply grid grid-cols-[minmax(11rem,16rem)_5rem_1fr] items-baseline gap-x-4 rounded-xl px-3 py-2 text-[15px] hover:bg-white/70; }
+      .hashes code { @apply font-mono text-[13px] break-all text-ink-3; }
+      .hashes .n { @apply text-right text-ink-2; }
+
+      @media (max-width: 960px) {
+        .strap { @apply flex-wrap gap-x-4 gap-y-2 px-4 py-3; }
+        .corte { @apply ml-auto; }
+        .nav { @apply order-3 w-full overflow-x-auto; }
+        .search { @apply order-4 max-w-none basis-full; }
+        .page { @apply px-4 pt-8; }
+        .page__title { @apply text-[38px]; }
+        .section__title { @apply text-[28px]; }
+        .section { @apply mt-14; }
+        .flow, .nulls { @apply rounded-2xl px-5 py-5; }
+        .coverage__axis { @apply hidden; }
+        .source { @apply grid-cols-[1fr_auto] gap-y-2 px-2; }
+        .source .days { @apply col-span-2 row-start-2; }
+        .source__range { @apply col-span-2 col-start-1 mt-0; }
+        .group-label { @apply px-2; }
+        .prov__head { @apply hidden; }
+        .prov__row { @apply grid-cols-1 gap-y-1 px-2; }
+        .hashes li { @apply grid-cols-[1fr_auto] gap-y-0.5; }
+        .hashes code { @apply col-span-2; }
+        .table thead { @apply hidden; }
+        .table tr { @apply grid gap-1 border-b border-line py-3; }
+        .table tr:last-child { @apply border-b-0; }
+        .table td { @apply border-0 p-0; }
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="strap">
+    <a class="brand" href="index.html">
+      <span class="brand__bug" aria-hidden="true"></span>
+      <span class="brand__name">TVN DeepMind AI</span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      <a href="index.html">Temas</a>
+      <a href="calidad.html" aria-current="page">Calidad de datos</a>
+      <a href="metodologia.html">Metodología</a>
+    </nav>
+    <form class="search" role="search" action="index.html">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+      <input name="q" type="search" autocomplete="off" placeholder="Pregunta sobre la agenda" aria-label="Preguntar sobre la agenda">
+    </form>
+    <p class="corte">Corte: 7 oct 2026, 19:51</p>
+  </header>
+
+  <main class="page">
+    <h1 class="page__title">Calidad de datos</h1>
+    <p class="lede">Qué entró en este corte, qué quedó fuera y por qué. Los valores que una fuente no publica se conservan vacíos: nunca se rellenan con cero ni se estiman.</p>
+    <p class="snapshot">
+      <span>Corte <strong>7 oct 2026, 19:51</strong> (hora de Panamá)</span>
+      <span>Versión <strong>20261008-c2aa2916</strong></span>
+      <span><strong>55</strong> descargas registradas</span>
+    </p>
+
+    <!-- News -->
+    <section class="section" aria-labelledby="noticias">
+      <h2 class="section__title" id="noticias">Noticias</h2>
+      <p class="section__lede">Ventana de 30 días: del 7 sep 2026, 19:47 al 7 oct 2026, 19:47 (hora de Panamá). Se deduplica por URL canónica y se excluye lo publicado fuera de la ventana.</p>
+
+      <div class="tally">
+        <p><strong>30.823</strong>registros leídos</p>
+        <p><strong>30.462</strong>noticias únicas</p>
+        <p><strong>3.176</strong>incluidas en el corte</p>
+        <p><strong>27.286</strong>excluidas</p>
+      </div>
+
+      <figure class="flow" aria-labelledby="flow-caption">
+        <figcaption id="flow-caption" class="mb-4 text-[15px] font-semibold text-navy">De 30.823 registros leídos a 3.176 noticias incluidas</figcaption>
+        <div class="flow__bar" aria-hidden="true">
+          <span class="flow__seg--kept" style="width: 10.30%"></span>
+          <span class="flow__seg--window" style="width: 88.53%"></span>
+          <span class="flow__seg--dup" style="width: 1.17%"></span>
+        </div>
+        <ul class="flow__legend">
+          <li><span class="flow__seg--kept"></span><span><b>3.176</b> incluidas</span><small>Dentro de la ventana, con su fecha de publicación.</small></li>
+          <li><span class="flow__seg--window"></span><span><b>27.286</b> fuera de la ventana</span><small>Motivo de exclusión: <code class="text-[13px]">fuera_de_ventana</code>. Se guardan en noticias_excluidas.csv.</small></li>
+          <li><span class="flow__seg--dup"></span><span><b>361</b> repetidas</span><small>Misma URL canónica: 30.823 leídos menos 30.462 únicas.</small></li>
+        </ul>
+      </figure>
+
+      <div class="checks" aria-label="Umbrales mínimos del reto (§6.A)">
+        <span class="check"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg>Cumple el mínimo de 100 noticias</span>
+        <span class="check"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></svg>Cumple el mínimo de 20 noticias de TVN</span>
+      </div>
+
+      <h3 class="h3">Cobertura por fuente</h3>
+      <p class="muted max-w-[64ch]">Cada barra es un día de la ventana (días calendario UTC, del 8 sep al 8 oct). Azul: hubo al menos una noticia incluida. Gris: ninguna.</p>
+      <div class="coverage" id="coverage">
+        <div class="coverage__axis" aria-hidden="true"><span>Fuente</span><span><span>8 sep</span><span>8 oct</span></span><span>Incluidas</span></div>
+      </div>
+
+      <div class="notice" role="note">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16v.01"/></svg>
+        <p><strong>GDELT no completó ninguna consulta.</strong> Hubo 6 intentos y los 6 respondieron con error 429 (demasiadas solicitudes). De GDELT GKG solo hay una muestra de 6 lotes por hora del 7 oct; no cubre los 30 días. La Estrella de Panamá, Mi Diario y Crítica dependen de GDELT y quedaron sin noticias.</p>
+      </div>
+
+      <h3 class="h3">De dónde sale la fecha de publicación</h3>
+      <p class="muted max-w-[64ch]">Se usa la fuente más confiable disponible. La fecha de detección de GDELT no es fecha de publicación; se usa solo cuando falta la otra.</p>
+      <ul class="bars">
+        <li><span class="bars__label">Última modificación del sitemap (lastmod)</span><span class="bars__value">2.675</span><span class="bars__track"><span class="bars__fill" style="width: 84.23%"></span></span></li>
+        <li><span class="bars__label">Feed del medio</span><span class="bars__value">476</span><span class="bars__track"><span class="bars__fill" style="width: 14.99%"></span></span></li>
+        <li><span class="bars__label">Detección de GDELT</span><span class="bars__value">22</span><span class="bars__track"><span class="bars__fill" style="width: 0.69%"></span></span></li>
+        <li><span class="bars__label">Página del artículo (reeditado)</span><span class="bars__value">3</span><span class="bars__track"><span class="bars__fill" style="width: 0.09%"></span></span></li>
+      </ul>
+    </section>
+
+    <!-- Official data -->
+    <section class="section" aria-labelledby="oficiales">
+      <h2 class="section__title" id="oficiales">Cifras oficiales</h2>
+      <p class="section__lede">Series del Banco Mundial e INEC y sismos del catálogo USGS. Describen el período indicado, no la situación de hoy.</p>
+
+      <div class="official">
+        <article>
+          <div class="official__head"><h3 class="official__name">Banco Mundial</h3><span class="muted">2010 a 2024</span></div>
+          <dl>
+            <div><dt>Filas esperadas</dt><dd>540</dd></div>
+            <div><dt>Con valor</dt><dd>540</dd></div>
+            <div><dt>Nulas en la fuente</dt><dd class="is-zero">0</dd></div>
+            <div><dt>Faltantes agregadas</dt><dd class="is-zero">0</dd></div>
+          </dl>
+          <p>Cuadrícula completa de 6 países, 6 indicadores y 15 años.</p>
+        </article>
+        <article>
+          <div class="official__head"><h3 class="official__name">INEC</h3><span class="muted">desde 2022</span></div>
+          <dl>
+            <div><dt>Filas</dt><dd>144</dd></div>
+            <div><dt>Con valor</dt><dd>142</dd></div>
+            <div><dt>Nulos conservados</dt><dd>2</dd></div>
+            <div><dt>Períodos excluidos</dt><dd>6</dd></div>
+          </dl>
+          <p>IPC con base 2024 (desde ene 2024) y PIB trimestral (desde 2022-T1).</p>
+        </article>
+        <article>
+          <div class="official__head"><h3 class="official__name">USGS</h3><span class="muted">sismos</span></div>
+          <dl>
+            <div><dt>Eventos leídos</dt><dd>88</dd></div>
+            <div><dt>Incluidos</dt><dd>88</dd></div>
+            <div><dt>Excluidos</dt><dd class="is-zero">0</dd></div>
+            <div><dt>Magnitud</dt><dd>3,2 a 5,9</dd></div>
+          </dl>
+          <p>Primer evento el 4 oct 2025, último el 4 oct 2026. Confirma hora, lugar y magnitud; no mide daños ni afectados.</p>
+        </article>
+      </div>
+
+      <div class="nulls" id="nulos">
+        <h3 class="nulls__title">Nulos conservados y períodos excluidos</h3>
+        <p class="nulls__lede">Un nulo es un período que existe en la serie pero no tiene valor: se muestra vacío. Un excluido es un período que no entra al corte, siempre con su motivo.</p>
+        <table class="table">
+          <thead><tr><th>Serie</th><th>Períodos</th><th>Qué pasó</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>PIB constante, variación interanual</td>
+              <td><span class="pills"><span class="pill pill--null">2023-T3</span><span class="pill pill--null">2023-T4</span></span></td>
+              <td>Nulo conservado: la fila queda sin valor.</td>
+            </tr>
+            <tr>
+              <td>IPC</td>
+              <td><span class="pills"><span class="pill pill--excluded">2026-09</span><span class="pill pill--excluded">2026-10</span><span class="pill pill--excluded">2026-11</span><span class="pill pill--excluded">2026-12</span></span></td>
+              <td>Excluido: mes sin publicar.</td>
+            </tr>
+            <tr>
+              <td>PIB</td>
+              <td><span class="pills"><span class="pill pill--excluded">2021-T3</span><span class="pill pill--excluded">2021-T4</span></span></td>
+              <td>Excluido: período duplicado. Etiqueta repetida en la fuente, se conserva la primera aparición.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="table">
+          <thead><tr><th>Serie INEC</th><th>Filas</th><th>Desde</th><th>Hasta</th><th>Nulos</th></tr></thead>
+          <tbody>
+            <tr><td>IPC, índice</td><td>32</td><td>2024-01</td><td>2026-08</td><td><span class="pill pill--ok">Ninguno</span></td></tr>
+            <tr><td>IPC, variación mensual</td><td>32</td><td>2024-01</td><td>2026-08</td><td><span class="pill pill--ok">Ninguno</span></td></tr>
+            <tr><td>IPC, variación interanual</td><td>32</td><td>2024-01</td><td>2026-08</td><td><span class="pill pill--ok">Ninguno</span></td></tr>
+            <tr><td>PIB constante</td><td>16</td><td>2022-T1</td><td>2026-T2</td><td><span class="pill pill--ok">Ninguno</span></td></tr>
+            <tr><td>PIB corriente</td><td>16</td><td>2022-T1</td><td>2026-T2</td><td><span class="pill pill--ok">Ninguno</span></td></tr>
+            <tr><td>PIB constante, variación interanual</td><td>16</td><td>2022-T1</td><td>2026-T2</td><td><span class="pill pill--null">2 nulos</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Provenance -->
+    <section class="section" aria-labelledby="procedencia">
+      <h2 class="section__title" id="procedencia">Procedencia del corte</h2>
+      <p class="section__lede">Cada archivo descargado queda registrado en el manifiesto con su URL, su fecha de descarga y su huella SHA-256, para poder repetir y comprobar el corte.</p>
+
+      <div class="prov">
+        <div class="prov__row prov__head" aria-hidden="true"><span>Fuente</span><span>Archivos</span><span>Descarga (Panamá)</span><span>Condiciones de uso</span></div>
+        <div class="prov__row"><p class="prov__name">TVN<a href="https://www.tvn-2.com/tvn_sitemap_index.xml">tvn-2.com · sitemap y RSS</a></p><p class="prov__files">16</p><p class="prov__when">6 oct, 22:32 a 23:00</p><p class="prov__license">Sin licencia abierta declarada. Solo metadatos y la descripción breve del feed.</p></div>
+        <div class="prov__row"><p class="prov__name">La Prensa<a href="https://www.prensa.com/arc/outboundfeeds/news-sitemap/?outputType=xml">prensa.com · news sitemap</a></p><p class="prov__files">2</p><p class="prov__when">7 oct, 19:43</p><p class="prov__license">Sin licencia abierta declarada. Solo metadatos.</p></div>
+        <div class="prov__row"><p class="prov__name">Telemetro<a href="https://www.telemetro.com/sitemap-news.xml">telemetro.com · news sitemap</a></p><p class="prov__files">1</p><p class="prov__when">7 oct, 19:43</p><p class="prov__license">Sin licencia abierta declarada. Solo metadatos.</p></div>
+        <div class="prov__row"><p class="prov__name">Panamá América<a href="https://www.panamaamerica.com.pa/rss/recent/index.xml">panamaamerica.com.pa · RSS</a></p><p class="prov__files">1</p><p class="prov__when">7 oct, 19:43</p><p class="prov__license">Sin licencia abierta declarada. Solo metadatos.</p></div>
+        <div class="prov__row"><p class="prov__name">Comunicados oficiales<a href="https://pancanal.com/wp-json/wp/v2/posts">ACP, SINAPROC, MEF, MICI, ATP y AMP · API de WordPress</a></p><p class="prov__files">12</p><p class="prov__when">6 oct, 23:35 a 23:36</p><p class="prov__license">Entidades públicas sin condiciones de reutilización declaradas. Titular, URL, fecha, categoría y extracto.</p></div>
+        <div class="prov__row"><p class="prov__name">GDELT<a href="https://api.gdeltproject.org/api/v2/doc/doc">gdeltproject.org · DOC y GKG</a></p><p class="prov__files">12</p><p class="prov__when">7 oct, 19:43 a 19:51</p><p class="prov__license">Metadatos con atribución a GDELT. No transfiere derechos de los medios.</p></div>
+        <div class="prov__row"><p class="prov__name">Banco Mundial<a href="https://api.worldbank.org/v2/">api.worldbank.org · 6 indicadores</a></p><p class="prov__files">6</p><p class="prov__when">6 oct, 23:32</p><p class="prov__license">CC BY 4.0, The World Bank.</p></div>
+        <div class="prov__row"><p class="prov__name">INEC<a href="https://www.inec.gob.pa/">inec.gob.pa · IPC y PIB trimestral</a></p><p class="prov__files">4</p><p class="prov__when">6 oct, 23:36</p><p class="prov__license">CC BY 4.0, INEC, Contraloría General de la República de Panamá.</p></div>
+        <div class="prov__row"><p class="prov__name">USGS<a href="https://earthquake.usgs.gov/fdsnws/event/1/">earthquake.usgs.gov · catálogo de sismos</a></p><p class="prov__files">1</p><p class="prov__when">6 oct, 23:32</p><p class="prov__license">Dominio público. Crédito: U.S. Geological Survey.</p></div>
+      </div>
+
+      <h3 class="h3">Qué se hizo con los datos</h3>
+      <ul class="steps">
+        <li><b>Noticias.</b> Deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) o del lastmod del sitemap; ventana de 30 días hasta la fecha de corte; excluidas con su motivo.</li>
+        <li><b>GDELT.</b> La fecha de detección nunca se usa como fecha de publicación; sirve para la ventana solo si falta la publicación. Capturas y errores se conservan sin modificar.</li>
+        <li><b>Banco Mundial.</b> Una consulta por indicador; cuadrícula completa país, indicador y año; nulos conservados; unidad derivada del indicador.</li>
+        <li><b>USGS.</b> Latitud 5 a 12, longitud -86 a -76, magnitud 3 o más, desde el 2 oct 2025.</li>
+        <li><b>INEC.</b> CSV y XLSX decodificados a UTF-8 en formato largo desde 2022; variación interanual del PIB calculada; períodos duplicados en origen excluidos.</li>
+      </ul>
+
+      <details class="hashes">
+        <summary>Ver huellas SHA-256 de los archivos procesados
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <ul>
+          <li><span>noticias.csv</span><span class="n">3.176</span><code>f06d3528c3fc1b688d445d3bae5a10a3489a64d1a7804cf1cf8e0f7214c49fe3</code></li>
+          <li><span>noticias_excluidas.csv</span><span class="n">27.286</span><code>d3b715e30f2c548fdee074fca7bd3f0ad5ccfcb100572c81d27f9b133e2edfc6</code></li>
+          <li><span>fuentes.json</span><span class="n">15</span><code>91a62d08b866bcac633edbf0aa99e681eae75ceb556d7df1c6f803dbf09ae858</code></li>
+          <li><span>indicadores.csv</span><span class="n">540</span><code>f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e</code></li>
+          <li><span>indicadores_inec.csv</span><span class="n">144</span><code>900c4f9dab874f2a279d7e4512f4b48c0275d75dc1a587aa283492fbc1acb599</code></li>
+          <li><span>eventos.geojson</span><span class="n">88</span><code>79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d</code></li>
+          <li><span>grupos.jsonl</span><span class="n"></span><code>6f3d701fbc2e9f013c12ac8f6222b3c51fc72e23227de6bdd1bb04d884d66071</code></li>
+          <li><span>evidencias.jsonl</span><span class="n"></span><code>c6b4eb03fe42e4b715ece4fdae46af56d20aa6854474076528d1f8f2b4a9f606</code></li>
+          <li><span>calidad_noticias.json</span><span class="n"></span><code>bbfdea461a48bc453fea2fafc3d7bc288e89c4c20fc6c041ece1393df9ce29ef</code></li>
+          <li><span>calidad_indicadores.json</span><span class="n"></span><code>c9daff89a24eda42de970f7a10c27b1c072960f70ba735a0fd3f024711955819</code></li>
+          <li><span>calidad_inec.json</span><span class="n"></span><code>d1aa273e61cf89107ae69487543ce53728ef0500b68d115355061f557f477c33</code></li>
+          <li><span>calidad_eventos.json</span><span class="n"></span><code>f343b33cdee1fa009193fdf51c2878731c8fa316dc38c05a8e43d4c5dc604550</code></li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    // Page-local: values copied from data/processed/calidad_noticias.json and fuentes.json.
+    (() => {
+      const START = Date.UTC(2026, 8, 8);
+      const DAYS = 31;
+      const isoDay = (i) => new Date(START + i * 864e5).toISOString().slice(5, 10);
+      const span = (from, to) => {
+        const days = [];
+        for (let i = 0; i < DAYS; i++) { const d = isoDay(i); if (d >= from && d <= to) days.push(d); }
+        return days;
+      };
+      const ALL = span("09-08", "10-08");
+
+      const SOURCES = [
+        ["Medios", [
+          ["TVN", "sitemap y RSS", 2728, "2026-09-08T00:47:53Z", "2026-10-07T03:25:26Z", ["10-08"]],
+          ["Telemetro", "news sitemap", 187, "2026-10-05T14:30:00Z", "2026-10-08T00:06:00Z", span("09-08", "10-04")],
+          ["La Prensa", "news sitemap", 100, "2026-10-06T11:33:04Z", "2026-10-08T00:16:46Z", span("09-08", "10-05")],
+          ["Panamá América", "RSS", 24, "2026-10-07T05:00:00Z", "2026-10-07T23:00:00Z", [...span("09-08", "10-06"), "10-08"]],
+          ["Día a Día", "GDELT", 14, "2026-10-07T18:00:00Z", "2026-10-07T23:00:00Z", [...span("09-08", "10-06"), "10-08"]],
+          ["RPC TV", "GDELT", 7, "2026-10-07T20:00:00Z", "2026-10-07T20:00:00Z", [...span("09-08", "10-06"), "10-08"]],
+          ["La Estrella de Panamá", "GDELT", 0, null, null, ALL],
+          ["Mi Diario", "GDELT", 0, null, null, ALL],
+          ["Crítica", "GDELT", 0, null, null, ALL],
+        ]],
+        ["Entidades oficiales", [
+          ["SINAPROC", "comunicados", 32, "2026-09-08T20:37:53Z", "2026-10-06T18:40:31Z", ["09-15", "09-16", "09-18", "09-19", "09-23", "09-27", "10-02", "10-03", "10-05", "10-07", "10-08"]],
+          ["Ministerio de Comercio e Industrias", "comunicados", 31, "2026-09-09T13:22:00Z", "2026-10-06T22:36:37Z", ["09-08", "09-11", "09-12", "09-13", "09-20", "09-22", "09-23", "09-26", "09-27", "10-03", "10-04", "10-07", "10-08"]],
+          ["Autoridad Marítima de Panamá", "comunicados", 19, "2026-09-08T18:47:54Z", "2026-10-06T19:10:25Z", ["09-12", "09-13", ...span("09-18", "09-20"), ...span("09-25", "09-29"), ...span("10-01", "10-04"), "10-07", "10-08"]],
+          ["Autoridad del Canal de Panamá", "comunicados", 13, "2026-09-09T12:48:45Z", "2026-10-05T15:23:44Z", ["09-08", "09-12", "09-13", "09-15", ...span("09-17", "09-23"), ...span("09-25", "09-27"), "09-30", "10-03", "10-04", ...span("10-06", "10-08")]],
+          ["Ministerio de Economía y Finanzas", "comunicados", 13, "2026-09-08T14:41:10Z", "2026-10-05T19:42:13Z", ["09-09", "09-10", "09-12", "09-13", "09-15", "09-16", "09-19", "09-20", ...span("09-23", "09-27"), ...span("10-01", "10-04"), ...span("10-06", "10-08")]],
+          ["Autoridad de Turismo de Panamá", "comunicados", 8, "2026-09-09T19:13:58Z", "2026-10-06T13:28:03Z", ["09-08", ...span("09-10", "09-14"), ...span("09-16", "09-21"), ...span("09-24", "09-28"), "09-30", "10-01", "10-03", "10-04", "10-07", "10-08"]],
+        ]],
+      ];
+
+      const panama = new Intl.DateTimeFormat("es-PA", { timeZone: "America/Panama", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+      const when = (iso) => panama.format(new Date(iso)).replace(".", "");
+      const thousands = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+      const root = document.getElementById("coverage");
+      for (const [label, rows] of SOURCES) {
+        root.insertAdjacentHTML("beforeend", `<p class="group-label">${label}</p>`);
+        for (const [name, kind, kept, from, to, missing] of rows) {
+          const off = new Set(missing);
+          const on = DAYS - off.size;
+          const days = Array.from({ length: DAYS }, (_, i) => `<span class="day${off.has(isoDay(i)) ? "" : " is-on"}"></span>`).join("");
+          const range = kept
+            ? `${on} de ${DAYS} días con noticias · de ${when(from)} a ${when(to)}`
+            : "Sin noticias en la ventana";
+          root.insertAdjacentHTML("beforeend", `
+            <div class="source${kept ? "" : " is-empty"}">
+              <p class="source__name">${name}<span class="source__kind">${kind}</span></p>
+              <div class="days" role="img" aria-label="${on} de ${DAYS} días con noticias">${days}</div>
+              <p class="source__count"><b>${thousands(kept)}</b><span>incluidas</span></p>
+              <p class="source__range">${range}</p>
+            </div>`);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

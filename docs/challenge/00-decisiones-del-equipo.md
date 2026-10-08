@@ -63,3 +63,15 @@ Si una sección `01`-`12` contradice este archivo, **prevalece este archivo**.
 - La fecha de publicación de TVN sale del `lastmod` del sitemap, salvo los artículos antiguos reeditados, que se fechan desde su página.
   La columna `origen_fecha_publicacion` indica el origen (`feed`, `pagina` o `lastmod`).
   Evidencia: `docs/research/tvn-fecha-publicacion.md`.
+
+## D-05 · Notion fuera de la app
+
+- **Qué dice el reto:** el §5 exige Notion como espacio de trabajo, registro y presentación (ver [05-notion.md](05-notion.md)).
+- **Decisión:** la app no se integra con Notion: no hay enlaces "Ver en Notion" ni sincronización.
+- **Alcance:** solo la app.
+  El equipo mantiene el espacio Notion para el jurado, el registro de decisiones y el pitch, como pide el §5.
+
+### Cómo aplicar esta decisión
+
+- La revisión humana se guarda en el backend (`outputs/revisiones.jsonl`), no en Notion.
+- La evidencia que pide Notion (pruebas, decisiones, aprobaciones) se copia a mano desde la app y el repositorio.

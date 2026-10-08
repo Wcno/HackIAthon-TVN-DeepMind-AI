@@ -1,5 +1,26 @@
-<p>Estado de evidencia: {{ case.estado_evidencia }} · {{ case.alcance_texto }}</p><p>{{ case.accion_recomendada }}</p>
-  <a href="/cases/{{ case.id_caso|urlencode }}/draft">Paquete editorial</a> · <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
-  {% include 'claims.html' %}
-  <h2>Verificaciones pendientes</h2>{% for gap in case.vacios %}<p>{{ gap }}</p>{% else %}<p>No se registraron vacíos.</p>{% endfor %}
-  {% for contradiction in case.contradicciones %}<section><h2>{{ contradiction.descripcion }}</h2>{% for version in contradiction.versiones %}<p>{{ version.valor }} · {{ version.alcance }} · <a href="/evidence/{{ version.id_evidencia|urlencode }}">Evidencia</a></p>{% endfor %}<p>Requiere verificación.</p></section>{% endfor %}
+{% set tab = 'historia' %}
+
+{% include 'views/case/_header.html' %}
+<div class="panel" role="tabpanel">
+  {% if case.alcance_texto == 'titular_metadatos' %}<p class="notice">Basado únicamente en titular y metadatos.</p>{% endif %}
+  {% include 'views/case/_claims.html' %}
+  {% if case.contradicciones %}
+  <section><h2 class="h2">Cifras en conflicto</h2>
+    {% for contradiction in case.contradicciones %}
+    <p>{{ contradiction.descripcion }}</p>
+    <div class="versions">{% for version in contradiction.versiones %}
+      <div class="version"><p class="version__value">{{ version.valor }}</p><p class="version__scope">{{ version.alcance }}</p>
+        <a class="cite" href="/evidence/{{ version.id_evidencia|urlencode }}" hx-get="/evidence/{{ version.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML">Ver fuente</a></div>{% endfor %}
+    </div>
+    <p class="notice">Requiere verificación.</p>
+    {% endfor %}
+  </section>
+  {% endif %}
+  <section class="gaps"><h2 class="h2">Verificaciones pendientes</h2>
+    <ul>{% for gap in case.vacios %}<li>{{ gap }}</li>{% else %}<li>No se registraron vacíos.</li>{% endfor %}</ul></section>
+  <section class="action"><h2 class="h2">Acción recomendada</h2><p>{{ case.accion_recomendada }}</p></section>
+  <section class="sources"><h2 class="h2">Fuentes</h2>
+    <ol class="sources__list">{% for id in case.ids_fuente %}
+      <li><a class="source-line" href="/evidence/{{ id|urlencode }}" hx-get="/evidence/{{ id|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML"><span class="source-line__n">{{ loop.index }}</span><span class="source-line__t">{{ id }}</span><span class="source-line__d">Ver fuente</span></a></li>{% endfor %}
+    </ol></section>
+</div>

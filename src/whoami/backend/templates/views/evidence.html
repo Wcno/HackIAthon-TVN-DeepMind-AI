@@ -1,1 +1,9 @@
-<p>{{ evidence.fecha|panama_time }} (Panamá) · <a href="{{ evidence.url|safe_url }}">Fuente original</a></p><dl>{% for name, value in evidence.campos.items() %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+<article id="evidence-card">
+  <p class="drawer__kind">{{ 'Noticia' if evidence.tipo == 'noticia' else 'Indicador oficial' }}</p>
+  <p class="drawer__title">{{ evidence.titulo }}</p>
+  <p class="meta">{% if evidence.fecha %}{{ evidence.fecha|panama_time }} (Panamá){% else %}Dato anual, sin fecha de publicación{% endif %}</p>
+  <dl class="facts">{% for name, value in evidence.campos.items() %}
+    <div class="{{ 'col-span-2' if value|string|length > 40 else '' }}"><dt>{{ name|replace('_', ' ')|capitalize }}</dt><dd class="text-base!">{{ value }}</dd></div>{% endfor %}
+  </dl>
+  <a class="link link--external" href="{{ evidence.url|safe_url }}" target="_blank" rel="noopener">Fuente original</a>
+</article>

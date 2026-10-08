@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "prototypes/g6/paquete-grafico/calidad.html"
+        ],
+        "createdAt": "2026-10-08T03:48:12.250Z",
+        "reason": "orchestrator: screenshots show 52px title, 34px sections, 22px subheads vs 16-18px body; detector misreads Tailwind CDN sizes"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "prototypes/g6/paquete-grafico/metodologia.html"
+        ],
+        "createdAt": "2026-10-08T03:48:12.257Z",
+        "reason": "orchestrator: screenshots show 52px title, 34px sections, 22px subheads vs 16-18px body; detector misreads Tailwind CDN sizes"
+      }
+    ]
+  }
+}

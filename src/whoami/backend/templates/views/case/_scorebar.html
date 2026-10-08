@@ -1,0 +1,2 @@
+{# Weighted score bar. Needs `score`. #}
+<span class="scorebar" aria-hidden="true">{% for component in score_components() %}{% set key = component.key %}{% set weight = component.weight %}<span class="scorebar__seg scorebar__seg--{{ key }}" style="width:{{ weight }}%;opacity:{{ score.componentes[key] }}"></span>{% endfor %}</span>

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import httpx
 
+from whoami.backend.app import REVIEW_LABELS
 from whoami.backend.pipeline import load_pipeline
 from whoami.backend.settings import Settings
 from whoami.store import load
@@ -69,7 +70,7 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
             response = client.get(path)
             assert response.status_code == 200, path
             assert "text/html" in response.headers["content-type"]
-            assert "Demostración" in response.text
+            assert ("Demostración" in response.text) == (path != "/quality")
             if path == "/quality":
                 assert "Integridad: verified" in response.text
             checked.append({"path": path, "status": response.status_code})
@@ -77,7 +78,7 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
             response = client.get("/queries", params={"q": answer["consulta"]})
             assert response.status_code == 200
             assert answer["estado"] in response.text
-        assert client.get("/queries", params={"q": "Unseen offline query"}).status_code == 503
+        assert client.get("/queries", params={"q": "Unseen offline query"}).status_code == 200
         decisions = ["requiere_evidencia", "en_revision", "aprobado_como_borrador", "descartado", "en_revision", "aprobado_como_borrador"]
         original_version = None
         for state in decisions:
@@ -88,14 +89,14 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
                 "state": state, "actor": "Runtime reviewer", "note": "Real HTTP validation", "expected_version": version,
             })
             assert response.status_code == 200
-            assert f"<strong>{state}</strong>" in response.text
+            assert f"current__state\">{REVIEW_LABELS[state]}<" in response.text
         assert client.post("/cases/CASO-001/review", data={
             "state": "descartado", "actor": "Stale reviewer", "expected_version": original_version,
         }).status_code == 409
     with running_server(settings.database, port, tmp_path / "second-server.log") as (client, second_pid):
         assert second_pid != first_pid
         page = client.get("/cases/CASO-001/review")
-        assert "<strong>aprobado_como_borrador</strong>" in page.text
+        assert f"current__state\">{REVIEW_LABELS['aprobado_como_borrador']}<" in page.text
         assert "Runtime reviewer" in page.text
         assert "Real HTTP validation" in page.text
         assert "aprobado_como_borrador" in client.get("/inbox").text

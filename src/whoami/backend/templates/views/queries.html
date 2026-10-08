@@ -1,3 +1,65 @@
-<form method="get"><label>Consulta <input name="q" required maxlength="2000"></label><button>Consultar</button></form>
-  <h2>Consultas disponibles</h2>{% for item in examples %}<p><a href="/queries?q={{ item.consulta|urlencode }}">{{ item.consulta }}</a></p>{% endfor %}
-  {% if answer %}<section><h2>{{ answer.consulta }}</h2><p>{{ answer.estado }}</p><p>{{ answer.respuesta or answer.motivo_abstencion }}</p>{% if answer.faltante %}<p>Falta: {{ answer.faltante }}</p>{% endif %}{% for citation in answer.citas %}<blockquote>{{ citation.pasaje }} <a href="/evidence/{{ citation.id_evidencia|urlencode }}">Ver evidencia</a></blockquote>{% endfor %}{% for version in answer.versiones %}<p>{{ version.valor }} · {{ version.alcance }} · <a href="/evidence/{{ version.id_evidencia|urlencode }}">Evidencia</a></p>{% endfor %}</section>{% endif %}
+<div class="page-card">
+  {% if query_status == "no_precomputed" %}
+  <div class="answer answer--abstain">
+    <p class="answer__state">No hay una respuesta precalculada para esta consulta</p>
+    {% if query_text %}<p>No hay respuesta guardada para «{{ query_text }}». Sin conexión solo se responden las consultas precalculadas que aparecen abajo.</p>{% endif %}
+  </div>
+  {% elif query_status == "unavailable" %}
+  <div class="answer answer--offline">
+    <p class="answer__state" role="alert">La consulta no pudo completarse. Intenta de nuevo o elige una consulta precalculada.</p>
+  </div>
+  {% elif answer %}
+  {% set sources = [] %}
+  {% for citation in answer.citas %}{% if citation.id_evidencia not in sources %}{% set _ = sources.append(citation.id_evidencia) %}{% endif %}{% endfor %}
+  {% for version in answer.versiones %}{% if version.id_evidencia not in sources %}{% set _ = sources.append(version.id_evidencia) %}{% endif %}{% endfor %}
+  <h2 class="case__title" data-estado="{{ answer.estado }}">{{ answer.consulta }}</h2>
+  {% if answer.estado == "respondida" %}
+  <div class="answer">
+    <p class="answer__state">Respuesta con evidencia</p>
+    <p class="answer__text">{{ answer.respuesta }}
+      <span class="cites">{% for citation in answer.citas %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(citation.id_evidencia) + 1 }}">{{ sources.index(citation.id_evidencia) + 1 }}</a>{% endfor %}</span>
+    </p>
+  </div>
+  {% elif answer.estado == "abstencion" %}
+  <div class="answer answer--abstain">
+    <p class="answer__state">No hay evidencia suficiente para responder</p>
+    <p>{{ answer.motivo_abstencion }}</p>
+    <h3 class="h2">Qué se necesitaría</h3>
+    <p>{{ answer.faltante }}</p>
+  </div>
+  {% else %}
+  <div class="answer answer--contradiction">
+    <p class="answer__state">Las fuentes no coinciden</p>
+    <div class="versions">
+      {% for version in answer.versiones %}
+      <div class="version">
+        <p class="version__value">{{ version.valor }}</p>
+        <p class="version__scope">{{ version.alcance }}</p>
+        <a class="cite" href="/evidence/{{ version.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(version.id_evidencia) + 1 }}">{{ sources.index(version.id_evidencia) + 1 }}</a>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="muted">Verificación pendiente: el sistema no elige una versión.</p>
+  </div>
+  {% endif %}
+  {% if sources %}
+  <section class="sources" aria-label="Fuentes">
+    <h3 class="h2">Fuentes</h3>
+    <ul class="sources__list">
+      {% for id in sources %}<li><a class="source-line" href="/evidence/{{ id|urlencode }}"><span class="source-line__n">{{ loop.index }}</span><span>{{ id }}</span><span class="source-line__d">Ver evidencia</span></a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% else %}
+  <div class="empty">
+    <p>Pregunta sobre la agenda.</p>
+    <p class="muted">Usa el buscador de arriba o elige una consulta precalculada.</p>
+  </div>
+  {% endif %}
+  <section class="mt-12" aria-label="Consultas disponibles">
+    <h2 class="h2">Consultas disponibles</h2>
+    <ul class="suggest-list">
+      {% for item in examples %}<li><a class="link" href="/queries?q={{ item.consulta|urlencode }}">{{ item.consulta }}</a></li>{% endfor %}
+    </ul>
+  </section>
+</div>

@@ -26,7 +26,7 @@ def test_every_contract_screen_and_htmx_fragment(settings):
             response = client.get(path)
             assert response.status_code == 200, (path, response.text)
             assert "text/html" in response.headers["content-type"]
-            assert "Demostración" in response.text
+            assert ("Demostración" in response.text) == (path != "/quality")
         assert "<html" not in client.get("/inbox", headers={"HX-Request": "true"}).text
         assert client.get("/groups/missing").status_code == 404
         assert client.get("/cases/missing").status_code == 404
@@ -118,8 +118,8 @@ def test_precomputed_queries_abstention_and_safe_html(settings):
             assert response.status_code == 200
             assert answer["estado"] in response.text
         response = client.get("/queries", params={"q": "An unavailable query"})
-        assert response.status_code == 503
-        assert "solo consultas precalculadas" in response.text
+        assert response.status_code == 200
+        assert "No hay una respuesta precalculada" in response.text
         repository = client.app.state.repository
         with repository.connection() as connection:
             record = repository.record("group", "G-001")
@@ -138,7 +138,7 @@ def test_g4_provider_seam_validates_citations_and_never_runs_offline(settings):
         return repository.records("answer")[0] | {"consulta": query}
 
     with TestClient(create_app(settings, query_provider=provider)) as client:
-        assert client.get("/queries", params={"q": "New query"}).status_code == 503
+        assert client.get("/queries", params={"q": "New query"}).status_code == 200
         assert calls == []
     with TestClient(create_app(replace(settings, offline=False), query_provider=provider)) as client:
         assert client.get("/queries", params={"q": "New query"}).status_code == 200
@@ -172,12 +172,14 @@ def test_removed_cases_are_archived_and_cannot_remain_approved(settings):
 
 def test_htmx_errors_and_draft_claims_preserve_screen_contract(settings):
     with TestClient(create_app(settings)) as client:
-        for path in ("/cases/missing", "/queries?q=new-query"):
-            response = client.get(path, headers={"HX-Request": "true"})
-            assert response.status_code in (404, 503)
-            assert "text/html" in response.headers["content-type"]
-            assert 'role="alert"' in response.text
-            assert "<html" not in response.text
+        response = client.get("/cases/missing", headers={"HX-Request": "true"})
+        assert response.status_code == 404
+        assert "text/html" in response.headers["content-type"]
+        assert 'role="alert"' in response.text
+        assert "<html" not in response.text
+        response = client.get("/queries?q=new-query", headers={"HX-Request": "true"})
+        assert response.status_code == 200 and "No hay una respuesta precalculada" in response.text
+        assert "<html" not in response.text
         response = client.post("/cases/CASO-001/review", data={
             "state": "en_revision", "actor": "Reviewer", "expected_version": 999,
         }, headers={"HX-Request": "true"})
@@ -213,4 +215,4 @@ def test_g4_provider_deadline_returns_a_controlled_error(settings):
     with TestClient(create_app(replace(settings, offline=False, generation_timeout=0.03), query_provider=slow_provider)) as client:
         response = client.get("/queries", params={"q": "New query"})
         assert response.status_code == 503
-        assert "deadline" in response.text
+        assert "La consulta no pudo completarse" in response.text

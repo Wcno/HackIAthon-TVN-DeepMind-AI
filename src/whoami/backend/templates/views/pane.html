@@ -1,0 +1,9 @@
+{# Right pane: back link (mobile) plus the active tab view. #}
+<div class="pane{% if opened %} pane--open{% endif %}">
+  {% if group %}
+  <a class="back" href="/inbox{{ filter_query }}" hx-get="/inbox{{ filter_query }}" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">{{ icon("back") }}Volver a temas</a>
+  {% include 'views/' ~ pane ~ '.html' %}
+  {% else %}
+  <div class="empty"><p>Elige un tema de la lista para abrir su caso.</p></div>
+  {% endif %}
+</div>

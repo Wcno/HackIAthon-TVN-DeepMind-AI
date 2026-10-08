@@ -1,0 +1,125 @@
+{% from "views/_report_icons.html" import report_icon %}
+{% set example = methodology.example %}
+<div class="report">
+  <p class="lede">Cómo se ordena la agenda. El puntaje sirve para decidir qué revisar primero: no es una probabilidad de que algo sea cierto. La decisión editorial siempre es humana.</p>
+
+  <section class="section !mt-12" aria-labelledby="formula">
+    <h2 class="sr-only" id="formula">Fórmula del puntaje de atención</h2>
+    <div class="formula">
+      <p class="formula__eq" aria-label="{{ methodology.formula_label }}">
+        <span class="p">P</span><span class="op">=</span>
+        {% for item in methodology.weights %}<span class="formula__term">{{ item.weight }}<span class="pop__key pop__key--{{ item.key }}">{{ item.key }}</span></span>{% if not loop.last %}<span class="op">+</span>{% endif %}
+        {% endfor %}
+      </p>
+      <p class="formula__note">Cada componente se normaliza de 0 a 1 y lleva una justificación escrita. El puntaje resultante va de 0 a 100 y cae en uno de tres rangos sin solapamiento.</p>
+      <div class="ranges">
+        <div class="ranges__bar" style="grid-template-columns: {% for range in methodology.ranges %}{{ range.size }}fr {% endfor %}">{% for range in methodology.ranges %}<span class="{{ range.name }}">{{ range.label }}</span>{% endfor %}</div>
+        <div class="ranges__ticks" aria-hidden="true" style="grid-template-columns: {% for range in methodology.ranges %}{{ range.size }}fr {% endfor %}">{% for bound in methodology.bounds[:-2] %}<span>{{ bound }}</span>{% endfor %}<span><span>{{ methodology.bounds[-2] }}</span><span>{{ methodology.bounds[-1] }}</span></span></div>
+        <p class="sr-only">{{ methodology.ranges_text }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="componentes">
+    <h2 class="section__title" id="componentes">Qué mide cada componente</h2>
+    <p class="section__lede">Pesos iniciales propuestos por el reto (§4). Si cambian, cambia la versión de las reglas y cada puntaje sigue trazable a las reglas con que se calculó.</p>
+
+    <div class="weights">
+      <div class="scorebar" aria-hidden="true">{% for item in methodology.weights %}<span class="scorebar__seg scorebar__seg--{{ item.key }}" style="width:{{ item.weight }}%"></span>{% endfor %}</div>
+      <p>Reparto de los 100 puntos posibles.</p>
+    </div>
+
+    <div class="components">
+      {% for item in methodology.weights %}
+      <div class="component"><span class="pop__key pop__key--{{ item.key }}">{{ item.key }}</span><p class="component__name">{{ item.name }}</p><p class="component__weight">{{ item.weight }}<small>pts</small></p><p class="component__what">{{ item.what }}</p></div>
+      {% endfor %}
+    </div>
+
+    <div class="rule-list">
+      <div class="rule">
+        <h3 class="rule__title">Empates</h3>
+        <p>Si dos temas tienen el mismo puntaje, va primero el de mayor urgencia (U); si siguen empatados, el de menor identificador de grupo.</p>
+      </div>
+      <div class="rule">
+        <h3 class="rule__title">Versión de las reglas: {{ methodology.rules_version }}</h3>
+        <p>Cada puntaje guarda la versión con que se calculó. El valor y el rango se derivan de los componentes; no se aceptan escritos a mano.</p>
+      </div>
+      <div class="rule">
+        <h3 class="rule__title">El estado de la evidencia es aparte</h3>
+        <p>Un tema puede ser prioritario y tener poca evidencia. Una prioridad alta con evidencia insuficiente no se puede aprobar: requiere investigación.</p>
+        <div class="states">
+          <span class="badge evidence--insuficiente">Evidencia insuficiente</span>
+          <span class="badge evidence--parcial">Evidencia parcial</span>
+          <span class="badge evidence--suficiente_para_borrador">Suficiente para borrador</span>
+        </div>
+      </div>
+      <div class="rule">
+        <h3 class="rule__title">Repetir no es corroborar</h3>
+        <p>Una nota de agencia replicada por varios medios cuenta como una sola procedencia.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ejemplo" aria-labelledby="ejemplo-titulo">
+    <h2 class="section__title" id="ejemplo-titulo">Un puntaje paso a paso</h2>
+    <p class="section__lede">Elige un tema para ver de dónde sale su puntaje: valor de cada componente, por su peso, con la justificación que lo acompaña.</p>
+
+    <div class="example">
+      {% if demo %}<p class="notice example__notice" role="note">{{ report_icon("note") }}<span>El ejemplo usa datos sintéticos de demostración: las noticias son inventadas.</span></p>{% endif %}
+      {% if example %}
+      <form class="example__pick" action="/methodology" method="get" hx-get="/methodology" hx-trigger="change" hx-target="#ejemplo" hx-select="#ejemplo" hx-swap="outerHTML" hx-push-url="true">
+        <label for="pick">Tema</label>
+        <span class="select">
+          <select id="pick" name="grupo">{% for option in methodology.options %}<option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}</select>
+          {{ report_icon("chevron", "icon select__chevron") }}
+        </span>
+        <noscript><button class="btn btn--small" type="submit">Ver</button></noscript>
+      </form>
+      <div id="example" aria-live="polite">
+        <div class="example__head">
+          <div>
+            <p class="example__title">{{ example.title }}</p>
+            <p class="example__meta">
+              <span class="priority priority--{{ example.range }}">{{ example.range }}</span>
+              <span class="badge evidence--{{ example.evidence_state }}">{{ example.evidence }}</span>
+              <span class="muted">Reglas {{ example.rules }}</span>
+            </p>
+          </div>
+          <p class="example__total"><b>{{ example.total }}</b><span>de 100</span></p>
+        </div>
+        <div class="scorebar" role="img" aria-label="Aporte de cada componente al puntaje">{% for row in example.rows %}<span class="scorebar__seg scorebar__seg--{{ row.key }}" style="width:{{ row.width }}"></span>{% endfor %}</div>
+        <table class="calc">
+          <thead><tr><th>Componente</th><th class="num">Valor (0 a 1)</th><th class="num">Peso</th><th class="num">Puntos</th><th>Justificación</th></tr></thead>
+          <tbody>
+            {% for row in example.rows %}
+            <tr>
+              <td><span class="calc__comp"><span class="pop__key pop__key--{{ row.key }}">{{ row.key }}</span>{{ row.name }}</span></td>
+              <td class="num">{{ row.value }}</td>
+              <td class="num">× {{ row.weight }}</td>
+              <td class="pts">{{ row.points }}<span class="sr-only"> puntos</span></td>
+              <td class="why">{{ row.why }}<span class="mobile-calc mt-1 text-sm text-ink-3">{{ row.value }} × {{ row.weight }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot><tr><td colspan="3">Puntaje</td><td class="pts">{{ example.total }}</td><td class="why">Rango {{ example.range }}</td></tr></tfoot>
+        </table>
+      </div>
+      {% else %}<p class="muted">Todavía no hay temas agrupados para mostrar un ejemplo.</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="evaluacion">
+    <h2 class="section__title" id="evaluacion">Sistema con IA frente a línea base</h2>
+    <p class="section__lede">Aquí se comparará el resultado del sistema con IA contra una línea base sin IA, sobre las mismas consultas.</p>
+
+    <div class="pending" role="status">
+      <span class="pending__state">{{ report_icon("pending") }} Pendiente de G7</span>
+      <h3 class="pending__title">Todavía no hay métricas de evaluación</h3>
+      <p>El equipo G7 produce esta comparación. Hasta que la entregue, esta sección no muestra ninguna cifra: no se estima ni se adelanta un resultado.</p>
+      <div class="pending__grid" aria-hidden="true">
+        <span>Métrica</span><span>Línea base</span><span>Con IA</span>
+        <em>Sin resultados todavía</em>
+      </div>
+    </div>
+  </section>
+</div>

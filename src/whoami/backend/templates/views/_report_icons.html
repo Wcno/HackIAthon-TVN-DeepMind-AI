@@ -1,0 +1,8 @@
+{% macro report_icon(name, cls="icon") -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+{%- if name == "check" %}<circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/>
+{%- elif name == "note" %}<circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16v.01"/>
+{%- elif name == "pending" %}<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/>
+{%- elif name == "chevron" %}<path d="m6 9 6 6 6-6"/>{% endif -%}
+</svg>
+{%- endmacro %}

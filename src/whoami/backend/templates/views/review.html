@@ -1,6 +1,37 @@
-<p>Estado actual: <strong>{{ case.estado_revision }}</strong>. Aprobar como borrador no publica el contenido.</p>
-  <form method="post" action="/cases/{{ case.id_caso|urlencode }}/review" hx-post="/cases/{{ case.id_caso|urlencode }}/review" hx-target="#screen" hx-swap="outerHTML">
-  <input type="hidden" name="expected_version" value="{{ case.version }}"><label>Decisión <select name="state">{% for state in review_states %}<option value="{{ state }}">{{ state }}</option>{% endfor %}</select></label>
-  <label>Responsable <input name="actor" required maxlength="120"></label><label>Nota <textarea name="note" maxlength="2000"></textarea></label><button>Guardar decisión</button></form>
-  <h2>Historial humano</h2>{% for item in history %}<article><p>{{ item.fecha|panama_time }} (Panamá) · {{ item.estado }} · {{ item.responsable or 'Revisión pendiente' }} · {% if item.content_version == case.content_version %}Contenido actual{% else %}Versión anterior: decisión histórica{% endif %}</p><p>{{ item.nota or '' }}</p></article>{% endfor %}
-  {% if audit %}<h2>Cambios del contenido</h2>{% for event in audit %}<p>{{ event.timestamp|panama_time }} (Panamá): cambió el contenido del caso. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}{% endif %}
+{% set tab = 'revision' %}
+{% include 'views/case/_header.html' %}
+{% set labels = {"en_revision": "Enviar a revisión", "requiere_evidencia": "Pedir más evidencia", "aprobado_como_borrador": "Aprobar como borrador", "descartado": "Descartar"} %}
+{% set blocked = "Evidencia insuficiente: no se puede aprobar." if case.estado_evidencia == 'insuficiente' else ("No hay borrador: no se puede aprobar." if not case.borrador else none) %}
+{% set last = history[-1] if history else none %}
+<div class="panel" role="tabpanel">
+<section id="review-panel" hx-on::before-swap="if ([409, 422].includes(event.detail.xhr.status)) { event.detail.shouldSwap = true; event.detail.isError = false }">
+  <div class="current">
+    <p class="current__label">Estado actual</p>
+    <p class="current__state">{{ review_labels[case.estado_revision] }}</p>
+    <p class="muted">{% if last %}{{ last.responsable or 'Revisión pendiente' }} · {{ last.fecha|panama_time }} (Panamá){% else %}Sin decisiones todavía.{% endif %}</p>
+  </div>
+  <form class="decide" method="post" action="/cases/{{ case.id_caso|urlencode }}/review" hx-post="/cases/{{ case.id_caso|urlencode }}/review" hx-target="#review-panel" hx-select="#review-panel" hx-select-oob="#case-badges,#review-badge-{{ group.id_grupo }},#lead-review-badge-{{ group.id_grupo }}" hx-swap="outerHTML">
+    <input type="hidden" name="expected_version" value="{{ case.version }}">
+    <label class="field"><span>Responsable</span><input name="actor" required maxlength="120" autocomplete="name" placeholder="Nombre de quien decide" value="{{ form.actor or '' }}"></label>
+    <label class="field"><span>Nota <em>(opcional)</em></span><textarea name="note" rows="2" maxlength="2000" placeholder="Motivo de la decisión">{{ form.note or '' }}</textarea></label>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="decide__actions">
+      {% for state in transitions[case.estado_revision] %}
+      {% set locked = state == 'aprobado_como_borrador' and blocked %}
+      <div class="decide__action">
+        <button type="submit" class="btn {{ 'btn--primary' if state == 'aprobado_como_borrador' or (state == 'en_revision' and case.estado_revision == 'nuevo') else '' }}" name="state" value="{{ state }}" {{ 'disabled' if locked }}>{{ labels[state] }}</button>
+        {% if state == 'aprobado_como_borrador' %}<p class="hint">{{ blocked or 'Aprobar no publica el contenido.' }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </form>
+  <section class="history"><h2 class="h2">Historial</h2>
+    {% if history %}<ol>{% for item in history|reverse %}
+      <li><span class="history__state">{{ review_labels[item.estado] }}</span>
+        <span class="muted">{{ item.responsable or 'Revisión pendiente' }} · {{ item.fecha|panama_time }} (Panamá) · {% if item.content_version == case.content_version %}Contenido actual{% else %}Versión anterior: decisión histórica{% endif %}</span>
+        {% if item.nota %}<span class="history__note">{{ item.nota }}</span>{% endif %}</li>{% endfor %}
+    </ol>{% else %}<p class="muted">Este caso todavía no tiene decisiones.</p>{% endif %}
+    {% for event in audit %}<p class="notice">{{ event.timestamp|panama_time }} (Panamá): cambió el contenido del caso. Las aprobaciones anteriores no se aplican a esta versión.</p>{% endfor %}
+  </section>
+</section>
+</div>

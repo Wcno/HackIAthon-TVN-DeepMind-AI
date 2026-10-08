@@ -1,3 +1,26 @@
-<h2>Afirmaciones y evidencia</h2>{% include 'claims.html' %}
-  {% if case.borrador %}{% set package = case.borrador %}<h2>{{ package.titulo }}</h2>{% if package.leyenda %}<p>{{ package.leyenda }}</p>{% endif %}<p>{{ package.enfoque_interes_publico }}</p><h2>Brief</h2><p>{{ package.brief }}</p><h2>Preguntas</h2><ol>{% for question in package.preguntas %}<li>{{ question }}</li>{% endfor %}</ol><h2>Guion</h2><p>{{ package.guion }}</p><h2>Copy digital</h2><p>{{ package.copy_digital }}</p><h2>Fuentes y verificaciones pendientes</h2>{% for item in package.fuentes_y_verificaciones %}<p>{{ item }}</p>{% endfor %}{% else %}<p>No hay borrador: se necesita más evidencia.</p>{% endif %}
-  <a href="/cases/{{ case.id_caso|urlencode }}/review">Revisión humana</a>
+{% set tab = 'borrador' %}
+{% include 'views/case/_header.html' %}
+<div class="panel" role="tabpanel">
+  {% macro copy_button(text) -%}
+<button type="button" class="btn btn--quiet btn--small" data-copy="{{ text }}"
+  hx-on:click="const button = this, label = button.textContent, block = button.closest('.block'); const settle = text => { button.textContent = text; setTimeout(() => button.textContent = label, 1400) }; (navigator.clipboard ? navigator.clipboard.writeText(button.dataset.copy) : Promise.reject()).then(() => settle('Copiado'), () => { getSelection().selectAllChildren(block.querySelector('.block__title, .block > p')); settle('Selecciona y copia') })">Copiar</button>
+{%- endmacro %}
+{% macro meter(m) -%}
+<span class="budget {{ m.state }}"><span class="budget__track"><span class="budget__fill" style="width:{{ m.percent }}%"></span></span>
+  <span class="budget__text">{{ m.amount|number }} / {{ m.range }} {{ m.unit }}</span></span>
+{%- endmacro %}
+{% if case.borrador %}{% set b = case.borrador %}{% set budgets = draft_budgets(b) %}
+  <section class="block"><div class="block__head"><h2 class="h2">Titular</h2>{{ copy_button(b.titulo) }}</div><p class="block__title">{{ b.titulo }}</p>{% if b.leyenda %}<p class="muted">{{ b.leyenda }}</p>{% endif %}</section>
+  <section class="block"><h2 class="h2">Enfoque de interés público</h2><p>{{ b.enfoque_interes_publico }}</p></section>
+  <section class="block"><div class="block__head"><h2 class="h2">Brief</h2>{{ meter(budgets.brief) }}{{ copy_button(b.brief) }}</div><p>{{ b.brief }}</p></section>
+  <section class="block"><h2 class="h2">Preguntas para el reportero</h2><ol class="questions">{% for q in b.preguntas %}<li>{{ q }}</li>{% endfor %}</ol></section>
+  <section class="block"><div class="block__head"><h2 class="h2">Guion</h2>{{ meter(budgets.guion) }}{{ copy_button(b.guion) }}</div><p>{{ b.guion }}</p></section>
+  <section class="block"><div class="block__head"><h2 class="h2">Copy digital</h2>{{ meter(budgets["copy"]) }}{{ copy_button(b.copy_digital) }}</div><p>{{ b.copy_digital }}</p></section>
+  <section class="block gaps"><h2 class="h2">Fuentes y verificaciones pendientes</h2><ul>{% for item in b.fuentes_y_verificaciones %}<li>{{ item }}</li>{% endfor %}</ul></section>
+  {% else %}
+  <div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p></div>
+  {% endif %}
+  <section class="claims-used"><h2 class="h2">Afirmaciones y evidencia citada</h2>
+    <p class="muted">Las citas se muestran por afirmación del caso, no oración por oración.</p>
+    {% include 'views/case/_claims.html' %}</section>
+</div>

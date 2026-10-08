@@ -12,3 +12,4 @@ dist/
 
 # Evidence index cache of the query box (rebuilt by `whoami generar`)
 data/processed/evidencias_vectores.*
+.cache/

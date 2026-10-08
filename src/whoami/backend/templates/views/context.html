@@ -1,1 +1,14 @@
-{% for item in group.contexto %}<article><h2>{{ item.etiqueta }}</h2><p>{{ item.pais }} · {{ item.periodo }} · {{ item.valor if item.valor is not none else 'Dato no disponible' }} {{ item.unidad }}</p><p>{{ item.limitaciones }}</p><p>{{ item.razon }}</p><a href="/evidence/{{ item.id_evidencia|urlencode }}">Ver evidencia</a></article>{% else %}<p>{{ group.sin_contexto_motivo }}</p>{% endfor %}
+{% set tab = 'contexto' %}
+{% include 'views/case/_header.html' %}
+<div class="panel" role="tabpanel">
+  {% for item in group.contexto %}
+  <section class="block"><h2 class="h2">{{ item.etiqueta }}</h2>
+    <dl class="facts"><div><dt>Valor</dt><dd>{{ item.valor if item.valor is not none else 'Dato no disponible' }} {{ item.unidad }}</dd></div>
+      <div><dt>País</dt><dd>{{ 'Panamá' if item.pais == 'PAN' else item.pais }}</dd></div><div><dt>Período</dt><dd>{{ item.periodo }}</dd></div></dl>
+    <p>{{ item.razon }}</p><p class="notice">{{ item.limitaciones }}</p>
+    <a class="link" href="/evidence/{{ item.id_evidencia|urlencode }}" hx-get="/evidence/{{ item.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML">Ver fuente</a>
+  </section>
+  {% else %}
+  <div class="empty"><p>Sin contexto oficial</p><p class="muted">{{ group.sin_contexto_motivo }}</p></div>
+  {% endfor %}
+</div>

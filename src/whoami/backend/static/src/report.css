@@ -1,0 +1,223 @@
+@layer components {
+  /* quality and methodology share these report blocks */
+  .report .lede { @apply mt-4 max-w-[64ch] text-[18px] text-ink-2; }
+  .report .snapshot { @apply mt-5 mb-0 gap-x-5; }
+  .report .snapshot strong { @apply font-semibold text-ink-2; }
+  .report .tally { @apply mt-10 gap-x-14 gap-y-6; }
+  .report .notice { @apply mt-8 max-w-3xl items-start gap-3 rounded-2xl px-5 py-4 text-[15.5px] font-normal; }
+  .report .scorebar { @apply h-2; }
+  .report .pop__key { @apply inline-grid size-7 shrink-0 place-items-center font-display text-[15px] mr-0; }
+  .report .select select { @apply h-11 max-w-full truncate; }
+  .report .select { @apply max-w-full; }
+  .example__notice { @apply mt-0 mb-6 flex; }
+  .screen:has(> .report) { @apply pt-8 pb-24 sm:pt-12; }
+  .screen:has(> .report) > .screen__title { @apply text-[38px] leading-[1.02] sm:text-[52px]; }
+  .formula .pop__key--R { @apply ring-2 ring-white/40; }
+
+      .section { @apply mt-20; }
+      .section__title { @apply font-title text-[34px] leading-tight font-semibold text-navy; }
+      .section__lede { @apply mt-2 max-w-[64ch] text-[16.5px] text-ink-2; }
+      .h3 { @apply mt-12 mb-2 font-title text-[22px] leading-snug font-semibold text-navy; }
+
+
+      .flow { @apply mt-10 rounded-3xl bg-white px-8 py-7 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .flow__bar { @apply flex h-4 overflow-hidden rounded-full bg-ground; }
+      .flow__seg--kept { @apply bg-navy; }
+      .flow__seg--window { @apply bg-[#8cc6ec]; }
+      .flow__seg--dup { @apply bg-yellow; }
+      .flow__legend { @apply mt-5 grid gap-x-10 gap-y-3 sm:grid-cols-3; }
+      .flow__legend li { @apply grid grid-cols-[0.875rem_1fr] gap-x-3 text-[15px] text-ink-2; }
+      .flow__legend li > span:first-child { @apply mt-1.5 size-3.5 rounded-sm; }
+      .flow__legend b { @apply font-semibold text-ink; }
+      .flow__legend small { @apply col-start-2 text-sm text-ink-3; }
+
+      .checks { @apply mt-6 flex flex-wrap gap-2; }
+      .check { @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[14px] font-medium text-emerald-800 ring-1 ring-emerald-200; }
+
+      .notice strong { @apply font-semibold; }
+
+      /* coverage */
+      .coverage { @apply mt-6 grid gap-1; }
+      .coverage__axis, .source { @apply grid grid-cols-[minmax(13rem,17rem)_1fr_7.5rem] items-center gap-x-6; }
+      .coverage__axis { @apply px-4 pb-1 text-[13px] font-medium text-ink-3; }
+      .coverage__axis span:nth-child(2) { @apply flex justify-between; }
+      .coverage__axis span:last-child { @apply text-right; }
+      .source { @apply rounded-2xl px-4 py-3 transition hover:bg-white/70; }
+      .source__name { @apply text-[16.5px] font-semibold leading-snug; }
+      .source__kind { @apply block text-sm font-normal text-ink-3; }
+      .days { @apply flex gap-[3px]; }
+      .day { @apply h-6 flex-1 rounded-[3px] bg-line; }
+      .day.is-on { @apply bg-navy; }
+      .source__count { @apply text-right; }
+      .source__count b { @apply block font-display text-2xl leading-none font-bold text-navy; }
+      .source__count span { @apply text-[13px] text-ink-3; }
+      .source__range { @apply col-start-2 mt-1.5 text-[13px] text-ink-3; }
+      .source.is-empty .source__range { @apply font-medium text-rose-700; }
+      .group-label { @apply mt-6 px-4 text-[13px] font-semibold text-ink-3; }
+
+      .bars { @apply mt-4 grid max-w-2xl gap-3; }
+      .bars li { @apply grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5; }
+      .bars__label { @apply text-[15px] text-ink-2; }
+      .bars__value { @apply text-[15px] font-semibold text-navy; }
+      .bars__track { @apply col-span-2 h-2 overflow-hidden rounded-full bg-white; }
+      .bars__fill { @apply block h-full rounded-full bg-navy; }
+
+      /* official data */
+      .official { @apply mt-8 grid gap-x-12 gap-y-14 lg:grid-cols-3; }
+      .official__head { @apply flex items-baseline justify-between gap-3 border-b border-line pb-3; }
+      .official__name { @apply font-title text-[22px] font-semibold text-navy; }
+      .official dl { @apply mt-4 grid gap-0.5; }
+      .official dl div { @apply flex items-baseline justify-between gap-4 py-1.5; }
+      .official dt { @apply text-[15px] text-ink-2; }
+      .official dd { @apply text-[17px] font-semibold text-navy; }
+      .official dd.is-zero { @apply text-ink-3; }
+      .official p { @apply mt-4 text-[15px] text-ink-3; }
+
+      .nulls { @apply mt-6 rounded-3xl bg-white px-8 py-7 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .nulls__title { @apply font-title text-[22px] font-semibold text-navy; }
+      .nulls__lede { @apply mt-1 max-w-[62ch] text-[16px] text-ink-2; }
+      .table { @apply mt-5 w-full border-collapse text-left text-[15px]; }
+      .table th { @apply border-b border-line pb-2 text-[13px] font-medium text-ink-3; }
+      .table td { @apply border-b border-line py-3 pr-4 align-top; }
+      .table tr:last-child td { @apply border-b-0; }
+      .table td:first-child { @apply font-semibold text-ink; }
+      .pill { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium whitespace-nowrap ring-1; }
+      .pill--null { @apply bg-ground text-ink-2 ring-line; }
+      .pill--excluded { @apply bg-rose-50 text-rose-700 ring-rose-200; }
+      .pill--ok { @apply bg-emerald-50 text-emerald-800 ring-emerald-200; }
+      .pills { @apply flex flex-wrap gap-1.5; }
+
+      /* provenance */
+      .prov { @apply mt-6 grid gap-1; }
+      .prov__row { @apply grid grid-cols-[minmax(12rem,1fr)_6rem_minmax(10rem,13rem)_minmax(0,1.4fr)] items-baseline gap-x-6 rounded-2xl px-4 py-3.5 transition hover:bg-white/70; }
+      .prov__head { @apply px-4 pb-1 text-[13px] font-medium text-ink-3 hover:bg-transparent; }
+      .prov__name { @apply text-[16px] font-semibold; }
+      .prov__name a { @apply block text-sm font-normal break-all text-ink-3 no-underline hover:text-blue hover:underline; }
+      .prov__files { @apply text-[15px] text-ink-2; }
+      .prov__when { @apply text-[15px] text-ink-2; }
+      .prov__license { @apply text-sm text-ink-3; }
+
+      .steps { @apply mt-6 grid max-w-3xl list-none gap-3; }
+      .steps li { @apply relative pl-6 text-[16.5px]; }
+      .steps li::before { @apply absolute top-[0.7em] left-1 size-1.5 rounded-full bg-blue content-['']; }
+      .steps b { @apply font-semibold text-navy; }
+
+      .hashes { @apply mt-10 max-w-4xl; }
+      .hashes summary { @apply inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[15px] font-semibold text-blue ring-1 ring-blue/30 transition hover:bg-blue-soft; }
+      .hashes summary::-webkit-details-marker { display: none; }
+      .hashes[open] summary .icon { @apply rotate-180; }
+      .hashes ul { @apply mt-4 grid gap-0.5; }
+      .hashes li { @apply grid grid-cols-[minmax(11rem,16rem)_5rem_1fr] items-baseline gap-x-4 rounded-xl px-3 py-2 text-[15px] hover:bg-white/70; }
+      .hashes code { @apply font-mono text-[13px] break-all text-ink-3; }
+      .hashes .n { @apply text-right text-ink-2; }
+
+/* formula */
+      .formula { @apply mt-10 rounded-3xl bg-navy px-10 py-9 text-white shadow-[0_12px_32px_-12px_rgb(0_70_111/0.35)]; }
+      .formula__eq { @apply flex flex-wrap items-baseline gap-x-4 gap-y-3 font-display text-[56px] leading-none font-bold; }
+      .formula__eq .p { @apply text-yellow; }
+      .formula__eq .op { @apply font-semibold text-white/55; }
+      .formula__term { @apply inline-flex items-baseline gap-1; }
+      .formula__term sub { @apply ml-0.5 font-sans text-base font-semibold text-white/70; }
+      .formula__note { @apply mt-5 max-w-[62ch] text-[16px] text-white/75; }
+
+      .ranges { @apply mt-8; }
+      .ranges__bar { @apply grid h-10 grid-cols-[40fr_30fr_30fr] overflow-hidden rounded-xl text-[14px] font-semibold; }
+      .ranges__bar span { @apply flex items-center px-3; }
+      .ranges__bar .bajo { @apply bg-white/10 text-white/80; }
+      .ranges__bar .medio { @apply bg-white/18 text-white; }
+      .ranges__bar .alto { @apply bg-white/28 text-white; }
+      .ranges__ticks { @apply mt-1.5 grid grid-cols-[40fr_30fr_30fr] text-[13px] text-white/65; }
+      .ranges__ticks span:last-child { @apply flex justify-between; }
+
+      
+      .formula .pop__key--R { @apply ring-2 ring-white/40; }
+
+
+      /* components */
+      .components { @apply mt-8 grid gap-1; }
+      .component { @apply grid grid-cols-[2.25rem_minmax(11rem,15rem)_5.5rem_1fr] items-start gap-x-6 rounded-2xl px-4 py-4 transition hover:bg-white/70; }
+      .component__name { @apply text-[17px] font-semibold leading-snug; }
+      .component__weight { @apply font-display text-3xl leading-none font-bold text-navy; }
+      .component__weight small { @apply ml-1 font-sans text-xs font-semibold tracking-wide text-ink-3 uppercase; }
+      .component__what { @apply max-w-[60ch] text-[16px] text-ink-2; }
+      .weights { @apply mt-6 max-w-3xl; }
+      .weights .scorebar { @apply h-3; }
+      .weights p { @apply mt-2 text-sm text-ink-3; }
+
+      .rule-list { @apply mt-10 grid max-w-4xl gap-x-12 gap-y-6 md:grid-cols-2; }
+      .rule__title { @apply font-title text-[22px] leading-snug font-semibold text-navy; }
+      .rule p { @apply mt-1 text-[16px] text-ink-2; }
+
+      .report .priority--bajo { @apply ring-1 ring-line; }
+      .states { @apply mt-3 flex flex-wrap gap-2; }
+
+      /* worked example */
+      .example { @apply mt-8 rounded-3xl bg-white px-10 pt-8 pb-10 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+      .example__pick { @apply flex flex-wrap items-center gap-3; }
+      .example__pick label { @apply text-[15px] font-semibold text-ink-2; }
+      .example__head { @apply mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-4; }
+      .example__title { @apply max-w-[36ch] font-title text-[28px] leading-tight font-semibold text-balance text-navy; }
+      .example__meta { @apply mt-2 flex flex-wrap items-center gap-2; }
+      .example__total { @apply text-right; }
+      .example__total b { @apply block font-display text-[64px] leading-none font-bold text-navy; }
+      .example__total span { @apply text-xs font-semibold tracking-wider text-ink-3 uppercase; }
+      .example .scorebar { @apply mt-6; }
+
+      .calc { @apply mt-6 w-full border-collapse text-left; }
+      .calc th { @apply border-b border-line pb-2 text-[13px] font-medium text-ink-3; }
+      .calc td { @apply border-b border-line py-3.5 pr-5 align-top text-[16px]; }
+      .calc td.num { @apply text-right font-semibold whitespace-nowrap text-ink-2; }
+      .calc td.pts { @apply text-right font-display text-2xl leading-none font-bold whitespace-nowrap text-navy; }
+      .calc th.num { @apply text-right; }
+      .calc td.why { @apply text-[15px] text-ink-2; }
+      .calc tfoot td { @apply border-b-0 pt-4 font-semibold text-navy; }
+      .calc__comp { @apply flex items-center gap-3 font-semibold whitespace-nowrap; }
+
+
+      /* G7 slot */
+      .pending { @apply mt-8 rounded-3xl px-10 py-10 ring-2 ring-line ring-inset; background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgb(0 70 111 / 0.025) 14px 28px); }
+      .pending__state { @apply inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-semibold text-ink-2 ring-1 ring-line; }
+      .pending__title { @apply mt-5 font-title text-[26px] leading-tight font-semibold text-navy; }
+      .pending p { @apply mt-2 max-w-[60ch] text-[16.5px] text-ink-2; }
+      .pending__grid { @apply mt-8 grid max-w-3xl grid-cols-[1.6fr_1fr_1fr] text-[14px]; }
+      .pending__grid span { @apply border-b border-line py-2.5 font-medium text-ink-3; }
+      .pending__grid em { @apply col-span-3 py-6 text-center text-[15px] text-ink-3 not-italic; }
+
+  @media (max-width: 960px) {
+    .report .section { @apply mt-14; }
+    .section__title { @apply text-[28px]; }
+    .flow, .nulls { @apply rounded-2xl px-5 py-5; }
+    .coverage__axis { @apply hidden; }
+    .source { @apply grid-cols-[1fr_auto] gap-y-2 px-2; }
+    .source .days { @apply col-span-2 row-start-2; }
+    .source__range { @apply col-span-2 col-start-1 mt-0; }
+    .group-label { @apply px-2; }
+    .prov__head { @apply hidden; }
+    .prov__row { @apply grid-cols-1 gap-y-1 px-2; }
+    .hashes li { @apply grid-cols-[1fr_auto] gap-y-0.5; }
+    .hashes code { @apply col-span-2; }
+    .table thead { @apply hidden; }
+    .table tr { @apply grid gap-1 border-b border-line py-3; }
+    .table tr:last-child { @apply border-b-0; }
+    .table td { @apply border-0 p-0; }
+    .formula { @apply rounded-2xl px-5 py-6; }
+    .formula__eq { @apply gap-x-2.5 text-[34px]; }
+    .ranges__bar { @apply text-[12px]; }
+    .ranges__bar span { @apply px-2; }
+    .component { @apply grid-cols-[2.25rem_1fr_auto] gap-y-1 px-2; }
+    .component__what { @apply col-span-2 col-start-2; }
+    .example, .pending { @apply rounded-2xl px-5 py-6; }
+    .example__title { @apply text-[22px]; }
+    .example__total { @apply text-left; }
+    .example__total b { @apply text-5xl; }
+    .calc thead { @apply hidden; }
+    .calc tbody tr { @apply grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-b border-line py-3; }
+    .calc td { @apply border-0 p-0; }
+    .calc td.num { @apply hidden; }
+    .calc td.why { @apply col-span-2; }
+    .calc .mobile-calc { @apply block; }
+    .calc tfoot tr { @apply flex justify-between; }
+    .pending__grid { @apply grid-cols-[1.4fr_1fr_1fr]; }
+  }
+  @media (min-width: 961px) { .calc .mobile-calc { @apply hidden; } }
+}
