@@ -18,7 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from whoami.backend.assistant import DraftAssistant
 from whoami.backend.editor import AssistantRequest, SaveDraft
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
-from whoami.backend.live_case_files import CaseFileUnavailable, LiveCaseFiles, NoGroundedClaims
+from whoami.backend.gemini_completions import CompletionUnavailable
+from whoami.backend.live_case_files import LiveCaseFiles, NoGroundedClaims
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.panama_time import panama_time, short_date
@@ -253,7 +254,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                 return generator_failure(request, group, 409, GENERATOR_OFFLINE)
             try:
                 group["id_caso"] = await request.app.state.live_case_files.generate(group_id)
-            except CaseFileUnavailable as error:
+            except CompletionUnavailable as error:
                 logger.warning("Case file generation unavailable for %s: %s", group_id, error)
                 return generator_failure(request, group, 503, GENERATOR_UNAVAILABLE, retry=True)
             except NoGroundedClaims as error:
