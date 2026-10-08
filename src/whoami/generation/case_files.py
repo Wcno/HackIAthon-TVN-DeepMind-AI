@@ -219,8 +219,17 @@ class TwoStepGenerator:
 
 
 # ---------------------------------------------------------------------------------------------------------
-# The whole output
+# One group and the whole output
 # ---------------------------------------------------------------------------------------------------------
+
+
+def generate_case_file(generator: CaseGenerator, group: Group, evidences: Mapping[str, Evidence]) -> CaseFile:
+    """The case file of one group, through the same generator and verification as the batch.
+
+    Raises `NoGroundedClaims` when no claim of the group survives verification."""
+    id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
+    case_file, _, _ = generator.generate(group, evidences, id_caso)
+    return case_file
 
 
 def build_outputs(
@@ -245,9 +254,8 @@ def build_outputs(
     case_files: list[CaseFile] = []
     inbox = [g for g in sort_inbox(output_set_in.grupos) if not (skip_insufficient and g.estado_evidencia == "insuficiente")]
     for group in inbox[:top_n]:
-        id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
         try:
-            case_file, _, _ = generator.generate(group, evidences, id_caso)
+            case_file = generate_case_file(generator, group, evidences)
         except NoGroundedClaims:
             continue
         case_files.append(case_file)

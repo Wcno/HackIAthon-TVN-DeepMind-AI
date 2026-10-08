@@ -6,7 +6,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from whoami.backend.assistant import DraftAssistant
 from whoami.backend.editor import AssistantRequest, SaveDraft
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
+from whoami.backend.live_case_files import CaseFileUnavailable, LiveCaseFiles, NoGroundedClaims
 from whoami.backend.pipeline import load_pipeline, validate_answer
 from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
 from whoami.backend.panama_time import panama_time, short_date
@@ -66,6 +67,11 @@ REVIEW_LABELS = {
 }
 #: Screens whose every figure is real, so the synthetic-data banner would mislead.
 REAL_DATA_SCREENS = frozenset({"quality"})
+GENERATOR_OFFLINE = "Sin conexión: generar la ficha necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generarla."
+GENERATOR_UNAVAILABLE = ("No se pudo generar la ficha ahora: Gemini no respondió o se alcanzó su límite de uso. "
+                         "No se guardó nada; reintenta en un momento.")
+GENERATOR_UNSUPPORTED = ("Se intentó generar la ficha, pero ninguna afirmación quedó respaldada por las fuentes citadas, así que no se creó. "
+                         "Hacen falta más fuentes, o fuentes con más texto, sobre este tema.")
 EVIDENCE_LABELS = {
     "suficiente_para_borrador": "Evidencia suficiente", "parcial": "Evidencia parcial", "insuficiente": "Evidencia insuficiente",
 }
@@ -116,6 +122,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.editorial = EditorialService(repository, images=news_images.load(settings.data_directory))
         app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
         app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
+        app.state.live_case_files = LiveCaseFiles(repository, app.state.gemini)
         app.state.assistant = DraftAssistant(repository, None if settings.demo else settings.data_directory / "embeddings")
         try:
             yield
@@ -226,6 +233,38 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     def group(request: Request, group_id: str):
         item = request.app.state.editorial.group(group_id)
         return desk(request, item["titulo"], "group", group=item)
+
+    def generator_failure(request: Request, group: dict, status_code: int, message: str, *, retry: bool = False):
+        """The generator panel after a refused or failed attempt; htmx swaps it in place of the old panel."""
+        state = {"message": message, "retry": retry}
+        if request.headers.get("HX-Request") != "true":
+            return desk(request, group["titulo"], "group", group=group, status_code=status_code, generator=state)
+        query = request.url.query
+        return templates.TemplateResponse(request=request, name="views/case/_generator.html", status_code=status_code,
+                                          headers={"HX-Retarget": "#case-file-generator", "HX-Reswap": "outerHTML"},
+                                          context={"group": group, "generator": state, "offline": settings.offline,
+                                                   "filter_query": f"?{query}" if query else ""})
+
+    @app.post("/groups/{group_id}/case-file", response_class=HTMLResponse)
+    async def generate_case_file(request: Request, group_id: str):
+        group = request.app.state.editorial.group(group_id)
+        if group["id_caso"] is None:
+            if settings.offline:
+                return generator_failure(request, group, 409, GENERATOR_OFFLINE)
+            try:
+                group["id_caso"] = await request.app.state.live_case_files.generate(group_id)
+            except CaseFileUnavailable as error:
+                logger.warning("Case file generation unavailable for %s: %s", group_id, error)
+                return generator_failure(request, group, 503, GENERATOR_UNAVAILABLE, retry=True)
+            except NoGroundedClaims as error:
+                logger.warning("No grounded claims for %s: %s", group_id, error)
+                return generator_failure(request, group, 422, GENERATOR_UNSUPPORTED)
+        url = f"/cases/{quote(group['id_caso'])}" + (f"?{request.url.query}" if request.url.query else "")
+        if request.headers.get("HX-Request") != "true":
+            return RedirectResponse(url, status_code=303)
+        response = case_screen(request, group["id_caso"], "case")
+        response.headers["HX-Push-Url"] = url
+        return response
 
     @app.get("/groups/{group_id}/context", response_class=HTMLResponse)
     def context(request: Request, group_id: str):

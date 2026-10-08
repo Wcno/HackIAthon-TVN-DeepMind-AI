@@ -114,7 +114,7 @@ def test_groups_without_case_file_say_so_in_the_pane(client):
     if not without_case:
         pytest.skip("every group has a case file in this dataset")
     pane = client.get(f"/groups/{without_case[0]['id_grupo']}").text.split('id="case"')[1]
-    assert "Este tema aún no tiene ficha de evidencia" in pane
+    assert "Este tema todavía no tiene ficha" in pane and "Sin ficha" in pane
 
 
 def test_query_states(client):

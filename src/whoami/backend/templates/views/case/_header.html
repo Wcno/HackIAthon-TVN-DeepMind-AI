@@ -26,8 +26,9 @@
       </div>
     </details>
     <div class="case__badges">
-      <span class="badge evidence--{{ group.estado_evidencia }}">{{ evidence_labels[group.estado_evidencia] }}</span>
-      {% if group.estado_revision %}<span class="badge review review--{{ group.estado_revision }}">{{ review_labels[group.estado_revision] }}</span>{% endif %}
+      <span class="badge evidence--{{ group.estado_evidencia }}" title="Estado de las fuentes del tema, independiente de la ficha">{{ evidence_labels[group.estado_evidencia] }}</span>
+      {% if not group.id_caso %}<span class="badge badge--pending" title="Todavía no se ha generado la ficha de este tema">Sin ficha</span>
+      {% elif group.estado_revision %}<span class="badge review review--{{ group.estado_revision }}">{{ review_labels[group.estado_revision] }}</span>{% endif %}
     </div>
   </div>
   <p class="meta">{{ group.n_noticias|number }} noticias · {{ group.n_medios|number }} medios · {{ group.n_procedencias|number }} procedencias independientes</p>

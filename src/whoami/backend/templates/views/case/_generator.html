@@ -1,0 +1,29 @@
+{# Generator of a group's case file: what is pending, the button, its progress and the outcome of the last attempt.
+   Needs group, offline and filter_query; `generator` carries the message (and `retry`) of a failed attempt. #}
+{% set pending = {
+  "suficiente_para_borrador": "Las fuentes bastan para un borrador, pero la ficha todavía no se ha generado: aún no hay afirmaciones citadas, vacíos ni paquete editorial.",
+  "parcial": "Las fuentes cubren el tema solo en parte. La ficha mostrará qué afirmaciones se respaldan, qué vacíos quedan y un borrador por verificar.",
+  "insuficiente": "Las fuentes no bastan para un borrador. La ficha mostrará solo las afirmaciones que sí se respaldan y qué falta; no incluirá borrador.",
+} %}
+{% set gid = group.id_grupo|urlencode %}
+<section class="generator" id="case-file-generator" aria-labelledby="generator-title">
+  <h2 class="generator__title" id="generator-title">Este tema todavía no tiene ficha</h2>
+  <p class="generator__text">{{ pending[group.estado_evidencia] }}</p>
+  {% if generator and generator.retry is false %}
+  <p class="form-error" role="alert">{{ generator.message }}</p>
+  {% else %}
+  <form class="generator__form" method="post" action="/groups/{{ gid }}/case-file{{ filter_query }}"
+        hx-post="/groups/{{ gid }}/case-file{{ filter_query }}" hx-target="#desk" hx-swap="outerHTML" hx-disabled-elt="find button"
+        hx-on::before-swap="if ([409, 422, 503].includes(event.detail.xhr.status)) { event.detail.shouldSwap = true; event.detail.isError = false }"
+        hx-on::send-error="this.querySelector('.generator__failure').hidden = false"
+        hx-on::response-error="this.querySelector('.generator__failure').hidden = false">
+    {% if generator %}<p class="form-error" role="alert">{{ generator.message }}</p>{% endif %}
+    <p class="form-error generator__failure" role="alert" hidden>No se pudo generar la ficha: la conexión falló. No se guardó nada; reintenta.</p>
+    <div class="generator__actions">
+      <button type="submit" class="btn btn--primary" {{ 'disabled' if offline }}>{{ 'Reintentar' if generator else 'Generar ficha' }}</button>
+      <p class="generator__progress" role="status"><span class="generator__spinner" aria-hidden="true"></span>Generando con Gemini. Puede tardar hasta un minuto; no cierres la página.</p>
+    </div>
+    {% if offline %}<p class="hint generator__hint">Sin conexión: esta función necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generar la ficha.</p>{% endif %}
+  </form>
+  {% endif %}
+</section>

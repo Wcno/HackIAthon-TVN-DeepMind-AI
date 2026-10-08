@@ -176,6 +176,16 @@
   .notice { @apply mt-6 flex items-start gap-2.5 rounded-xl bg-yellow-soft/70 px-4 py-3 text-[15px] font-medium text-[#5a4300]; }
   .notice .icon { @apply mt-1; }
 
+  .generator { @apply mt-6 grid max-w-[64ch] gap-3 rounded-2xl bg-blue-soft px-6 py-5; }
+  .generator__title { @apply font-title text-xl font-semibold text-navy; }
+  .generator__text { @apply text-[16px] text-ink-2; }
+  .generator__actions { @apply flex flex-wrap items-center gap-4; }
+  .generator__hint { @apply mt-0 max-w-none; }
+  .generator__progress { @apply hidden items-center gap-2.5 text-[15px] font-medium text-ink-2; }
+  .generator__form.htmx-request .generator__progress { @apply flex; }
+  .generator__spinner { @apply size-4 shrink-0 animate-spin rounded-full border-2 border-blue/30 border-t-blue motion-reduce:animate-none; }
+  .badge--pending { @apply bg-white text-ink-2 ring-line; }
+
   .versions { @apply my-4 grid grid-cols-2 gap-4; }
   .version { @apply rounded-2xl bg-ground p-6; }
   .version__value { @apply font-display text-5xl leading-none font-bold text-navy; }

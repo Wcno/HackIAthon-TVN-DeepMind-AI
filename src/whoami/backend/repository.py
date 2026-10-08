@@ -7,7 +7,9 @@ Each review uses an immediate transaction and an expected version.
 import hashlib
 import json
 import sqlite3
+from collections.abc import Callable
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -69,6 +71,9 @@ class EditorialRepository:
                 CREATE TABLE IF NOT EXISTS generation_cache (
                     key TEXT PRIMARY KEY, body TEXT NOT NULL, created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS generated_cases (
+                    id TEXT PRIMARY KEY, group_id TEXT NOT NULL UNIQUE, body TEXT NOT NULL, created_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id INTEGER PRIMARY KEY, case_id TEXT NOT NULL REFERENCES cases(id),
                     reason TEXT NOT NULL, timestamp TEXT NOT NULL, content_version INTEGER NOT NULL
@@ -92,10 +97,11 @@ class EditorialRepository:
             connection.close()
 
     def import_bundle(self, bundle: PipelineBundle) -> None:
-        groups = {group["id_grupo"]: group for group in bundle.groups}
-        evidence = {item["id_evidencia"]: item for item in bundle.evidence}
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            bundle = self._with_generated_cases(connection, bundle)
+            groups = {group["id_grupo"]: group for group in bundle.groups}
+            evidence = {item["id_evidencia"]: item for item in bundle.evidence}
             incoming_cases = {case["id_caso"] for case in bundle.cases}
             for previous in connection.execute("SELECT * FROM cases WHERE active = 1").fetchall():
                 if previous["id"] not in incoming_cases:
@@ -114,42 +120,86 @@ class EditorialRepository:
                     body = {key: value for key, value in row.items() if key != "estado_revision"}
                     connection.execute("INSERT INTO records VALUES (?, ?, ?)", (kind, row[id_field], canonical_json(body)))
             for case in bundle.cases:
-                body = {key: value for key, value in case.items() if key != "estado_revision"}
-                group = groups[case["id_grupo"]]
-                dependency = {key: value for key, value in group.items() if key != "estado_revision"}
-                source_ids = set(cited_ids(case))
-                source_ids.update(member["id_noticia"] for member in group["miembros"])
-                source_ids.update(context["id_evidencia"] for context in group["contexto"])
-                source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
-                                  for version in contradiction["versiones"])
-                digest = content_hash({"case": body, "group": dependency,
-                                       "evidence": {key: evidence[key] for key in source_ids}})
-                existing = connection.execute("SELECT * FROM cases WHERE id = ?", (case["id_caso"],)).fetchone()
-                if existing is None:
-                    connection.execute("INSERT INTO cases(id, body, content_hash, version) VALUES (?, ?, ?, 1)",
-                                       (case["id_caso"], canonical_json(body), digest))
-                    seed = sorted((review for review in bundle.reviews if review["id_caso"] == case["id_caso"]),
-                                  key=lambda review: datetime.fromisoformat(review["fecha"]))
-                    # Demo review dates are synthetic and may be later today.
-                    # Anchor that simulated history before import time, preserving
-                    # source timestamps in notes. Real human decisions use real UTC.
-                    now = datetime.now(UTC)
-                    shift = timedelta(0)
-                    if seed and case.get("sintetico"):
-                        latest = datetime.fromisoformat(seed[-1]["fecha"])
-                        if latest >= now:
-                            shift = latest - now + timedelta(seconds=1)
-                    for review in seed:
-                        if shift:
-                            review = review | {"fecha": (datetime.fromisoformat(review["fecha"]) - shift).isoformat(),
-                                               "nota": (review["nota"] or "") + f" [Synthetic seed date {review['fecha']} anchored at import.]"}
-                        self._insert_review(connection, review, 1)
-                elif existing["content_hash"] != digest or not existing["active"]:
-                    version = existing["version"] + 1
-                    content_version = existing["content_version"] + 1
-                    connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ?, active = 1, content_version = ? WHERE id = ?",
-                                       (canonical_json(body), digest, version, content_version, case["id_caso"]))
-                    self._insert_audit(connection, case["id_caso"], "Pipeline content changed; human review required.", content_version)
+                self._import_case(connection, case, groups[case["id_grupo"]], evidence.__getitem__, bundle.reviews)
+
+    @staticmethod
+    def _with_generated_cases(connection, bundle: PipelineBundle) -> PipelineBundle:
+        """Adds the case files generated live to the committed bundle; one the bundle now ships for the same group wins."""
+        shipped = {case["id_grupo"] for case in bundle.cases}
+        known = {group["id_grupo"] for group in bundle.groups}
+        generated = []
+        for row in connection.execute("SELECT * FROM generated_cases").fetchall():
+            if row["group_id"] in shipped or row["group_id"] not in known:
+                connection.execute("DELETE FROM generated_cases WHERE id = ?", (row["id"],))
+            else:
+                generated.append(json.loads(row["body"]))
+        case_of_group = {case["id_grupo"]: case["id_caso"] for case in generated}
+        return replace(bundle, cases=(*bundle.cases, *generated),
+                       groups=tuple(group | {"id_caso": case_of_group[group["id_grupo"]]} if group["id_grupo"] in case_of_group else group
+                                    for group in bundle.groups))
+
+    def add_generated_case(self, case: dict) -> str:
+        """Stores a case file generated live for a group that had none, in this database only, and returns its id.
+
+        A group that already has a case file keeps it, so repeating the call is harmless."""
+        with self.connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
+            if row is None:
+                raise MissingRecord(f"Unknown group: {case['id_grupo']}")
+            group = json.loads(row["body"])
+            if group["id_caso"]:
+                return group["id_caso"]
+            connection.execute("INSERT INTO generated_cases VALUES (?, ?, ?, ?)",
+                               (case["id_caso"], case["id_grupo"], canonical_json(case), datetime.now(UTC).isoformat()))
+            group["id_caso"] = case["id_caso"]
+            connection.execute("UPDATE records SET body = ? WHERE kind = 'group' AND id = ?", (canonical_json(group), case["id_grupo"]))
+
+            def evidence_of(evidence_id: str) -> dict:
+                found = connection.execute("SELECT body FROM records WHERE kind = 'evidence' AND id = ?", (evidence_id,)).fetchone()
+                if found is None:
+                    raise MissingRecord(f"Unknown evidence: {evidence_id}")
+                return json.loads(found["body"])
+
+            self._import_case(connection, case, group, evidence_of, ())
+        return case["id_caso"]
+
+    def _import_case(self, connection, case: dict, group: dict, evidence_of: Callable[[str], dict], reviews) -> None:
+        body = {key: value for key, value in case.items() if key != "estado_revision"}
+        dependency = {key: value for key, value in group.items() if key != "estado_revision"}
+        source_ids = set(cited_ids(case))
+        source_ids.update(member["id_noticia"] for member in group["miembros"])
+        source_ids.update(context["id_evidencia"] for context in group["contexto"])
+        source_ids.update(version["id_evidencia"] for contradiction in case["contradicciones"]
+                          for version in contradiction["versiones"])
+        digest = content_hash({"case": body, "group": dependency,
+                               "evidence": {key: evidence_of(key) for key in source_ids}})
+        existing = connection.execute("SELECT * FROM cases WHERE id = ?", (case["id_caso"],)).fetchone()
+        if existing is None:
+            connection.execute("INSERT INTO cases(id, body, content_hash, version) VALUES (?, ?, ?, 1)",
+                               (case["id_caso"], canonical_json(body), digest))
+            seed = sorted((review for review in reviews if review["id_caso"] == case["id_caso"]),
+                          key=lambda review: datetime.fromisoformat(review["fecha"]))
+            # Demo review dates are synthetic and may be later today.
+            # Anchor that simulated history before import time, preserving
+            # source timestamps in notes. Real human decisions use real UTC.
+            now = datetime.now(UTC)
+            shift = timedelta(0)
+            if seed and case.get("sintetico"):
+                latest = datetime.fromisoformat(seed[-1]["fecha"])
+                if latest >= now:
+                    shift = latest - now + timedelta(seconds=1)
+            for review in seed:
+                if shift:
+                    review = review | {"fecha": (datetime.fromisoformat(review["fecha"]) - shift).isoformat(),
+                                       "nota": (review["nota"] or "") + f" [Synthetic seed date {review['fecha']} anchored at import.]"}
+                self._insert_review(connection, review, 1)
+        elif existing["content_hash"] != digest or not existing["active"]:
+            version = existing["version"] + 1
+            content_version = existing["content_version"] + 1
+            connection.execute("UPDATE cases SET body = ?, content_hash = ?, version = ?, active = 1, content_version = ? WHERE id = ?",
+                               (canonical_json(body), digest, version, content_version, case["id_caso"]))
+            self._insert_audit(connection, case["id_caso"], "Pipeline content changed; human review required.", content_version)
 
     @staticmethod
     def _insert_audit(connection, case_id: str, reason: str, content_version: int) -> None:

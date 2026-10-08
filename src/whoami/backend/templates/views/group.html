@@ -1,7 +1,7 @@
 {% set tab = 'cobertura' %}
 {% include 'views/case/_header.html' %}
 <div class="panel" role="tabpanel">
-  {% if not group.id_caso %}<p class="notice">Este tema aún no tiene ficha de evidencia</p>{% endif %}
+  {% if not group.id_caso %}{% include 'views/case/_generator.html' %}{% endif %}
   <div class="tally">
     <p><strong>{{ group.n_noticias|number }}</strong>noticias</p>
     <p><strong>{{ group.n_medios|number }}</strong>medios</p>

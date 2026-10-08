@@ -2,7 +2,7 @@ import pytest
 
 from generation_fakes import FakeLLM, LLMError, by_id, group, indicator, member, news
 from whoami.contracts import HEADLINE_ONLY_LEGEND
-from whoami.generation.case_files import NoGroundedClaims, TwoStepGenerator
+from whoami.generation.case_files import NoGroundedClaims, TwoStepGenerator, generate_case_file
 from whoami.generation.prompting import CANARY
 from whoami.schemas import ContextLink
 
@@ -191,3 +191,28 @@ def test_a_cap_reached_during_the_package_call_is_not_swallowed():
 
     with pytest.raises(CapExceeded):
         TwoStepGenerator(CapOnSecondCall(), "m").generate(make_group(), EVIDENCES, "CASO-001")
+
+
+def test_generate_case_file_builds_one_group_with_the_id_derived_from_the_group():
+    gen, llm = generator([claims(GOOD), PACKAGE])
+    case_file = generate_case_file(gen, make_group(), EVIDENCES)
+    assert case_file.id_caso == "CASO-1" and case_file.id_grupo == "G-1"
+    assert llm.n_calls == 2
+
+
+def test_generate_case_file_keeps_the_case_id_a_group_already_has():
+    gen, _ = generator([claims(GOOD), PACKAGE])
+    existing = make_group().model_copy(update={"id_caso": "CASO-777"})
+    assert generate_case_file(gen, existing, EVIDENCES).id_caso == "CASO-777"
+
+
+def test_generate_case_file_lets_no_grounded_claims_reach_the_caller():
+    gen, _ = generator([claims(BAD)])
+    with pytest.raises(NoGroundedClaims):
+        generate_case_file(gen, make_group(), EVIDENCES)
+
+
+def test_generate_case_file_for_an_insufficient_group_is_a_case_without_draft():
+    gen, llm = generator([claims(GOOD)])
+    case_file = generate_case_file(gen, make_group(estado="insuficiente"), EVIDENCES)
+    assert case_file.borrador is None and llm.n_calls == 1
