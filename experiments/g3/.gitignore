@@ -1,0 +1,7 @@
+vectors/
+qvectors/
+dvectors/
+vectors_gemini/
+qvectors_gemini/
+datos/context_links.json
+__pycache__/

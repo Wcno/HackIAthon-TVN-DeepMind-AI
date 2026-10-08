@@ -1,0 +1,10 @@
+{"model": "minilm", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.01, "corpus_embed_s": 1.31, "dim": 384}
+{"model": "mpnet", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.4, "corpus_embed_s": 6.37, "dim": 768}
+{"model": "potion_onnx", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.45, "corpus_embed_s": 0.1, "dim": 256}
+{"model": "potion_m2v", "device": "gpu", "providers": ["model2vec-numpy"], "load_s": 1.5, "corpus_embed_s": 0.04, "dim": 256}
+{"model": "jina_v2_es", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 0.9, "corpus_embed_s": 8.28, "dim": 768}
+{"model": "e5_small", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.12, "corpus_embed_s": 2.64, "dim": 384}
+{"model": "e5_large", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.65, "corpus_embed_s": 21.06, "dim": 1024}
+{"model": "gemma300m", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.49, "corpus_embed_s": 8.97, "dim": 768}
+{"model": "qwen3_06b_q", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.86, "corpus_embed_s": 45.2, "dim": 1024}
+{"model": "jina_v3", "device": "gpu", "providers": ["CUDAExecutionProvider", "CPUExecutionProvider"], "load_s": 1.26, "corpus_embed_s": 33.01, "dim": 1024}

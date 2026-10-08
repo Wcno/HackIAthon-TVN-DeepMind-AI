@@ -1,0 +1,1 @@
+{"model": "gemma300m", "load_s": 1.01, "query_ms_p50": 24.0, "query_ms_max": 28.2, "query_peak_rss_mb": 900, "corpus_cpu2_s": 234.6, "corpus_peak_rss_mb": 1666}

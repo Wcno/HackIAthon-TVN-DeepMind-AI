@@ -1,0 +1,26 @@
+ungraded left 1 of 932
+submuestra Gemini (830 docs)
+  gemini_emb2    {'recall@5': 0.868, 'ndcg@10': 0.887, 'n_queries': 30}
+  gemma300m      {'recall@5': 0.885, 'ndcg@10': 0.871, 'n_queries': 30}
+  jina_v3        {'recall@5': 0.846, 'ndcg@10': 0.845, 'n_queries': 30}
+  jina_v2_es     {'recall@5': 0.839, 'ndcg@10': 0.834, 'n_queries': 30}
+  e5_large       {'recall@5': 0.821, 'ndcg@10': 0.825, 'n_queries': 30}
+  qwen3_06b_q    {'recall@5': 0.813, 'ndcg@10': 0.815, 'n_queries': 30}
+  potion_m2v     {'recall@5': 0.763, 'ndcg@10': 0.806, 'n_queries': 30}
+  potion_onnx    {'recall@5': 0.763, 'ndcg@10': 0.806, 'n_queries': 30}
+  e5_small       {'recall@5': 0.761, 'ndcg@10': 0.792, 'n_queries': 30}
+  minilm         {'recall@5': 0.728, 'ndcg@10': 0.77, 'n_queries': 30}
+  bm25           {'recall@5': 0.759, 'ndcg@10': 0.764, 'n_queries': 30}
+  mpnet          {'recall@5': 0.734, 'ndcg@10': 0.758, 'n_queries': 30}
+corpus completo
+  gemma300m      {'recall@5': 0.885, 'ndcg@10': 0.871, 'n_queries': 30}
+  jina_v3        {'recall@5': 0.846, 'ndcg@10': 0.845, 'n_queries': 30}
+  jina_v2_es     {'recall@5': 0.839, 'ndcg@10': 0.834, 'n_queries': 30}
+  e5_large       {'recall@5': 0.829, 'ndcg@10': 0.825, 'n_queries': 30}
+  qwen3_06b_q    {'recall@5': 0.813, 'ndcg@10': 0.815, 'n_queries': 30}
+  potion_m2v     {'recall@5': 0.763, 'ndcg@10': 0.804, 'n_queries': 30}
+  potion_onnx    {'recall@5': 0.763, 'ndcg@10': 0.804, 'n_queries': 30}
+  e5_small       {'recall@5': 0.761, 'ndcg@10': 0.792, 'n_queries': 30}
+  minilm         {'recall@5': 0.728, 'ndcg@10': 0.77, 'n_queries': 30}
+  bm25           {'recall@5': 0.759, 'ndcg@10': 0.764, 'n_queries': 30}
+  mpnet          {'recall@5': 0.734, 'ndcg@10': 0.758, 'n_queries': 30}

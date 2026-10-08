@@ -1,0 +1,9 @@
+{
+ "economia": ["Economía de Panamá: precios, inflación, consumidores, empleo, salarios, pensiones, presupuesto del Estado, impuestos, subsidios, inversión, comercio y empresas"],
+ "logistica_canal": ["Canal de Panamá, tránsitos de buques, puertos, Autoridad Marítima, transporte marítimo, logística y carga"],
+ "turismo": ["Turismo en Panamá: turistas, cruceros, hoteles, visitantes y promoción turística"],
+ "servicios_publicos": ["Servicios públicos: agua potable, electricidad y apagones, salud pública, hospitales y Caja de Seguro Social, escuelas y becas, transporte público, carreteras y obras públicas, basura"],
+ "eventos_naturales": ["Clima y desastres naturales: lluvias, tormentas, inundaciones, deslizamientos, sismos, sequía, huracanes, fenómeno de El Niño, alertas de Protección Civil"],
+ "regulacion": ["Leyes y regulación: proyectos de ley, decretos, normas, reformas aprobadas por la Asamblea Nacional, reglamentos de entidades reguladoras"],
+ "sin_tema": ["Deportes: fútbol, béisbol, resultados de partidos y atletas", "Entretenimiento, farándula, música, cine y celebridades", "Crimen, policía, homicidios, robos, detenciones y casos judiciales", "Accidentes de tránsito e incendios", "Política internacional, guerras y gobiernos de otros países", "Cultura, festivales, tradiciones y lotería"]
+}
