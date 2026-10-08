@@ -17,7 +17,7 @@ from whoami.generation.verifier import fold, normalize_numbers
 from whoami.schemas import Citation, Components, Evidence, Group, Score, TVNCoverage
 
 MATCH_COSINE = .90
-COVERAGE_METHOD = "tvn-snapshot-v2"
+COVERAGE_METHOD = "tvn-snapshot-v3"
 
 
 def is_tvn(row: Mapping[str, str]) -> bool:
@@ -99,7 +99,7 @@ class CoverageIndex:
         if new:
             return TVNCoverage(estado="dato_nuevo", razon="Una fuente externa reporta una cifra ausente de la cobertura TVN coincidente; verificar la actualización.",
                                ids_tvn=tuple(sorted(matches)), pasajes_nuevos=tuple(dict.fromkeys(new)))
-        if uncertain or (unmatched and self.vectors is None):
+        if uncertain or (unmatched and (matches or self.vectors is None)):
             return TVNCoverage(estado="no_comprobada", razon="La comparación no confirma novedad; revisar el alcance y las fuentes.", ids_tvn=tuple(sorted(matches)))
         if unmatched:
             return TVNCoverage(estado="sin_coincidencia", razon="Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.", ids_tvn=tuple(sorted(matches)))

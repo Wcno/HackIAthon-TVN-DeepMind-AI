@@ -112,6 +112,18 @@ def test_identical_tvn_headline_is_covered_despite_different_descriptions_and_ve
     assert external.puntaje.componentes.N == 0
 
 
+def test_partly_covered_group_cannot_claim_no_tvn_match_or_discovery_novelty():
+    title = "Mulino llega a Vietnam para fortalecer alianzas con Panamá"
+    rows = [news("N-tvn", title, "TVN", at(3)),
+            news("N-copy", title, "Telemetro", at(2), source="telemetro"),
+            news("N-more", "Acuerdos comerciales tras la visita a Vietnam", "La Prensa", at(1), source="prensa")]
+    output = build(rows, np.eye(3), classify_by_keywords, lambda vectors, dates: [[0], [1, 2]], CUTOFF, official={})
+    mixed = group_with(output, "N-copy")
+    assert mixed.cobertura_tvn.ids_tvn == ("N-tvn",)
+    assert mixed.cobertura_tvn.estado == "no_comprobada"
+    assert mixed.puntaje.componentes.N == 0
+
+
 def test_inbox_refresh_rechecks_coverage_when_tvn_adds_the_external_story(tmp_path):
     from dataclasses import replace
     from whoami.backend.pipeline import load_pipeline

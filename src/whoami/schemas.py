@@ -340,7 +340,7 @@ class TVNCoverage(Schema):
     razon: NonEmpty
     ids_tvn: tuple[str, ...] = ()
     pasajes_nuevos: tuple[Citation, ...] = ()
-    metodo: str = "tvn-snapshot-v2"
+    metodo: str = "tvn-snapshot-v3"
     snapshot_sha256: str | None = Field(default=None, pattern="^[0-9a-f]{64}$")
 
 
