@@ -1,0 +1,44 @@
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 28%]
+........................................................................ [ 37%]
+........................................................................ [ 46%]
+........................................................................ [ 56%]
+........................................................................ [ 65%]
+........................................................................ [ 75%]
+........................................................................ [ 84%]
+........................................................................ [ 93%]
+..............................................                           [100%]
+============================== warnings summary ===============================
+tests/pipeline/test_evidence.py::test_the_processed_data_loads_as_citable_evidence
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\tests\pipeline\test_evidence.py:165: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    rows = load_news_rows()
+
+tests/pipeline/test_smoke.py::test_the_real_processed_data_runs_end_to_end_quickly_and_loads_back
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\tests\pipeline\test_smoke.py:14: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    rows = load_news_rows()
+
+tests/pipeline/test_smoke.py::test_the_real_processed_data_runs_end_to_end_quickly_and_loads_back
+tests/pipeline/test_smoke.py::test_the_pipeline_command_fails_clearly_when_the_vectors_do_not_exist
+tests/pipeline/test_smoke.py::test_the_offline_pipeline_command_never_creates_an_llm_and_prints_the_summary
+tests/pipeline/test_smoke.py::test_the_pipeline_command_with_an_llm_reports_its_calls
+tests/pipeline/test_smoke.py::test_the_llm_model_option_reaches_the_calls
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\src\whoami\pipeline\run.py:188: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    rows = load_news_rows()
+
+tests/pipeline/test_smoke.py::test_the_embed_command_writes_vectors_and_manifest_for_the_whole_news_file
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\src\whoami\cli.py:104: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    path = embed_corpus(load_news_rows(), Embedder(), pipeline.EMBEDDINGS_DIR)
+
+tests/pipeline/test_smoke.py::test_the_embed_command_writes_vectors_and_manifest_for_the_whole_news_file
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\tests\pipeline\test_smoke.py:54: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    rows = load_news_rows()
+
+tests/pipeline/test_smoke.py::test_the_offline_pipeline_command_never_creates_an_llm_and_prints_the_summary
+tests/pipeline/test_smoke.py::test_the_pipeline_command_with_an_llm_reports_its_calls
+tests/pipeline/test_smoke.py::test_the_llm_model_option_reaches_the_calls
+  C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-whoamisfc\tests\pipeline\test_smoke.py:77: UserWarning: 22 noticias sin fecha de publicación se omiten del agrupador; se conservan con su fecha de detección en noticias.csv.
+    rows = load_news_rows()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+766 passed, 12 warnings in 36.61s
