@@ -86,6 +86,7 @@
   .reply__state--abstention { @apply bg-amber-50 text-amber-800; }
   .reply__state--contradiction { @apply bg-rose-50 text-rose-700; }
   .reply__state--cached { @apply bg-ground text-ink-2; }
+  .reply__origin { @apply mt-1 text-xs text-ink-3; }
   .reply__warn { @apply rounded-xl bg-amber-50 px-3.5 py-2 text-sm font-medium text-amber-800; }
   .reply__h { @apply font-semibold text-navy; }
   .reply__actions { @apply flex flex-wrap gap-2.5; }
