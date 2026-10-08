@@ -2,6 +2,8 @@
 
 Approved design, 2026-10-08: preserve EmbeddingGemma ONNX q4 for retrieval/grouping and preserve Gemini generation. Compare q4, fp32 and BM25 using named human reviewers on public development queries and event pairs. Spanish relevance takes precedence over preparation speed. No payment card, subscription or enabled billing account may be introduced. A model change needs comparable human evidence; this experiment never promotes a candidate automatically.
 
+Updated user instruction, 2026-10-08: Codex performs the evaluations and waives the pending manual step. The [completed agent assessment](research/agent-embedding-evaluation.md) submits all 267 decisions, explicitly as AI judgments. Human review remains optional and separately attributed; it is not a delivery gate. q4 remains the practical recommendation, and no automatic production change occurs.
+
 ## Frozen comparison
 
 Run from the repository checkout with its installed Python environment:
@@ -10,6 +12,7 @@ Run from the repository checkout with its installed Python environment:
 whoami compare-embeddings prepare --directory outputs/experiments/embedding-validation --threads 4
 whoami compare-embeddings review --directory outputs/experiments/embedding-validation --port 8766
 whoami compare-embeddings score --directory outputs/experiments/embedding-validation
+whoami compare-embeddings score-agent --directory outputs/experiments/embedding-validation
 ```
 
 Preparation runs on CPU in separate processes using pinned ONNX files and the exact production text prefixes/tokenizer. The existing q4 corpus must match its model hashes, ordered IDs, vector hash and full text fingerprint. fp32 embeds every document in its own space, casts to the same float16 storage, and verifies its files against the publisher hashes of revision `5090578d9565bb06545b4552f76e6bc2c93e4a66`. No document/query vectors cross model spaces. q4's corpus is reused; its rebuild time is deliberately null, so this run cannot compare full rebuild speed. The complete process memory measurement includes event grouping, not just embedding weights or the full web app. Warm query/search latency includes index creation and excludes lexical fusion and startup; it is not an HTTP latency claim.
@@ -19,6 +22,8 @@ fp32 files must already exist at `~/.cache/whoami/models/local/embeddinggemma-30
 The review pool uses all 30 public G3 queries and a reproducible 50-pair sample from public historical candidates, resolved by news IDs rather than obsolete positional indices. Historical machine labels are discarded. It never accesses G7's 20 reserved queries. Retrieval compares five candidates: q4, fp32, BM25, and each embedding plus the existing BM25/RRF recipe and cosine gate. The corpus is the same dated-news subset for all candidates; official indicators and the complete assistant workflow are outside this experiment. Event grouping uses the current average linkage/72-hour window/0.275 threshold, without LLM overrides. BM25 has no event-grouping score, since it is a retrieval baseline.
 
 The local review page at `http://127.0.0.1:8766` hides model names, rankings and machine labels. A human chooses relevance 0/1/2 or same event/ongoing story/different event; uncertainty remains unknown. SQLite keeps the reviewer, timestamp, current label and history across restarts, bound to the frozen snapshot fingerprint. Revisions are available through the page's decision list. It is a local evaluation UI, not a publicly authenticated service.
+
+When a validated `agent-judgments.jsonl` exists, the page displays agent progress, folds the optional human form, and offers a separate model-results page at `/agent-results`. That results page reveals model names; people seeking a future blind human evaluation should avoid it. Agent judgments use JSONL and `score-agent`, not the human SQLite store. Their scores carry explicit agent origin and never claim `human_review_complete`. Submitted unknowns count as assessed items, while remaining excluded from metrics with explicit coverage.
 
 Only fully human-judged query pools contribute to retrieval averages; unknowns never become irrelevant labels. Precision@5 divides by five, including missing hits. Pooled recall divides by all relevant documents in the union pool, including relevant results outside a candidate's top five. Pooled nDCG uses the ideal ranking within that judged pool. Each metric records its contributing query count; no-relevant-result pools have undefined recall/nDCG. These are development-pool metrics, not full-corpus recall or a reserved-set evaluation. Pair F1 records TP/FP/FN/TN, coverage, and is undefined when there are no positives or positive predictions. The candidate pair pool was historically selected using models; its sample is not an unbiased all-event estimate. Results stay `awaiting_human_review` until every item has a usable human judgment, and the decision remains `keep_q4` even after all judgments are complete.
 
@@ -48,7 +53,7 @@ This route requires no Cloudflare account/domain/payment method. The URL changes
 
 ## Executed evidence
 
-The [frozen snapshot](../outputs/experiments/embedding-validation/snapshot.json) contains 30 public queries, 50 ID-resolved event pairs, five retrieval candidates, and **267 blind human decisions**. [Human results](../outputs/experiments/embedding-validation/human-results.json) currently contain zero judgments and null quality metrics: no human-validated quality winner is claimed.
+The [frozen snapshot](../outputs/experiments/embedding-validation/snapshot.json) contains 30 public queries, 50 ID-resolved event pairs, five retrieval candidates, and **267 review items**. [Human results](../outputs/experiments/embedding-validation/human-results.json) still contain zero judgments and null quality metrics. [Agent results](../outputs/experiments/embedding-validation/agent-results.json) now cover all 267 assessed items, with one unknown event pair and no human-validated winner claimed. The practical recommendation is to retain q4; the complete rationale and candidate scores are in the [agent assessment](research/agent-embedding-evaluation.md).
 
 The final sequential query runs used four CPU threads on this PC, with the existing app idle. q4 measured 238 ms median query plus search/index construction and 673 MiB peak run RSS; fp32 measured 189 ms and 986 MiB. These are observed development-run timings, not guaranteed HTTP latency or hosting memory requirements. See [q4 provenance](../outputs/experiments/embedding-validation/q4.json) and [fp32 provenance](../outputs/experiments/embedding-validation/fp32.json). Both repeated query runs reused validated corpus vectors. The original full fp32 build took 753 seconds while other validation was running; the saved rebuild time is observational and is not a controlled q4/fp32 rebuild comparison. Both models were downloaded and hash-verified, and no paid model API was called by preparation.
 

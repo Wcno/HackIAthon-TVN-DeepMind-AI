@@ -6,6 +6,70 @@ import pytest
 from whoami.model_comparison import build_snapshot, create_review_app, score, ReviewStore
 
 
+def agent_reviews(frozen):
+    return [{"snapshot": frozen["fingerprint"], "reviewer_kind": "agent", "actor": "Fixture AI reviewer",
+             "item": item["id"], "grade": "same_event" if item["kind"] == "pair" else "2",
+             "reason": "Fixture-only explicit grade"} for item in frozen["items"]]
+
+
+def test_agent_score_never_claims_human_completion_or_touches_human_data(tmp_path):
+    from whoami.model_comparison import score_agent_reviews
+    frozen = snapshot()
+    humans = ReviewStore(tmp_path / "human.sqlite3", frozen)
+    result = score_agent_reviews(frozen, agent_reviews(frozen))
+    assert result["status"] == "agent_review_complete"
+    assert result["reviewer_kind"] == "agent"
+    assert result["retrieval"]["q4"]["pooled_recall_at_5"] == pytest.approx(5 / 6)
+    assert humans.labels() == {}
+    assert score(frozen, humans)["status"] == "awaiting_human_review"
+
+
+@pytest.mark.parametrize("field,value", [("reviewer_kind", "human"), ("snapshot", "wrong"),
+                                       ("grade", "invalid"), ("reason", " "), ("actor", " ")])
+def test_agent_score_rejects_wrong_origin_identity_and_incomplete_evidence(field, value):
+    from whoami.model_comparison import score_agent_reviews
+    frozen = snapshot()
+    reviews = agent_reviews(frozen)
+    reviews[0][field] = value
+    with pytest.raises(ValueError):
+        score_agent_reviews(frozen, reviews)
+    with pytest.raises(ValueError, match="repeated"):
+        score_agent_reviews(frozen, [agent_reviews(frozen)[0]] * 2)
+
+
+def test_agent_unknown_is_assessed_but_never_used_as_a_negative():
+    from whoami.model_comparison import score_agent_reviews
+    frozen = snapshot()
+    reviews = agent_reviews(frozen)
+    pair = next(review for review in reviews if review["item"] == "P1")
+    pair["grade"] = "unknown"
+    result = score_agent_reviews(frozen, reviews)
+    assert result["status"] == "agent_review_complete"
+    assert result["metrics_complete"] is False
+    assert result["unknown"] == 1
+    assert result["grouping"]["q4"]["reviewed_pairs"] == 0
+    assert result["grouping"]["q4"]["f1"] is None
+
+
+def test_agent_results_fold_optional_human_forms_and_have_a_separate_page(tmp_path):
+    from whoami.model_comparison import score_agent_reviews
+    frozen = snapshot()
+    report = score_agent_reviews(frozen, agent_reviews(frozen))
+    database = tmp_path / "human.sqlite3"
+    client = TestClient(create_review_app(frozen, database, agent_report=report))
+    page = client.get("/")
+    assert "Evaluación del agente completada: 7 / 7" in page.text
+    assert '<details><summary>Revisión humana opcional</summary>' in page.text
+    results = client.get("/agent-results")
+    assert results.status_code == 200
+    assert "fp32" in results.text
+    assert "No se presentan como revisión humana" in results.text
+    assert ReviewStore(database, frozen).labels() == {}
+    report["reviewer_kind"] = "human"
+    with pytest.raises(ValueError, match="agent origin"):
+        create_review_app(frozen, database, agent_report=report)
+
+
 def snapshot():
     rows = [{"id_noticia": str(i), "titulo": f"News {i}", "descripcion": "", "url": "https://example.com",
              "fecha_publicacion": "2026-10-01T12:00:00Z", "medio": "Test"} for i in range(6)]

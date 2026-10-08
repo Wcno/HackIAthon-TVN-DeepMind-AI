@@ -104,7 +104,13 @@ def score(snapshot: dict, store: ReviewStore) -> dict:
     """Only fully judged query pools count. Recall's denominator is ALL relevant pooled documents."""
     if snapshot["fingerprint"] != store.snapshot["fingerprint"]:
         raise ValueError("Labels belong to a different snapshot")
-    labels = store.labels()
+    return score_labels(snapshot, store.labels(), reviewer_kind="human")
+
+
+def score_labels(snapshot: dict, labels: dict, *, reviewer_kind: str) -> dict:
+    """Same metrics for both origins; keep the provenance and completion states explicit."""
+    if reviewer_kind not in {"human", "agent"}:
+        raise ValueError("Reviewer kind must be human or agent")
     usable = {key: value["grade"] for key, value in labels.items() if value["grade"] != "unknown"}
     retrieval, grouping = {}, {}
     for name, candidate in snapshot["candidates"].items():
@@ -143,12 +149,38 @@ def score(snapshot: dict, store: ReviewStore) -> dict:
         denominator = 2 * tp + fp + fn
         grouping[name] = {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "reviewed_pairs": tp + fp + fn + tn,
                           "f1": 2 * tp / denominator if denominator else None}
-    complete = len(usable) == len(snapshot["items"])
-    return {"snapshot": snapshot["fingerprint"], "status": "human_review_complete" if complete else "awaiting_human_review",
+    metrics_complete = len(usable) == len(snapshot["items"])
+    complete = metrics_complete if reviewer_kind == "human" else len(labels) == len(snapshot["items"])
+    return {"snapshot": snapshot["fingerprint"], "reviewer_kind": reviewer_kind,
+            "status": f"{reviewer_kind}_review_complete" if complete else f"awaiting_{reviewer_kind}_review",
+            "metrics_complete": metrics_complete, "unknown": len(labels) - len(usable),
             "decision": "keep_q4", "reviewed": len(usable), "submitted": len(labels), "total": len(snapshot["items"]),
             "retrieval": retrieval, "grouping": grouping,
             "limitations": "Pooled development relevance, not full-corpus recall; sampled pairs, not all events. "
                             "No automatic promotion. Compare quality first, then runtime and memory."}
+
+
+def score_agent_reviews(snapshot: dict, reviews: list[dict]) -> dict:
+    """Score agent judgments without opening, importing or changing any human review database."""
+    items = {item["id"]: item for item in snapshot["items"]}
+    labels = {}
+    for review in reviews:
+        if review.get("snapshot") != snapshot["fingerprint"] or review.get("reviewer_kind") != "agent":
+            raise ValueError("Agent judgments require matching snapshot and explicit agent origin")
+        item = review.get("item")
+        if item not in items or item in labels:
+            raise ValueError("Unknown or repeated agent review item")
+        grades = {"0", "1", "2", "unknown"} if items[item]["kind"] == "retrieval" else {
+            "same_event", "ongoing_story", "different_event", "unknown"}
+        if (review.get("grade") not in grades or not isinstance(review.get("actor"), str)
+                or not review["actor"].strip() or not isinstance(review.get("reason"), str) or not review["reason"].strip()):
+            raise ValueError("Each agent judgment requires a valid grade, actor and reason")
+        labels[item] = review
+    result = score_labels(snapshot, labels, reviewer_kind="agent")
+    result["judgments_fingerprint"] = fingerprint(reviews)
+    result["reviewers"] = sorted({review["actor"] for review in reviews})
+    result["limitations"] += " AI agent judgments are not independent human ground truth."
+    return result
 
 
 _REVIEW_ENV = Environment(autoescape=select_autoescape(default=True))
@@ -170,7 +202,11 @@ body{font:18px/1.5 system-ui;max-width:850px;margin:32px auto;padding:0 20px;bac
 article{background:white;padding:20px;margin:16px 0;border:1px solid #d8dde3;border-radius:12px}
 label{display:block;margin:12px 0}input,select,button{font:inherit;padding:10px;max-width:100%}
 button{background:#173e67;color:white;border:0;border-radius:6px}a{color:#173e67}small{color:#45576a}
-</style><h1>Revisión humana</h1><p>{{ submitted }} / {{ total }} decisiones guardadas. Los candidatos están ocultos.</p>
+</style><h1>{{ 'Evaluación de modelos' if agent_report else 'Revisión humana' }}</h1>
+{% if agent_report %}<p><strong>Evaluación del agente {{ 'completada' if agent_report.status == 'agent_review_complete' else 'en curso' }}: {{ agent_report.submitted }} / {{ total }}.</strong>
+<a href="/agent-results">Ver comparación de modelos</a>. {{ agent_report.unknown }} decisión(es) indeterminada(s).</p>
+<p>Son juicios de IA. La revisión humana es opcional.</p><details><summary>Revisión humana opcional</summary>{% endif %}
+<p>{{ submitted }} / {{ total }} decisiones guardadas. Los candidatos están ocultos.</p>
 {% if item %}<h2>{% if item.kind == 'retrieval' %}Consulta: {{ item.text }}{% else %}¿Informan del mismo hecho?{% endif %}</h2>
 {% for document in documents %}<article><h3>{{ document.titulo }}</h3><small>{{ document.medio }} · {{ document.fecha_publicacion | panama_time }} (Panamá)</small>
 <p>{{ document.descripcion }}</p><a href="{{ document.url | source_url }}" target="_blank" rel="noopener noreferrer">Leer fuente</a></article>{% endfor %}
@@ -182,15 +218,24 @@ button{background:#173e67;color:white;border:0;border-radius:6px}a{color:#173e67
 <option value="unknown">No puedo determinarlo</option></select></label><button>Guardar y continuar</button></form>
 <p>No basta compartir un tema para ser el mismo hecho. La comparación no cambia el modelo de la app.</p>
 {% else %}<p>Guardaste todas las decisiones. Las respuestas «no puedo determinarlo» siguen pendientes para las métricas.</p>{% endif %}
+{% if agent_report %}</details>{% endif %}
 <details><summary>Revisar una decisión</summary>{% for previous in items %}<p><a href="/?item={{ previous.id | urlencode }}">{{ loop.index }} · {{ previous.kind }}</a></p>{% endfor %}</details></html>
 ''')
 
 
-def create_review_app(snapshot: dict, database: Path) -> FastAPI:
+def create_review_app(snapshot: dict, database: Path, *, agent_report: dict | None = None) -> FastAPI:
     """Local-only review UI, blind to candidate identities, with CSRF protection and durable labels."""
     store = ReviewStore(database, snapshot)
     csrf = secrets.token_urlsafe(32)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    if agent_report and (agent_report.get("snapshot") != snapshot["fingerprint"] or agent_report.get("reviewer_kind") != "agent"):
+        raise ValueError("Agent report requires matching snapshot and explicit agent origin")
+
+    @app.get("/agent-results", response_class=HTMLResponse)
+    def agent_results():
+        if agent_report is None:
+            raise HTTPException(404, "No agent assessment available")
+        return _AGENT_PAGE.render(report=agent_report)
 
     @app.get("/", response_class=HTMLResponse)
     def review(item: str | None = None, actor: str = ""):
@@ -199,7 +244,8 @@ def create_review_app(snapshot: dict, database: Path) -> FastAPI:
             raise HTTPException(404, "Unknown review item")
         current = store.items.get(item) if item else next((i for i in snapshot["items"] if i["id"] not in labels), None)
         return _REVIEW_PAGE.render(item=current, documents=[snapshot["documents"][key] for key in current["documents"]] if current else [],
-                                   csrf=csrf, actor=actor, submitted=len(labels), total=len(snapshot["items"]), items=snapshot["items"])
+                                   csrf=csrf, actor=actor, submitted=len(labels), total=len(snapshot["items"]), items=snapshot["items"],
+                                   agent_report=agent_report)
 
     @app.post("/label")
     def label(item: str = Form(), grade: str = Form(), actor: str = Form(), csrf_value: str = Form("", alias="csrf")):
@@ -213,6 +259,28 @@ def create_review_app(snapshot: dict, database: Path) -> FastAPI:
         return RedirectResponse("/?" + urlencode({"actor": actor.strip()}), status_code=303)
 
     return app
+
+
+_AGENT_PAGE = _REVIEW_ENV.from_string('''<!doctype html><html lang="es"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Comparación evaluada por el agente</title>
+<style>body{font:17px/1.5 system-ui;max-width:950px;margin:32px auto;padding:0 16px;color:#14212c}
+table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:8px;border-bottom:1px solid #d8dde3;text-align:left}
+.scroll{overflow-x:auto}a{color:#173e67}</style><h1>Comparación evaluada por el agente</h1>
+<p>{{ report.submitted }} / {{ report.total }} decisiones evaluadas por Codex (IA); {{ report.unknown }} indeterminada(s).
+No se presentan como revisión humana. Los modelos mantienen sus espacios de vectores separados.</p>
+<div class="scroll"><table><thead><tr><th>Candidato</th><th>Precisión@5</th><th>nDCG@5 del pool</th><th>Consultas</th></tr></thead><tbody>
+{% for name, metrics in report.retrieval.items() %}<tr><th>{{ name }}</th><td>{{ '%.3f' | format(metrics.precision_at_5) if metrics.precision_at_5 is not none else '—' }}</td>
+<td>{{ '%.3f' | format(metrics.pooled_ndcg_at_5) if metrics.pooled_ndcg_at_5 is not none else '—' }}</td><td>{{ metrics.eligible_queries }}</td></tr>{% endfor %}</tbody></table></div>
+<h2>Agrupación de hechos</h2>{% for name, metrics in report.grouping.items() %}{% if metrics.f1 is defined %}
+<p>{{ name }}: F1 {{ '%.3f' | format(metrics.f1) if metrics.f1 is not none else '—' }}, {{ metrics.reviewed_pairs }} pares puntuables;
+{{ metrics.fp }} falsos positivos y {{ metrics.fn }} falsos negativos.</p>{% endif %}{% endfor %}
+<p>La decisión del modelo permanece en q4. Estas métricas son del conjunto de desarrollo y sus candidatos seleccionados;
+no prueban calidad en todo el corpus ni equivalen a validación humana independiente. No hay promoción automática.</p>
+<p><a href="/">Volver a revisión opcional</a></p></html>''')
+
+
+def load_agent_reviews(directory: Path) -> list[dict]:
+    return [json.loads(line) for line in (directory / "agent-judgments.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def load_snapshot(directory: Path) -> dict:
@@ -234,6 +302,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     review.add_argument("--port", type=int, default=8766)
     report = commands.add_parser("score", help="score existing human decisions; no model promotion")
     report.add_argument("--directory", type=Path, required=True)
+    agent = commands.add_parser("score-agent", help="score explicit agent judgments separately from human decisions")
+    agent.add_argument("--directory", type=Path, required=True)
 
 
 def main(args: argparse.Namespace) -> int:
@@ -242,7 +312,15 @@ def main(args: argparse.Namespace) -> int:
         prepare(args.directory, args.threads)
     elif args.comparison_command == "review":
         import uvicorn
-        uvicorn.run(create_review_app(load_snapshot(args.directory), args.directory / "human.sqlite3"), host="127.0.0.1", port=args.port)
+        snapshot = load_snapshot(args.directory)
+        agent_report = score_agent_reviews(snapshot, load_agent_reviews(args.directory)) if (args.directory / "agent-judgments.jsonl").is_file() else None
+        uvicorn.run(create_review_app(snapshot, args.directory / "human.sqlite3", agent_report=agent_report), host="127.0.0.1", port=args.port)
+    elif args.comparison_command == "score-agent":
+        snapshot = load_snapshot(args.directory)
+        reviews = load_agent_reviews(args.directory)
+        result = score_agent_reviews(snapshot, reviews)
+        (args.directory / "agent-results.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
         snapshot = load_snapshot(args.directory)
         result = score(snapshot, ReviewStore(args.directory / "human.sqlite3", snapshot))

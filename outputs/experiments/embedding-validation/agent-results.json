@@ -1,0 +1,90 @@
+{
+  "snapshot": "0b9418e6bae9753955b9bf79c22d7529dab65a0bcb41470a48763c3a22cceccd",
+  "reviewer_kind": "agent",
+  "status": "agent_review_complete",
+  "metrics_complete": false,
+  "unknown": 1,
+  "decision": "keep_q4",
+  "reviewed": 266,
+  "submitted": 267,
+  "total": 267,
+  "retrieval": {
+    "q4": {
+      "eligible_queries": 30,
+      "precision_at_5": 0.9,
+      "precision_at_5_queries": 30,
+      "pooled_recall_at_5": 0.8226322751322751,
+      "pooled_recall_at_5_queries": 30,
+      "pooled_ndcg_at_5": 0.9581428142944335,
+      "pooled_ndcg_at_5_queries": 30
+    },
+    "fp32": {
+      "eligible_queries": 30,
+      "precision_at_5": 0.8933333333333333,
+      "precision_at_5_queries": 30,
+      "pooled_recall_at_5": 0.8142989417989418,
+      "pooled_recall_at_5_queries": 30,
+      "pooled_ndcg_at_5": 0.964596811072434,
+      "pooled_ndcg_at_5_queries": 30
+    },
+    "q4_hybrid": {
+      "eligible_queries": 30,
+      "precision_at_5": 0.8066666666666666,
+      "precision_at_5_queries": 30,
+      "pooled_recall_at_5": 0.7359656084656085,
+      "pooled_recall_at_5_queries": 30,
+      "pooled_ndcg_at_5": 0.881873564870224,
+      "pooled_ndcg_at_5_queries": 30
+    },
+    "fp32_hybrid": {
+      "eligible_queries": 30,
+      "precision_at_5": 0.8066666666666666,
+      "precision_at_5_queries": 30,
+      "pooled_recall_at_5": 0.7359656084656085,
+      "pooled_recall_at_5_queries": 30,
+      "pooled_ndcg_at_5": 0.885068713034418,
+      "pooled_ndcg_at_5_queries": 30
+    },
+    "bm25": {
+      "eligible_queries": 30,
+      "precision_at_5": 0.8066666666666666,
+      "precision_at_5_queries": 30,
+      "pooled_recall_at_5": 0.7359656084656085,
+      "pooled_recall_at_5_queries": 30,
+      "pooled_ndcg_at_5": 0.885068713034418,
+      "pooled_ndcg_at_5_queries": 30
+    }
+  },
+  "grouping": {
+    "q4": {
+      "tp": 6,
+      "fp": 7,
+      "fn": 2,
+      "tn": 34,
+      "reviewed_pairs": 49,
+      "f1": 0.5714285714285714
+    },
+    "fp32": {
+      "tp": 6,
+      "fp": 7,
+      "fn": 2,
+      "tn": 34,
+      "reviewed_pairs": 49,
+      "f1": 0.5714285714285714
+    },
+    "q4_hybrid": {
+      "status": "not_applicable"
+    },
+    "fp32_hybrid": {
+      "status": "not_applicable"
+    },
+    "bm25": {
+      "status": "not_applicable"
+    }
+  },
+  "limitations": "Pooled development relevance, not full-corpus recall; sampled pairs, not all events. No automatic promotion. Compare quality first, then runtime and memory. AI agent judgments are not independent human ground truth.",
+  "judgments_fingerprint": "123199d371390501b7c4538cef7658d86ce8f979bf27dc45f3baf6fce2f45a1d",
+  "reviewers": [
+    "Codex (AI agent)"
+  ]
+}
