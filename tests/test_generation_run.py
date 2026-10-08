@@ -140,6 +140,7 @@ def run_cli(workspace, monkeypatch, *extra):
     monkeypatch.setattr(run, "LocalEmbedder", lambda: FakeEmbedder(True))
     monkeypatch.setattr(run, "PROCESSED", data)
     monkeypatch.setattr(run, "OUTPUTS", outputs)
+    monkeypatch.setattr(run.manifest, "refresh", lambda paths: None)  # the real manifest is not a test fixture
     monkeypatch.setattr(sys, "argv", ["whoami", "generar", "--consultas", str(queries), *extra])
     assert cli.main() == 0
     verify(load(data, outputs))
