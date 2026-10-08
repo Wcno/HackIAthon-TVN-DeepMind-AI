@@ -146,6 +146,18 @@ La suite cubre contratos, procesamiento, generación y revisión editorial;
 incluye el reinicio de un servidor HTTP real y la validación de los archivos
 exportados contra el contrato compartido.
 
+Para ejecutar el benchmark G7, comparar BM25 con embeddings y guardar las
+métricas junto con todas las pruebas:
+
+```powershell
+uv run --locked whoami evaluar --mode recorded
+```
+
+El modo `live` mide la generación con Gemini. Las consultas reservadas se
+mantienen fuera del repositorio y las métricas con etiquetas de IA se marcan
+como provisionales hasta incorporar las revisiones humanas. Ver
+[la evaluación G7](docs/evaluation.md) para requisitos, métodos y formatos.
+
 Para exportar las fichas, consultas y decisiones del ciclo de revisión actual,
 detener primero el servidor y ejecutar:
 
