@@ -114,30 +114,49 @@ def normalize_numbers(text: str) -> list[Decimal]:
 
     Percent signs and currency symbols do not change the value; years are numbers too.
     """
+    return [value for _, _, values in _number_spans(text) for value in values]
+
+
+def numeric_value_key(text: str) -> tuple[tuple[Decimal, ...], tuple[str, ...]]:
+    """Equivalent written coefficients share a key; units and qualitative words stay distinct."""
+    folded = fold(text)
+    spans = _number_spans(text)
+    parts, start = [], 0
+    for left, right, _ in spans:
+        parts.append(folded[start:left])
+        start = right
+    parts.append(folded[start:])
+    lexical = "".join(parts).replace("por ciento", "%")
+    return (tuple(value for _, _, values in spans for value in values),
+            tuple(re.findall(r"[a-z]+|[%$]", lexical)))
+
+
+def _number_spans(text: str) -> list[tuple[int, int, list[Decimal]]]:
     folded = fold(text)
     tokens = [_Token(m.group(), m.start(), m.end()) for m in _TOKEN.finditer(folded)]
 
     def adjacent(left: int, right: int) -> bool:
         return right < len(tokens) and not folded[tokens[left].end : tokens[right].start].strip()
 
-    numbers: list[Decimal] = []
+    numbers = []
     index = 0
     while index < len(tokens):
         token = tokens[index]
         spoken_sign = -1 if index and tokens[index - 1].text == "menos" and adjacent(index - 1, index) else 1
+        start = tokens[index - 1].start if spoken_sign == -1 else token.start
         if token.is_number:
             values = parse_digits(token.text)
             index += 1
             if len(values) == 1:
                 multiplier, index = _digit_multiplier(tokens, index, adjacent)
                 values = [values[0] * multiplier]
-            numbers += [value * spoken_sign for value in values]
+            numbers.append((start, tokens[index - 1].end, [value * spoken_sign for value in values]))
         elif token.text == "ciento" and index and tokens[index - 1].text == "por":
             index += 1  # "por ciento" is a percent sign, not a hundred
         elif _is_number_word(token.text):
             words, index = _word_run(tokens, index, adjacent)
             if words not in (["un"], ["uno"], ["una"]):
-                numbers.append(_evaluate_words(words) * spoken_sign)
+                numbers.append((start, tokens[index - 1].end, [_evaluate_words(words) * spoken_sign]))
         else:
             index += 1
     return numbers

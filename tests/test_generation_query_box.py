@@ -35,6 +35,8 @@ def test_contradictions_cannot_change_the_location_or_scope_of_supported_values(
      ["cerrado durante 3 meses", "destruido hace 4 meses"]),
     (["Hospital reporta 2 % (2,0 %) de ocupación", "Hospital reporta 2 % (2,0 %) de ocupación"],
      ["2 %", "2,0 %"]),
+    (["Hospital reporta dos por ciento (2 %) de ocupación", "Hospital reporta dos por ciento (2 %) de ocupación"],
+     ["dos por ciento", "2 %"]),
 ])
 def test_mixed_qualitative_inventions_and_equivalent_numbers_are_not_contradictions(structured, titles, values):
     evidence = by_id(*(news(f"N-{i}", titulo=title) for i, title in enumerate(titles, 1)))
@@ -46,6 +48,21 @@ def test_mixed_qualitative_inventions_and_equivalent_numbers_are_not_contradicti
     answer = answer_query("Q-1", "Hospital", Hits(), CosineGate(Hits(), min_cosine=.5),
                           evidence, FakeLLM([raw]), MODEL, structured=structured)
     assert answer.estado == "abstencion"
+
+
+@pytest.mark.parametrize("structured", [False, True])
+def test_supported_qualitative_versions_with_the_same_number_remain_distinct(structured):
+    evidence = by_id(news("N-1", titulo="Hospital abierto durante 3 meses"), news("N-2", titulo="Hospital cerrado durante 3 meses"))
+    class Hits:
+        def search(self, query, k):
+            return [("N-1", 1.0), ("N-2", .9)][:k]
+    raw = model_answer(estado="contradiccion", respuesta=None, citas=[], afirmaciones=[], versiones=[
+        {"valor": "abierto durante 3 meses", "alcance": "Hospital", "id_evidencia": "N-1"},
+        {"valor": "cerrado durante 3 meses", "alcance": "Hospital", "id_evidencia": "N-2"}])
+    answer = answer_query("Q-1", "Hospital", Hits(), CosineGate(Hits(), min_cosine=.5),
+                          evidence, FakeLLM([raw]), MODEL, structured=structured)
+    assert answer.estado == "contradiccion"
+    assert all(version.citas for version in answer.versiones)
 
 from generation_fakes import FakeLLM, LLMError, by_id, indicator, news
 from whoami.generation.prompting import CosineGate

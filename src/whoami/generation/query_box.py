@@ -1,13 +1,12 @@
 """The query box: retrieve, gate, answer, verify. It abstains rather than answer without verified citations."""
 
 from collections.abc import Mapping, Sequence
-import re
 from typing import Any
 
 from whoami.generation.jsonschemas import answer_schema, response_format, to_answer, to_claims
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
-from whoami.generation.verifier import check_citations, check_claim, fold, normalize_numbers, unsupported_numbers
+from whoami.generation.verifier import check_citations, check_claim, numeric_value_key, unsupported_numbers
 from whoami.generation.version_citations import support_version
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
@@ -56,11 +55,7 @@ def _distinct_versions(
         version = support_version(ContradictionVersion.model_validate(item), evidences, require_scope=True)
         if version is None:
             continue
-        numbers = normalize_numbers(version.valor)
-        lexical = re.sub(r"[+−-]?\d+(?:[.,]\d+)*", "", fold(version.valor))
-        lexical = re.sub(r"\b(?:mil|millon|millones|billon|billones)\b", "", lexical)
-        lexical = lexical.replace("por ciento", "%")
-        value = (tuple(numbers), " ".join(lexical.split())) if numbers else fold(version.valor)
+        value = numeric_value_key(version.valor)
         if (
             version.id_evidencia in allowed and value not in values
             and all(version.id_evidencia != v.id_evidencia for v in versions)
