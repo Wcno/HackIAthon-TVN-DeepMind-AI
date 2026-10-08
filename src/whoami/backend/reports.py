@@ -21,6 +21,11 @@ def decimal(value: float, digits: int = 2) -> str:
     return f"{value:.{digits}f}".rstrip("0").rstrip(".").replace(".", ",") or "0"
 
 
+def fixed(value: float) -> str:
+    """Spanish decimal with exactly two places, for scores and their points."""
+    return f"{value:.2f}".replace(".", ",")
+
+
 def _loaded(report: dict) -> dict | None:
     return None if report.get("available") is False else report
 
@@ -340,17 +345,29 @@ EVIDENCE_NAMES = {"suficiente_para_borrador": "Suficiente para borrador", "parci
 
 def _example(group: dict) -> dict:
     score = group["puntaje"]
-    rows = [{"key": key, "name": COMPONENTS[key][0], "value": decimal(score["componentes"][key]), "weight": weight,
-             "points": decimal(score["componentes"][key] * weight), "width": f"{score['componentes'][key] * weight:g}%",
+    rows = [{"key": key, "name": COMPONENTS[key][0], "value": fixed(score["componentes"][key]), "weight": weight,
+             "points": fixed(score["componentes"][key] * weight), "width": f"{score['componentes'][key] * weight:g}%",
              "why": score["justificaciones"][key]} for key, weight in SCORE_WEIGHTS.items()]
-    return {"title": group["titulo"], "range": score["rango"], "total": decimal(score["valor"]),
+    return {"title": group["titulo"], "range": score["rango"], "total": fixed(score["valor"]),
             "evidence_state": group["estado_evidencia"], "evidence": EVIDENCE_NAMES[group["estado_evidencia"]],
             "rules": score["version_reglas"], "rows": rows}
 
 
-def methodology_view(groups: list[dict], selected: str | None = None) -> dict:
+def _picker(groups: list[dict], chosen: dict | None, query: str, limit: int) -> list[dict]:
+    """The example picker: the best matches for the search, plus the open topic so the select always shows it."""
+    needle = query.casefold()
+    matches = [group for group in groups if needle in group["titulo"].casefold()][:limit]
+    if chosen is not None and chosen not in matches:
+        matches.append(chosen)
+    return [{"id": group["id_grupo"], "label": f"{fixed(group['puntaje']['valor'])} · {group['titulo']}",
+             "selected": group is chosen} for group in matches]
+
+
+def methodology_view(groups: list[dict], selected: str | None = None, query: str = "", limit: int = 25) -> dict:
     """Formula, weights and ranges from the contract; the worked example from a real group."""
-    chosen = next((group for group in groups if group["id_grupo"] == selected), groups[0] if groups else None)
+    needle = query.strip().casefold()
+    matching = [group for group in groups if needle in group["titulo"].casefold()]
+    chosen = next((group for group in groups if group["id_grupo"] == selected), matching[0] if matching else groups[0] if groups else None)
     bounds = [lo for _, lo, _ in SCORE_RANGES] + [SCORE_RANGES[-1][2]]
     return {
         "weights": [{"key": key, "name": COMPONENTS[key][0], "what": COMPONENTS[key][1], "weight": weight}
@@ -361,7 +378,7 @@ def methodology_view(groups: list[dict], selected: str | None = None) -> dict:
         "ranges_text": ". ".join(f"{name.capitalize()}: de {lo} a {'menos de ' + str(hi) if hi != SCORE_RANGES[-1][2] else str(hi)}"
                                   for name, lo, hi in SCORE_RANGES) + ".",
         "rules_version": RULES_VERSION,
-        "options": [{"id": group["id_grupo"], "label": f"{decimal(group['puntaje']['valor'])} · {group['titulo']}",
-                     "selected": group is chosen} for group in groups],
+        "options": _picker(groups, chosen, needle, limit),
+        "no_matches": bool(needle) and not matching,
         "example": _example(chosen) if chosen else None,
     }

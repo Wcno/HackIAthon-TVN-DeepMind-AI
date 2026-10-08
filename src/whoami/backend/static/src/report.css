@@ -153,6 +153,8 @@
       .example { @apply mt-8 rounded-3xl bg-white px-10 pt-8 pb-10 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
       .example__pick { @apply flex flex-wrap items-center gap-3; }
       .example__pick label { @apply text-[15px] font-semibold text-ink-2; }
+      .example__search { @apply h-10 min-w-0 flex-1 rounded-full bg-white px-4 text-[15px] ring-1 ring-line; }
+      .example__pick > p { @apply basis-full text-sm; }
       .example__head { @apply mt-8 flex flex-wrap items-end justify-between gap-x-10 gap-y-4; }
       .example__title { @apply max-w-[36ch] font-title text-[28px] leading-tight font-semibold text-balance text-navy; }
       .example__meta { @apply mt-2 flex flex-wrap items-center gap-2; }
