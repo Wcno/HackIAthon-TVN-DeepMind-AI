@@ -6,6 +6,7 @@ from pathlib import Path
 from whoami.backend.reports import quality_view
 from whoami.contracts import BRIEF_MAX_WORDS, COPY_MAX_WORDS, SCRIPT_SECONDS, SPOKEN_WORDS_PER_SECOND
 
+NO_CASE_FILE = "sin_ficha"
 BUDGETS = {"brief": (BRIEF_MAX_WORDS, None, "palabras"), "guion": (SCRIPT_SECONDS[1], SCRIPT_SECONDS[0], "s"),
            "copy": (COPY_MAX_WORDS, None, "palabras")}
 
@@ -24,6 +25,11 @@ def latest_date(group: dict) -> str | None:
 
 def needs_investigation(group: dict) -> bool:
     return group["puntaje"]["rango"] == "alto" and group["estado_evidencia"] == "insuficiente"
+
+
+def file_state(group: dict) -> str:
+    """What the list shows for a topic: its review state once it has a case file, else that it has none."""
+    return group["estado_revision"] if group["id_caso"] else NO_CASE_FILE
 
 
 def word_count(text: str | None) -> int:

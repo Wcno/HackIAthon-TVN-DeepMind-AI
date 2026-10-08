@@ -21,6 +21,7 @@
 {% set nav = [("/inbox", "Temas", "inbox"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
 {% if target == "case" %}{% include 'views/pane.html' %}
 {% elif target == "desk" %}{% include 'views/desk.html' %}
+{% elif target == "more-rows" %}{% include 'views/rows.html' %}
 {% else %}
 {% if not fragment %}
 <!doctype html>
@@ -42,10 +43,7 @@
     <nav class="nav" aria-label="Principal">
       {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </nav>
-    <form class="search" role="search" action="/inbox" method="get">
-      {{ icon("search") }}
-      <input id="search" name="q" type="search" autocomplete="off" maxlength="2000" placeholder="Buscar un tema" aria-label="Buscar un tema" value="{{ topic_search or '' }}">
-    </form>
+    {% include 'views/search.html' %}
     {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
   </header>
   {% if demo %}<p class="synthetic" role="status">Demostración con datos sintéticos: las noticias son inventadas; las cifras oficiales son reales.</p>{% endif %}
@@ -54,6 +52,7 @@
   <h1 class="screen__title{% if workspace or screen == 'evidence' %} sr-only{% endif %}">{{ title }}</h1>
   {% include 'views/' ~ ('workspace' if workspace else screen) ~ '.html' %}
 </main>
+{% if fragment and workspace %}{% set oob = true %}{% include 'views/search.html' %}{% endif %}
 {% if not fragment %}
 </body>
 </html>

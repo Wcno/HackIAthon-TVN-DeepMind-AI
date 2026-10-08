@@ -4,6 +4,6 @@
   <a class="back" href="/inbox{{ filter_query }}" hx-get="/inbox{{ filter_query }}" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">{{ icon("back") }}Volver a temas</a>
   {% include 'views/' ~ pane ~ '.html' %}
   {% else %}
-  <div class="empty"><p>Elige un tema de la lista para abrir su caso.</p></div>
+  <div class="empty"><p>{% if filter_query %}Ningún tema coincide con los filtros: quítalos para abrir uno.{% else %}Elige un tema de la lista para abrir su caso.{% endif %}</p></div>
   {% endif %}
 </div>

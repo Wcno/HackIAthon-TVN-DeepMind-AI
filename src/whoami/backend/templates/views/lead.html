@@ -16,7 +16,7 @@
       </p>
       <p class="lead__why">{{ lead.puntaje.justificaciones.R }} {{ lead.puntaje.justificaciones.E }}</p>
       <div class="lead__facts">
-        <p class="score score--large"><span class="score__value">{{ lead.puntaje.valor|number }}</span><span class="score__range">{{ lead.puntaje.rango }}</span>{% set score = lead.puntaje %}{% include 'views/case/_scorebar.html' %}</p>
+        <p class="score score--large"><span class="score__value">{{ lead.puntaje.valor|score }}</span><span class="score__range">{{ lead.puntaje.rango }}</span>{% set score = lead.puntaje %}{% include 'views/case/_scorebar.html' %}</p>
         <div class="lead__badges">
           <span class="badge evidence--{{ lead.estado_evidencia }}">{{ evidence_labels[lead.estado_evidencia] }}</span>
           <span id="lead-review-badge-{{ lead.id_grupo }}" class="badge review review--{{ lead.estado_revision }}">{{ review_labels[lead.estado_revision] }}</span>

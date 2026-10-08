@@ -8,7 +8,7 @@
   <div class="case__facts" id="case-badges">
     <details class="relative">
       <summary class="score cursor-pointer list-none" aria-label="Cómo se calcula el puntaje">
-        <span class="score__value">{{ score.valor|number }}</span>
+        <span class="score__value">{{ score.valor|score }}</span>
         <span class="score__range">Prioridad {{ score.rango|capitalize }}</span>
         {% include 'views/case/_scorebar.html' %}
       </summary>
@@ -19,7 +19,7 @@
           <caption class="sr-only">Componentes del puntaje</caption>
           {% for component in score_components() %}{% set key = component.key %}{% set weight = component.weight %}
           <tr><th scope="row"><span class="pop__key pop__key--{{ key }}" aria-hidden="true">{{ key }}</span>{{ component.name }}</th>
-            <td class="pop__pts">{{ (score.componentes[key] * weight)|number }} / {{ weight }}</td>
+            <td class="pop__pts">{{ (score.componentes[key] * weight)|score }} / {{ weight }}</td>
             <td class="pop__why">{{ score.justificaciones[key] }}</td></tr>
           {% endfor %}
         </table>
@@ -29,6 +29,7 @@
       <span class="badge evidence--{{ group.estado_evidencia }}" title="Estado de las fuentes del tema, independiente de la ficha">{{ evidence_labels[group.estado_evidencia] }}</span>
       {% if not group.id_caso %}<span class="badge badge--pending" title="Todavía no se ha generado la ficha de este tema">Sin ficha</span>
       {% elif group.estado_revision %}<span class="badge review review--{{ group.estado_revision }}">{{ review_labels[group.estado_revision] }}</span>{% endif %}
+      {% if group|needs_investigation %}<span class="flag">{{ icon("alert") }}Requiere investigación</span>{% endif %}
     </div>
   </div>
   <p class="meta">{{ group.n_noticias|number }} noticias · {{ group.n_medios|number }} medios · {{ group.n_procedencias|number }} procedencias independientes</p>
