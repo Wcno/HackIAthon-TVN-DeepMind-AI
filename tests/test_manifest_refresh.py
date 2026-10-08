@@ -55,3 +55,10 @@ def test_the_generar_command_refreshes_the_manifest_of_the_files_it_rewrites(mon
     monkeypatch.setattr(run.manifest, "refresh", refreshed.append)
     run.main(type("Args", (), {"modelo": "m", "top": 1, "consultas": None, "implicacion": False})())
     assert refreshed == [[PROCESSED / GROUPS_FILE, PROCESSED / EVIDENCE_FILE]]
+
+
+def test_transformation_steps_are_readable_spanish_without_field_jargon():
+    from whoami.ingest.manifest import TRANSFORMATIONS
+
+    jargon = ("seendate", "lastmod", "§", "->", "fecha_deteccion", "fecha_publicacion")
+    assert [step for step in TRANSFORMATIONS if any(word in step for word in jargon)] == []

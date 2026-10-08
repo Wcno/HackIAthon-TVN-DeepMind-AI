@@ -1,5 +1,5 @@
 {
-  "version": "20261008-22c6b2b8",
+  "version": "20261008-81c3563c",
   "fecha_corte_UTC": "2026-10-08T00:51:38Z",
   "consultas": [
     {
@@ -359,30 +359,31 @@
     "noticias/amp": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
     "banco_mundial": "CC BY 4.0 - The World Bank (https://data.worldbank.org/summary-terms-of-use)",
     "usgs": "Public domain (US government). Credit: U.S. Geological Survey, Department of the Interior/USGS",
-    "inec": "CC BY 4.0 - Instituto Nacional de Estadistica y Censo (INEC), Contraloria General de la Republica de Panama"
+    "inec": "CC BY 4.0 - Instituto Nacional de Estadística y Censo (INEC), Contraloría General de la República de Panamá"
   },
   "sha256": {
     "processed/calidad_eventos.json": "f343b33cdee1fa009193fdf51c2878731c8fa316dc38c05a8e43d4c5dc604550",
     "processed/calidad_indicadores.json": "c9daff89a24eda42de970f7a10c27b1c072960f70ba735a0fd3f024711955819",
-    "processed/calidad_inec.json": "d1aa273e61cf89107ae69487543ce53728ef0500b68d115355061f557f477c33",
+    "processed/calidad_inec.json": "6c8fcc0bef1299ec45553de902784b8b3cc9f1989037721bb8e78a11e6fd10ff",
     "processed/calidad_noticias.json": "bbfdea461a48bc453fea2fafc3d7bc288e89c4c20fc6c041ece1393df9ce29ef",
     "processed/eventos.geojson": "79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d",
-    "processed/evidencias.jsonl": "c6b4eb03fe42e4b715ece4fdae46af56d20aa6854474076528d1f8f2b4a9f606",
+    "processed/evidencias.jsonl": "2d2646e4c6fa359940a48368b45f59ff0ed67c5d4f51cacb136951c6b1044046",
     "processed/fuentes.json": "91a62d08b866bcac633edbf0aa99e681eae75ceb556d7df1c6f803dbf09ae858",
-    "processed/grupos.jsonl": "43bbeb01f6f2c93b4873b75940d2f3b299117cc9109fe7e0189301d6bf812dad",
+    "processed/grupos.jsonl": "5a9b4d7cb5a1ed96d966f64deaa45bed19be50269f1fe064fad9a7a38e40e0ed",
+    "processed/imagenes.json": "d3c93c4a5f0e1c2736d7a9f0ea10f49101f3025a56f3753305abd86b1fd89d76",
     "processed/indicadores.csv": "f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e",
-    "processed/indicadores_inec.csv": "900c4f9dab874f2a279d7e4512f4b48c0275d75dc1a587aa283492fbc1acb599",
+    "processed/indicadores_inec.csv": "5035a16d37f9f7257151737cd482483f80848e72d392112fc427db07ef613645",
     "processed/noticias.csv": "f06d3528c3fc1b688d445d3bae5a10a3489a64d1a7804cf1cf8e0f7214c49fe3",
     "processed/noticias_excluidas.csv": "d3b715e30f2c548fdee074fca7bd3f0ad5ccfcb100572c81d27f9b133e2edfc6"
   },
   "registros_extraidos_en_descarga": {
-    "raw/news/tvn/tvn_sitemap/page_dates.jsonl": "da93d9f3c1a3c555ca74475d35b2c5fa99b86d719cd71bb78d273dac2b85a047"
+    "raw/news/tvn/tvn_sitemap/page_dates.jsonl": "6a36f5616401787a5b75c5971fb8ed098a31000c2c4149ac6e317a4cb7701082"
   },
   "transformaciones": [
-    "GDELT: seendate se conserva como fecha_deteccion, nunca como fecha_publicacion; se usa detección para la ventana solo si falta publicación. Capturas y errores se conservan sin modificar.",
-    "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) o del lastmod del sitemap; ventana de 30 días hasta la fecha de corte (D-04); excluidas con su motivo en noticias_excluidas.csv.",
-    "Banco Mundial: una consulta por indicador; cuadrícula completa país x indicador x año; nulos conservados; unidad derivada del indicador.",
-    "USGS: caja lat 5 a 12, lon -86 a -76, magnitud >= 3, desde 2025-10-02T00:00:00Z (D-02); propiedades del §7 (mag -> magnitude).",
-    "INEC: CSV y XLSX decodificados a UTF-8 en formato largo desde 2022; variación interanual del PIB calculada; períodos duplicados en origen excluidos."
+    "GDELT: la fecha en que GDELT detectó la noticia se guarda como fecha de detección y nunca como fecha de publicación; solo se usa para la ventana si falta la publicación. Las capturas y los errores se conservan sin modificar.",
+    "Noticias: deduplicación por URL canónica; la fecha de publicación sale del feed, de la página (artículos reeditados) o de la fecha de última modificación del sitemap; ventana de 30 días hasta la fecha de corte (D-04); las excluidas se listan con su motivo en noticias_excluidas.csv.",
+    "Banco Mundial: una consulta por indicador; cuadrícula completa de país por indicador por año; los nulos se conservan; la unidad se deriva del indicador.",
+    "USGS: caja de latitud 5 a 12 y longitud -86 a -76, magnitud de 3 o más, desde 2025-10-02T00:00:00Z (D-02); se usan las propiedades del contrato de datos (la magnitud se guarda como magnitude).",
+    "INEC: CSV y XLSX decodificados a UTF-8 y puestos en formato largo (una fila por serie y período) desde 2022; la variación interanual del PIB se calcula; los períodos duplicados en origen se excluyen."
   ]
 }
