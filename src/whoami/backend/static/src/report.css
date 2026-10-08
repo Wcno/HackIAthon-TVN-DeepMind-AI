@@ -129,9 +129,7 @@
       .ranges__ticks { @apply mt-1.5 grid grid-cols-[40fr_30fr_30fr] text-[13px] text-white/65; }
       .ranges__ticks span:last-child { @apply flex justify-between; }
 
-      
       .formula .pop__key--R { @apply ring-2 ring-white/40; }
-
 
       /* components */
       .components { @apply mt-8 grid gap-1; }
