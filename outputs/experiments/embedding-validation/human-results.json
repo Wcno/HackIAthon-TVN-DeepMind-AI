@@ -1,0 +1,83 @@
+{
+  "snapshot": "0b9418e6bae9753955b9bf79c22d7529dab65a0bcb41470a48763c3a22cceccd",
+  "status": "awaiting_human_review",
+  "decision": "keep_q4",
+  "reviewed": 0,
+  "submitted": 0,
+  "total": 267,
+  "retrieval": {
+    "q4": {
+      "eligible_queries": 0,
+      "precision_at_5": null,
+      "precision_at_5_queries": 0,
+      "pooled_recall_at_5": null,
+      "pooled_recall_at_5_queries": 0,
+      "pooled_ndcg_at_5": null,
+      "pooled_ndcg_at_5_queries": 0
+    },
+    "fp32": {
+      "eligible_queries": 0,
+      "precision_at_5": null,
+      "precision_at_5_queries": 0,
+      "pooled_recall_at_5": null,
+      "pooled_recall_at_5_queries": 0,
+      "pooled_ndcg_at_5": null,
+      "pooled_ndcg_at_5_queries": 0
+    },
+    "q4_hybrid": {
+      "eligible_queries": 0,
+      "precision_at_5": null,
+      "precision_at_5_queries": 0,
+      "pooled_recall_at_5": null,
+      "pooled_recall_at_5_queries": 0,
+      "pooled_ndcg_at_5": null,
+      "pooled_ndcg_at_5_queries": 0
+    },
+    "fp32_hybrid": {
+      "eligible_queries": 0,
+      "precision_at_5": null,
+      "precision_at_5_queries": 0,
+      "pooled_recall_at_5": null,
+      "pooled_recall_at_5_queries": 0,
+      "pooled_ndcg_at_5": null,
+      "pooled_ndcg_at_5_queries": 0
+    },
+    "bm25": {
+      "eligible_queries": 0,
+      "precision_at_5": null,
+      "precision_at_5_queries": 0,
+      "pooled_recall_at_5": null,
+      "pooled_recall_at_5_queries": 0,
+      "pooled_ndcg_at_5": null,
+      "pooled_ndcg_at_5_queries": 0
+    }
+  },
+  "grouping": {
+    "q4": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 0,
+      "reviewed_pairs": 0,
+      "f1": null
+    },
+    "fp32": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 0,
+      "reviewed_pairs": 0,
+      "f1": null
+    },
+    "q4_hybrid": {
+      "status": "not_applicable"
+    },
+    "fp32_hybrid": {
+      "status": "not_applicable"
+    },
+    "bm25": {
+      "status": "not_applicable"
+    }
+  },
+  "limitations": "Pooled development relevance, not full-corpus recall; sampled pairs, not all events. No automatic promotion. Compare quality first, then runtime and memory."
+}

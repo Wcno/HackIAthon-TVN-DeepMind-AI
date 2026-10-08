@@ -139,6 +139,7 @@ def run_candidate(name: str, directory: Path, threads: int) -> None:
     embedder = embeddings.Embedder(session=session, tokenizer=embeddings.Embedder._load_tokenizer(model / "tokenizer.json"))
     load_seconds = time.perf_counter() - start
     rebuild_seconds = None
+    corpus_reused = name == "q4"
     if vectors is None:
         vector_file = directory / "fp32-vectors.npy"
         identity_file = directory / "fp32-vectors.json"
@@ -150,6 +151,7 @@ def run_candidate(name: str, directory: Path, threads: int) -> None:
                 raise ValueError("Cached fp32 vectors belong to different inputs")
             vectors = np.load(vector_file, allow_pickle=False)
             rebuild_seconds = saved["rebuild_seconds"]
+            corpus_reused = True
         else:
             start = time.perf_counter()
             batches = []
@@ -184,7 +186,8 @@ def run_candidate(name: str, directory: Path, threads: int) -> None:
               "provenance": {"repository": embeddings.MODEL_REPO, "revision": embeddings.MODEL_REVISION,
                              "files": hashes, "provider": session.get_providers(), "model": name,
                              "load_seconds": load_seconds, "corpus_rebuild_seconds": rebuild_seconds,
-                             "corpus_reused": name == "q4", "warm_query_search_p50_ms": float(np.median(latencies)),
+                             "corpus_reused": corpus_reused, "corpus_rebuild_this_run_seconds": None if corpus_reused else rebuild_seconds,
+                             "warm_query_search_p50_ms": float(np.median(latencies)),
                              "warm_query_search_p95_ms": float(np.percentile(latencies, 95)), "peak_run_rss_mib": peak_rss_mib(),
                              "memory_scope": "entire isolated process including grouping; not the web app",
                              "latency_scope": "embedding + index creation + semantic search, excluding BM25, after one warmup"}}
