@@ -1,0 +1,24 @@
+{"id": "V-1", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "error"}
+{"id": "P-1", "etiqueta": "perturbada", "perturbacion": "cifra", "determinista_rechaza": true, "motivos": ["cifra no respaldada: 34"], "implicacion": "no_respaldada"}
+{"id": "V-2", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-2", "etiqueta": "perturbada", "perturbacion": "atribucion_inventada", "determinista_rechaza": false, "motivos": [], "implicacion": "error"}
+{"id": "V-3", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-3", "etiqueta": "perturbada", "perturbacion": "causa_inventada", "determinista_rechaza": false, "motivos": [], "implicacion": "no_respaldada"}
+{"id": "V-4", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-4", "etiqueta": "perturbada", "perturbacion": "detalle_inventado", "determinista_rechaza": true, "motivos": ["cifra no respaldada: 2023"], "implicacion": "error"}
+{"id": "V-5", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-5", "etiqueta": "perturbada", "perturbacion": "cifra", "determinista_rechaza": true, "motivos": ["cifra no respaldada: 1.4"], "implicacion": "no_respaldada"}
+{"id": "V-6", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-6", "etiqueta": "perturbada", "perturbacion": "atribucion_inventada", "determinista_rechaza": false, "motivos": [], "implicacion": "no_respaldada"}
+{"id": "V-7", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-7", "etiqueta": "perturbada", "perturbacion": "lugar_inventado", "determinista_rechaza": false, "motivos": [], "implicacion": "no_respaldada"}
+{"id": "V-8", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-8", "etiqueta": "perturbada", "perturbacion": "cifra", "determinista_rechaza": true, "motivos": ["cifra no respaldada: 6"], "implicacion": "no_respaldada"}
+{"id": "V-9", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-9", "etiqueta": "perturbada", "perturbacion": "causa_inventada", "determinista_rechaza": false, "motivos": [], "implicacion": "no_respaldada"}
+{"id": "V-10", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-10", "etiqueta": "perturbada", "perturbacion": "detalle_inventado", "determinista_rechaza": false, "motivos": [], "implicacion": "error"}
+{"id": "V-11", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-11", "etiqueta": "perturbada", "perturbacion": "detalle_inventado", "determinista_rechaza": false, "motivos": [], "implicacion": "no_respaldada"}
+{"id": "V-12", "etiqueta": "verdadera", "perturbacion": "-", "determinista_rechaza": false, "motivos": [], "implicacion": "respaldada"}
+{"id": "P-12", "etiqueta": "perturbada", "perturbacion": "cifra", "determinista_rechaza": true, "motivos": ["cifra no respaldada: 6.1"], "implicacion": "no_respaldada"}
