@@ -6,7 +6,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import quote, unquote, urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -22,9 +22,13 @@ from whoami.backend.gemini_completions import CompletionUnavailable
 from whoami.backend.live_queries import LiveQueries
 from whoami.backend.live_case_files import LiveCaseFiles, NoGroundedClaims
 from whoami.backend.pipeline import load_pipeline, validate_answer
-from whoami.backend.repository import EditorialRepository, InvalidReview, MissingRecord, ReviewConflict
+from whoami.backend.repository import (
+    REVIEW_LABELS, EditorialRepository, InvalidReview, MissingRecord, NoteRequired, ReviewConflict, approval_cautions,
+)
 from whoami.backend.panama_time import panama_time, short_date
-from whoami.backend.presentation import NO_CASE_FILE, abstention_copy, draft_budgets, file_state, latest_date, needs_investigation, snapshot_view
+from whoami.backend.presentation import (
+    NO_CASE_FILE, abstention_copy, draft_budgets, file_state, latest_date, needs_investigation, review_timeline, snapshot_view,
+)
 from whoami.backend.reports import methodology_view, quality_view, score_components
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
@@ -59,21 +63,50 @@ REVIEW_FIELD_ERRORS = {
 QUERY_MAX_LENGTH = 2000
 
 
-def review_field_error(error: RequestValidationError) -> str:
+def review_field_error(error: RequestValidationError) -> tuple[str | None, str]:
+    """The invalid form field (if one is to blame) and the message that names it."""
     for problem in error.errors():
         if problem["loc"][-1] in REVIEW_FIELD_ERRORS:
-            return REVIEW_FIELD_ERRORS[problem["loc"][-1]]
-    return "Revisa la decisión, el responsable y la versión de la ficha."
+            return problem["loc"][-1], REVIEW_FIELD_ERRORS[problem["loc"][-1]]
+    return None, "Revisa la decisión, el responsable y la versión de la ficha."
 
 
-REVIEW_LABELS = {
-    "nuevo": "Nuevo", "en_revision": "En revisión", "requiere_evidencia": "Requiere evidencia",
-    "aprobado_como_borrador": "Aprobado como borrador", "descartado": "Descartado",
+DRAFT_FIELD_LABELS = {
+    "titulo": "Título propuesto", "brief": "Brief", "enfoque_interes_publico": "Enfoque de interés público",
+    "guion": "Guion", "copy_digital": "Copy digital", "leyenda": "Leyenda",
+    "preguntas": "Pregunta", "fuentes_y_verificaciones": "Verificación",
 }
 FILE_STATE_LABELS = {NO_CASE_FILE: "Sin ficha", **REVIEW_LABELS}
 INBOX_PAGE_SIZE = 50
 METHODOLOGY_OPTIONS = 25
+
+
+LIST_FIELDS = frozenset({"preguntas", "fuentes_y_verificaciones"})
+
+
+def draft_field_error(error: RequestValidationError) -> dict:
+    """Name the draft field that failed validation so the editor can highlight it."""
+    for problem in error.errors():
+        location = problem["loc"]
+        if "draft" not in location or location[-1] == "draft":
+            continue
+        after = location[location.index("draft") + 1:]
+        key = after[0]
+        index = after[1] if len(after) > 1 and isinstance(after[1], int) else None
+        label = DRAFT_FIELD_LABELS.get(key, key)
+        name = f"{label} {index + 1}" if index is not None else label
+        if problem["type"] == "string_too_long":
+            reason = f"supera el máximo de {problem['ctx']['max_length']} caracteres"
+        elif problem["type"] == "string_too_short":
+            reason = "no puede estar vacío"
+        else:
+            reason = "no es válido"
+        return {"message": f"{name} {reason}.", "field": key, "index": index}
+    return {"message": "Revisa los campos: no dejes textos ni preguntas vacíos y respeta los límites de longitud."}
+
+
 #: Screens whose every figure is real, so the synthetic-data banner would mislead.
+REVIEWER_COOKIE = "reviewer"
 REAL_DATA_SCREENS = frozenset({"quality"})
 GENERATOR_OFFLINE = "Sin conexión: generar la ficha necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generarla."
 GENERATOR_UNAVAILABLE = ("No se pudo generar la ficha ahora: Gemini no respondió o se alcanzó su límite de uso. "
@@ -134,7 +167,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, score=score, percent=percent,
                             short_date=short_date, latest_date=latest_date, needs_investigation=needs_investigation)
     templates.env.globals.update(review_labels=REVIEW_LABELS, file_states=FILE_STATE_LABELS, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets,
-                                 score_components=score_components, abstention_copy=abstention_copy)
+                                 score_components=score_components, abstention_copy=abstention_copy, approval_cautions=approval_cautions,
+                                 review_timeline=review_timeline)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -205,8 +239,11 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         group = request.app.state.editorial.group(case["id_grupo"])
         return desk(request, title or case["titulo"], pane, group=group, case=case, status_code=status_code, **context)
 
-    def review_screen(request: Request, case_id: str, status_code: int = 200, error: str | None = None, form: dict | None = None):
-        return case_screen(request, case_id, "review", "Revisión humana", status_code, error=error, form=form or {},
+    def review_screen(request: Request, case_id: str, status_code: int = 200, error: str | None = None, form: dict | None = None,
+                      error_field: str | None = None):
+        remembered = unquote(request.cookies.get(REVIEWER_COOKIE, ""))
+        return case_screen(request, case_id, "review", "Revisión humana", status_code, error=error, error_field=error_field,
+                           form={"actor": remembered, **(form or {})},
                            history=request.app.state.repository.review_history(case_id),
                            audit=request.app.state.repository.audit_history(case_id))
 
@@ -235,11 +272,12 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError):
         if request.url.path.startswith("/api/"):
-            return JSONResponse({"message": "Revisa los campos: no dejes textos ni preguntas vacíos y respeta los límites de longitud."}, status_code=422)
+            return JSONResponse(draft_field_error(error), status_code=422)
         case_id = request.path_params.get("case_id")
         if request.method == "POST" and case_id and request.url.path.endswith("/review"):
             form = dict((await request.form()).items())
-            return review_screen(request, case_id, 422, review_field_error(error), form)
+            field, message = review_field_error(error)
+            return review_screen(request, case_id, 422, message, form, field)
         if request.url.path == "/queries":
             return render(request, "error", "Consulta demasiado larga", status_code=422,
                           message=f"La consulta supera los {number(QUERY_MAX_LENGTH)} caracteres. Acórtala y vuelve a intentarlo.")
@@ -358,9 +396,13 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             request.app.state.repository.review(case_id, **decision.model_dump())
         except ReviewConflict:
             return review_screen(request, case_id, 409, "Otra persona actualizó esta ficha mientras la revisabas. Revisa el estado actual y vuelve a decidir.", decision.model_dump())
+        except NoteRequired as error:
+            return review_screen(request, case_id, 422, str(error), decision.model_dump(), "note")
         except InvalidReview as error:
             return review_screen(request, case_id, 422, str(error), decision.model_dump())
-        return review_screen(request, case_id)
+        response = review_screen(request, case_id)
+        response.set_cookie(REVIEWER_COOKIE, quote(decision.actor), httponly=True, samesite="lax")
+        return response
 
     @app.get("/queries", response_class=HTMLResponse)
     async def queries(request: Request, q: Annotated[str | None, Query(max_length=QUERY_MAX_LENGTH)] = None):

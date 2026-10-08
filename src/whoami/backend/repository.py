@@ -16,6 +16,11 @@ from pathlib import Path
 from whoami.backend.pipeline import PipelineBundle
 from whoami.contracts import REVIEW_STATES, REVIEW_TRANSITIONS
 
+REVIEW_LABELS = {
+    "nuevo": "Nuevo", "en_revision": "En revisión", "requiere_evidencia": "Requiere evidencia",
+    "aprobado_como_borrador": "Aprobado como borrador", "descartado": "Descartado",
+}
+
 
 def canonical_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -35,6 +40,20 @@ class ReviewConflict(ValueError):
 
 class InvalidReview(ValueError):
     pass
+
+
+class NoteRequired(InvalidReview):
+    """The decision needs a written reason before it can be recorded."""
+
+
+def approval_cautions(evidence_state: str, draft: dict | None) -> list[str]:
+    """Reasons an approval must be justified in writing; shown before the decision and enforced on it."""
+    cautions = []
+    if evidence_state == "parcial":
+        cautions.append("La evidencia es parcial.")
+    if draft and draft["fuentes_y_verificaciones"]:
+        cautions.append("El borrador tiene verificaciones pendientes.")
+    return cautions
 
 
 def cited_ids(case: dict) -> list[str]:
@@ -231,25 +250,30 @@ class EditorialRepository:
                                   WHERE case_id = ? AND reviews.content_version = cases.content_version
                                   ORDER BY timestamp DESC, reviews.id DESC LIMIT 1""", (case_id,)).fetchone()
 
+    @staticmethod
+    def _edited_draft(connection, case: dict) -> dict:
+        """The seed case with the human-edited draft and the sources it cites applied."""
+        edited = connection.execute("SELECT * FROM edited_drafts WHERE case_id = ?", (case["id_caso"],)).fetchone()
+        extra_sources = []
+        if edited is not None:
+            case = case | {"borrador": json.loads(edited["body"])}
+            extra_sources = json.loads(edited["source_ids"])
+        return case | {"ids_fuente": list(dict.fromkeys([*cited_ids(case), *extra_sources]))}
+
     def case(self, case_id: str) -> dict:
         with self.connection() as connection:
             row = connection.execute("SELECT * FROM cases WHERE id = ? AND active = 1", (case_id,)).fetchone()
             if row is None:
                 raise MissingRecord(f"Unknown case: {case_id}")
             review = self._current_review(connection, case_id)
-            case = json.loads(row["body"])
-            edited = connection.execute("SELECT * FROM edited_drafts WHERE case_id = ?", (case_id,)).fetchone()
-            extra_sources = []
-            if edited is not None:
-                case["borrador"] = json.loads(edited["body"])
-                extra_sources = json.loads(edited["source_ids"])
+            case = self._edited_draft(connection, json.loads(row["body"]))
             group_record = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
             if group_record is None:
                 raise MissingRecord(f"The group of case {case_id} is no longer available.")
             group = json.loads(group_record["body"])
             return case | {"titulo": group["titulo"], "tema": group["tema"], "estado_evidencia": group["estado_evidencia"],
                            "puntaje": group["puntaje"]["valor"], "componentes": group["puntaje"]["componentes"],
-                           "ids_fuente": list(dict.fromkeys([*cited_ids(case), *extra_sources])), "estado_revision": review["state"] if review else "nuevo",
+                           "estado_revision": review["state"] if review else "nuevo",
                            "version": row["version"], "content_version": row["content_version"]}
 
     def save_draft(self, case_id: str, *, draft: dict, source_ids: list[str], expected_version: int) -> dict:
@@ -266,10 +290,12 @@ class EditorialRepository:
             for source_id in source_ids:
                 if connection.execute("SELECT 1 FROM records WHERE kind = 'evidence' AND id = ?", (source_id,)).fetchone() is None:
                     raise MissingRecord(f"Fuente no disponible: {source_id}")
-            connection.execute("INSERT OR REPLACE INTO edited_drafts VALUES (?, ?, ?)",
-                               (case_id, canonical_json(draft), canonical_json(list(dict.fromkeys(source_ids)))))
-            connection.execute("UPDATE cases SET version = version + 1, content_version = content_version + 1 WHERE id = ?", (case_id,))
-            self._insert_audit(connection, case_id, "Editorial draft edited; human review required.", row["content_version"] + 1)
+            current = self._edited_draft(connection, seed)
+            if draft != current["borrador"] or list(dict.fromkeys(source_ids)) != current["ids_fuente"]:
+                connection.execute("INSERT OR REPLACE INTO edited_drafts VALUES (?, ?, ?)",
+                                   (case_id, canonical_json(draft), canonical_json(list(dict.fromkeys(source_ids)))))
+                connection.execute("UPDATE cases SET version = version + 1, content_version = content_version + 1 WHERE id = ?", (case_id,))
+                self._insert_audit(connection, case_id, "Editorial draft edited; human review required.", row["content_version"] + 1)
         return self.case(case_id)
 
     def review_history(self, case_id: str) -> list[dict]:
@@ -294,27 +320,33 @@ class EditorialRepository:
     def review(self, case_id: str, *, state: str, actor: str, note: str | None, expected_version: int) -> dict:
         note = note.strip() or None if note is not None else None
         if state not in REVIEW_STATES or not actor.strip():
-            raise InvalidReview("A valid state and a human reviewer are required.")
+            raise InvalidReview("Elige una decisión válida e indica quién la toma.")
         with self.connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = connection.execute("SELECT * FROM cases WHERE id = ? AND active = 1", (case_id,)).fetchone()
             if row is None:
                 raise MissingRecord(f"Unknown case: {case_id}")
             if row["version"] != expected_version:
-                raise ReviewConflict("The case changed. Reload it before submitting a review.")
+                raise ReviewConflict("La ficha cambió. Recarga la página antes de decidir.")
             current = self._current_review(connection, case_id)
             current_state = current["state"] if current else "nuevo"
             if state not in REVIEW_TRANSITIONS[current_state]:
-                raise InvalidReview(f"Transition {current_state} -> {state} is not allowed.")
-            if state == "en_revision" and current_state in ("aprobado_como_borrador", "descartado") and not (note or "").strip():
-                raise InvalidReview("Reopening a case requires a reason.")
+                raise InvalidReview(f"No se puede pasar de «{REVIEW_LABELS[current_state]}» a «{REVIEW_LABELS[state]}».")
+            if state == "en_revision" and current_state in ("aprobado_como_borrador", "descartado") and not note:
+                raise NoteRequired("Para reabrir la ficha escribe en la nota el motivo.")
+            if state == "requiere_evidencia" and not note:
+                raise NoteRequired("Para pedir más evidencia escribe en la nota qué hace falta.")
             case = json.loads(row["body"])
             group_record = connection.execute("SELECT body FROM records WHERE kind = 'group' AND id = ?", (case["id_grupo"],)).fetchone()
             if group_record is None:
                 raise MissingRecord(f"The group of case {case_id} is no longer available.")
             group = json.loads(group_record["body"])
-            if state == "aprobado_como_borrador" and (group["estado_evidencia"] == "insuficiente" or case["borrador"] is None):
-                raise InvalidReview("Approval requires a draft and evidence that is not insufficient.")
+            if state == "aprobado_como_borrador":
+                if group["estado_evidencia"] == "insuficiente" or case["borrador"] is None:
+                    raise InvalidReview("Para aprobar hace falta un borrador y evidencia que no sea insuficiente.")
+                cautions = approval_cautions(group["estado_evidencia"], self._edited_draft(connection, case)["borrador"])
+                if cautions and not note:
+                    raise NoteRequired(f"{' '.join(cautions)} Para aprobar escribe en la nota por qué es suficiente.")
             version = row["version"] + 1
             connection.execute("UPDATE cases SET version = ? WHERE id = ?", (version, case_id))
             self._insert_review(connection, {"id_caso": case_id, "estado": state, "responsable": actor.strip(),

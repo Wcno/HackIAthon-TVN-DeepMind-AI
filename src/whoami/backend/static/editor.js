@@ -21,6 +21,9 @@
   // In the whole-draft scope a typed request is an edit unless it is clearly a search or a question.
   const requestAction = (question, field) => field ? 'rewrite' : SEARCH_REQUEST.test(question) ? 'articles' : QUESTION.test(question) ? 'ask' : 'rewrite';
   const pendingLabels = {rewrite: 'Redactando…', headlines: 'Redactando…', shorten: 'Redactando…', neutral: 'Redactando…', articles: 'Buscando noticias…'};
+  const BUDGETS = [{key: 'brief', label: 'Brief', max: 250, min: 0, unit: 'palabras'}, {key: 'guion', label: 'Guion', max: 60, min: 45, unit: 's'}, {key: 'copy_digital', label: 'Copy digital', max: 80, min: 0, unit: 'palabras'}];
+  const words = text => text.trim().split(/\s+/).filter(Boolean).length;
+  const budgetAmount = (key, draft) => key === 'guion' ? Math.round(words(draft[key]) / 2.5) : words(draft[key]);
   const labels = {titulo: 'Título propuesto', brief: 'Brief', guion: 'Guion', copy_digital: 'Copy digital', enfoque_interes_publico: 'Enfoque de interés público'};
 
   function mount(root) {
@@ -46,7 +49,9 @@
     const message = root.querySelector('[data-save-message]');
     const abort = new AbortController();
     const caseId = root.dataset.editor;
-    let saved = JSON.parse(root.querySelector('[data-editor-config]').textContent);
+    const config = JSON.parse(root.querySelector('[data-editor-config]').textContent);
+    let saved = config;
+    let conflict = null;
     let sources = saved.source_ids.slice();
     let saving = false;
     let asking = false;
@@ -62,7 +67,7 @@
       const response = await fetch(url, {...options, signal: abort.signal, headers: {'Content-Type': 'application/json', ...options.headers}});
       let data;
       try { data = await response.json(); } catch { throw new Error('No se pudo leer la respuesta del servidor. Intenta de nuevo.'); }
-      if (!response.ok) throw new Error(data.message || 'No se pudo completar la solicitud.');
+      if (!response.ok) throw Object.assign(new Error(data.message || 'No se pudo completar la solicitud.'), {status: response.status, field: data.field, index: data.index});
       return data;
     }
     const collect = () => {
@@ -78,7 +83,7 @@
     const dirty = () => !equal(collect(), saved.draft) || !equal(sources, saved.source_ids);
     const fit = field => {
       field.style.height = 'auto';
-      field.style.height = `${field.scrollHeight}px`;
+      field.style.height = `${field.scrollHeight + field.offsetHeight - field.clientHeight}px`;
     };
     const listLabel = key => key === 'preguntas' ? 'Pregunta' : 'Verificación';
     function renderList(key, values) {
@@ -116,17 +121,68 @@
       const dirty = !equal(draft, saved.draft) || !equal(sources, saved.source_ids);
       bar.classList.toggle('is-dirty', dirty);
       root.querySelector('[data-save-state]').textContent = saving ? 'Guardando…' : dirty ? 'Cambios sin guardar' : 'Sin cambios';
-      root.querySelector('[data-edit="save"]').disabled = saving || !dirty;
+      root.querySelector('[data-edit="save"]').disabled = saving || !dirty || Boolean(conflict);
       root.querySelector('[data-edit="discard"]').disabled = saving || !dirty;
-      const count = text => text.trim().split(/\s+/).filter(Boolean).length;
-      for (const [key, max, min, unit] of [['brief', 250, 0, 'palabras'], ['guion', 60, 45, 's'], ['copy_digital', 80, 0, 'palabras']]) {
+      for (const {key, max, min, unit} of BUDGETS) {
         const meter = root.querySelector(`[data-meter="${key}"]`);
-        const amount = key === 'guion' ? Math.round(count(draft[key]) / 2.5) : count(draft[key]);
+        const amount = budgetAmount(key, draft);
         meter.classList.toggle('is-over', amount > max);
         meter.classList.toggle('is-under', Boolean(min && amount < min));
         meter.querySelector('.budget__fill').style.width = `${Math.min(100, amount / max * 100)}%`;
         meter.querySelector('.budget__text').textContent = `${amount} / ${min ? `${min}-${max}` : max} ${unit}`;
       }
+    }
+    const budgetWarnings = draft => BUDGETS.flatMap(({key, label, max, min, unit}) => {
+      const amount = budgetAmount(key, draft);
+      if (amount > max) return [`${label} supera el límite (${amount} / ${max} ${unit})`];
+      return min && amount < min ? [`${label} queda por debajo del mínimo (${amount} / ${min}-${max} ${unit})`] : [];
+    });
+    const reviewBadges = () => {
+      const group = CSS.escape(root.dataset.group);
+      return document.querySelectorAll(`.case__badges .review, #review-badge-${group}, #lead-review-badge-${group}`);
+    };
+    // Saving changes the content, so the previous human decision no longer applies anywhere on the page.
+    const showReviewState = state => reviewBadges().forEach(badge => {
+      badge.textContent = config.review_labels[state];
+      badge.className = `badge review review--${state}`;
+    });
+    const markInvalid = error => {
+      const fields = error.field && (error.index === null || error.index === undefined)
+        ? [...form.querySelectorAll(`textarea[data-key="${error.field}"]`)].filter(field => !field.closest('[data-list]'))
+        : [...form.querySelectorAll(`[data-list="${error.field}"] textarea`)].slice(error.index, error.index + 1);
+      fields.forEach(field => { field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', message.id); field.focus(); });
+    };
+    const clearInvalid = () => form.querySelectorAll('[aria-invalid]').forEach(field => { field.removeAttribute('aria-invalid'); field.removeAttribute('aria-describedby'); });
+    const conflictPanel = root.querySelector('[data-conflict]');
+    function showConflict(latest) {
+      conflict = latest;
+      const mine = collect();
+      const body = conflictPanel.querySelector('[data-conflict-diff]');
+      body.replaceChildren();
+      for (const key of Object.keys(latest.draft)) {
+        if (equal(mine[key], latest.draft[key])) continue;
+        const theirs = Array.isArray(latest.draft[key]) ? latest.draft[key].map((item, index) => `${index + 1}. ${item}`).join('\n') : latest.draft[key];
+        const detail = element('details');
+        detail.append(element('summary', '', `${labels[key] || (key === 'preguntas' ? 'Preguntas de investigación' : 'Fuentes y verificaciones')}: versión de la otra persona`), element('p', 'conflict__text', theirs));
+        body.append(detail);
+      }
+      if (!body.children.length) body.append(element('p', 'muted', 'El texto es igual; la otra persona cambió las fuentes del caso.'));
+      conflictPanel.hidden = false;
+      notify('');
+      refresh();
+      conflictPanel.scrollIntoView({block: 'nearest'});
+    }
+    function resolveConflict(adopt) {
+      saved = conflict;
+      conflict = null;
+      conflictPanel.hidden = true;
+      if (adopt) {
+        sources = saved.source_ids.slice();
+        renderDraft(saved.draft);
+        renderSources();
+        notify('Se cargó la versión de la otra persona.');
+      } else form.requestSubmit();
+      refresh();
     }
     function renderSources() {
       const list = root.querySelector('[data-source-list]');
@@ -315,7 +371,11 @@
     window.addEventListener('beforeunload', event => {
       if (dirty()) { event.preventDefault(); event.returnValue = ''; }
     }, {signal: abort.signal});
-    form.addEventListener('input', event => { if (event.target.matches('textarea')) fit(event.target); notify(''); refresh(); }, {signal: abort.signal});
+    form.addEventListener('input', event => {
+      if (event.target.matches('textarea')) { fit(event.target); event.target.removeAttribute('aria-invalid'); }
+      if (!form.querySelector('[aria-invalid]')) notify('');
+      refresh();
+    }, {signal: abort.signal});
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (saving) return;
@@ -327,11 +387,19 @@
       try {
         const response = await request(`${api}/draft`, {method: 'PUT', body: JSON.stringify({draft: snapshot, source_ids: snapshotSources, expected_version: saved.version})});
         saved = response;
-        const review = root.closest('.case').querySelector('.case__badges .review');
-        if (review) { review.textContent = 'Nuevo'; review.className = 'badge review review--nuevo'; }
+        showReviewState(response.review_state);
         renderSources();
-        notify('Cambios guardados. El borrador requiere una nueva revisión humana.');
-      } catch (error) { if (error.name !== 'AbortError') notify(error.message, true); }
+        const warnings = budgetWarnings(snapshot);
+        notify(`Cambios guardados. El borrador requiere una nueva revisión humana.${warnings.length ? ` Aviso: ${warnings.join('; ')}. Puedes corregirlo antes de la revisión.` : ''}`);
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        if (error.status === 409) {
+          try { showConflict(await request(`${api}/draft`)); } catch { notify(`${error.message} Copia tus cambios y recarga la página.`, true); }
+        } else {
+          notify(error.message, true);
+          if (error.field) markInvalid(error);
+        }
+      }
       finally { saving = false; refresh(); }
     }, {signal: abort.signal});
     desk.addEventListener('click', async event => {
@@ -346,7 +414,10 @@
       if (target.dataset.source) return openSource(target.dataset.source);
       const edit = target.dataset.edit;
       if (edit === 'close-source') return closeSource();
-      if (edit === 'discard') { sources = saved.source_ids.slice(); renderDraft(saved.draft); renderSources(); notify(''); replies.replaceChildren(); showPrompts(true); }
+      if (edit === 'overwrite') return resolveConflict(false);
+      if (edit === 'adopt') return resolveConflict(true);
+      if (edit === 'discard' && conflict) return resolveConflict(true);
+      if (edit === 'discard') { clearInvalid(); sources = saved.source_ids.slice(); renderDraft(saved.draft); renderSources(); notify(''); replies.replaceChildren(); showPrompts(true); }
       if (edit === 'add') {
         const key = target.dataset.key;
         const draft = collect();

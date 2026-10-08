@@ -115,3 +115,63 @@ def test_case_header_entrance_does_not_clip_the_score_popover():
     stylesheet = (Path(__file__).parents[1] / "src/whoami/backend/static/src/app.css").read_text(encoding="utf-8")
     rule = re.search(r"\.case\.is-entering \.case__head \{ animation: ([^;]+);", stylesheet)
     assert rule and rule.group(1).endswith("backwards")
+
+
+def current_block(html):
+    return re.search(r'<div class="current">.*?</div>', html, re.S).group(0)
+
+
+def test_partial_evidence_approval_warns_and_requires_a_note(client):
+    repository = client.app.state.repository
+    case_id = "CASO-002"
+    assert repository.case(case_id)["estado_evidencia"] == "parcial"
+    page = client.get(f"/cases/{case_id}/review").text
+    assert "evidencia es parcial" in page
+    send = lambda **data: client.post(f"/cases/{case_id}/review", data={
+        "actor": "Ana", "expected_version": repository.case(case_id)["version"], **data})
+    blocked = send(state="aprobado_como_borrador", note="")
+    assert blocked.status_code == 422
+    assert re.search(r'<textarea[^>]*name="note"[^>]*aria-invalid="true"', blocked.text)
+    assert "nota" in re.search(r'role="alert">([^<]*)<', blocked.text).group(1).lower()
+    assert send(state="aprobado_como_borrador", note="Verificado con la fuente oficial").status_code == 200
+
+
+def test_asking_for_more_evidence_requires_a_note(client):
+    response = decision(client, state="requiere_evidencia", note="  ")
+    assert response.status_code == 422
+    assert re.search(r'<textarea[^>]*name="note"[^>]*aria-invalid="true"', response.text)
+
+
+def test_missing_actor_highlights_the_responsable_field(client):
+    response = decision(client, actor="")
+    assert re.search(r'<input[^>]*name="actor"[^>]*aria-invalid="true"', response.text)
+
+
+def test_responsable_is_remembered_for_the_browser_session(client):
+    assert 'value=""' in client.get("/cases/CASO-001/review").text
+    assert decision(client).status_code == 200
+    page = client.get("/cases/CASO-001/review").text
+    assert re.search(r'name="actor"[^>]*value="Ana Reyes"', page)
+
+
+def test_current_state_after_an_edit_does_not_credit_the_last_reviewer(client):
+    assert decision(client, state="requiere_evidencia").status_code == 200
+    record = client.get("/api/cases/CASO-001/draft").json()
+    record["draft"]["titulo"] = "Titular nuevo"
+    assert client.put("/api/cases/CASO-001/draft", json={
+        "draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]}).status_code == 200
+    block = current_block(client.get("/cases/CASO-001/review").text)
+    assert "Nuevo" in block and "Ana Reyes" not in block and "editado" in block
+
+
+def test_review_timeline_is_chronological_newest_first(client):
+    assert decision(client, state="requiere_evidencia").status_code == 200
+    record = client.get("/api/cases/CASO-001/draft").json()
+    record["draft"]["titulo"] = "Titular nuevo"
+    client.put("/api/cases/CASO-001/draft", json={
+        "draft": record["draft"], "source_ids": record["source_ids"], "expected_version": record["version"]})
+    assert decision(client, state="en_revision").status_code == 200
+    html = client.get("/cases/CASO-001/review").text
+    history = html[html.index('class="history"'):]
+    assert history.index("En revisión") < history.index("Contenido editado") < history.index("Requiere evidencia")
+    assert history.count("Contenido editado") == 1
