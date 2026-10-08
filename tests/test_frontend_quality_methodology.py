@@ -68,7 +68,7 @@ def test_snapshot_provenance_and_hashes_come_from_the_manifest(client):
     assert f"{len(manifest['consultas'])} descargas registradas" in page
     for digest in manifest["sha256"].values():
         assert digest in page
-    assert "Integridad: verified" in page
+    assert "Integridad: verificada" in page and "verified" not in page
     assert "6 oct, 22:32 a 23:00" in page  # TVN downloads, shown in Panama time (UTC-5)
 
 

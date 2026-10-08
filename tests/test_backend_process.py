@@ -72,7 +72,7 @@ def test_all_screens_and_saved_decisions_survive_real_process_restart(tmp_path):
             assert "text/html" in response.headers["content-type"]
             assert ("Demostración" in response.text) == (path != "/quality")
             if path == "/quality":
-                assert "Integridad: verified" in response.text
+                assert "Integridad: verificada" in response.text
             checked.append({"path": path, "status": response.status_code})
         for answer in bundle.answers:
             response = client.get("/queries", params={"q": answer["consulta"]})

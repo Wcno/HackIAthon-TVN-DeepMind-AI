@@ -15,7 +15,11 @@
     node.addEventListener('click', action);
     return node;
   };
-  const panamaDate = value => new Intl.DateTimeFormat('es-PA', {timeZone: 'America/Panama', day: '2-digit', month: '2-digit', year: 'numeric'}).format(new Date(value));
+  const PANAMA_DAY = new Intl.DateTimeFormat('en-US', {timeZone: 'America/Panama', day: '2-digit', month: '2-digit', year: 'numeric'});
+  const panamaDate = value => {
+    const part = Object.fromEntries(PANAMA_DAY.formatToParts(new Date(value)).map(({type, value: text}) => [type, text]));
+    return `${part.day}/${part.month}/${part.year}`;
+  };
   const SEARCH_REQUEST = /busca|buscar|noticias|art[ií]culos/i;
   const QUESTION = /\?\s*$|^\s*¿|^\s*(qu[eé]|cu[aá]l(es)?|c[oó]mo|por qu[eé]|qui[eé]n(es)?|cu[aá]ndo|d[oó]nde|cu[aá]nt[oa]s?|hay|existe|es|son)(?=\s|$)/i;
   // In the whole-draft scope a typed request is an edit unless it is clearly a search or a question.

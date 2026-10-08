@@ -166,17 +166,17 @@
     {% endif %}
 
     {% if quality.hashes %}
-    {% set integrity = quality.integrity %}
+    {% set integrity = quality.integrity %}{% set integrity_status = {"verified": "verificada", "incomplete": "incompleta", "invalid": "con diferencias"}[integrity.status] %}
     <details class="hashes">
       <summary>Ver huellas SHA-256 de los archivos procesados {{ report_icon("chevron") }}</summary>
-      <p class="muted mt-4">Integridad: {{ integrity.status }} · {{ integrity.expected }} archivos comprobados contra su SHA-256.</p>
+      <p class="muted mt-4">Integridad: {{ integrity_status }} · {{ integrity.expected }} archivos comprobados contra su huella SHA-256.</p>
       {% for name in integrity.missing %}<p class="muted">Archivo ausente: {{ name }}</p>{% endfor %}
-      {% for name in integrity.mismatches %}<p class="muted">Contenido distinto del manifest: {{ name }}</p>{% endfor %}
+      {% for name in integrity.mismatches %}<p class="muted">Contenido distinto del registrado: {{ name }}</p>{% endfor %}
       {% for name in integrity.unsafe_paths %}<p class="muted">Ruta fuera del snapshot: {{ name }}</p>{% endfor %}
       <ul>{% for file in quality.hashes %}<li><span>{{ file.name }}</span><span class="n">{% if file.count is not none %}{{ file.count|number }}{% endif %}</span><code>{{ file.sha256 }}</code></li>{% endfor %}</ul>
     </details>
     {% if integrity.status != "verified" %}
-    <div class="notice" role="alert">{{ report_icon("note") }}<p><strong>El corte no pasó la comprobación de integridad ({{ integrity.status }}).</strong> Revisa las huellas antes de confiar en estas cifras.</p></div>
+    <div class="notice" role="alert">{{ report_icon("note") }}<p><strong>El corte no pasó la comprobación de integridad ({{ integrity_status }}).</strong> Revisa las huellas antes de confiar en estas cifras.</p></div>
     {% endif %}
     {% endif %}
   </section>

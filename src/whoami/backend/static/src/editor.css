@@ -88,7 +88,7 @@
   .reply__state--cached { @apply bg-ground text-ink-2; }
   .reply__warn { @apply rounded-xl bg-amber-50 px-3.5 py-2 text-sm font-medium text-amber-800; }
   .reply__h { @apply font-semibold text-navy; }
-  .reply__actions { @apply flex flex-wrap gap-2; }
+  .reply__actions { @apply flex flex-wrap gap-2.5; }
   .diff__label { @apply text-[13px] text-ink-3; }
   .diff { @apply rounded-xl px-3.5 py-2.5; }
   .diff--before { @apply bg-ground text-ink-3 line-through decoration-ink-3/40; }
@@ -99,6 +99,10 @@
   .result__title { @apply font-semibold leading-snug; }
   .result__passage { @apply text-[15px] text-ink-2; }
   .assistant__close, .sheet-toggle { @apply hidden; }
+  @media (min-width: 961px) {
+    .draft-assistant .reply .btn { @apply min-h-9; }
+    .draft-assistant .reply .cite { @apply min-h-8 min-w-8; }
+  }
   @media (min-width: 961px) and (max-width: 1280px) {
     .body--desk:has([data-editor]) .inbox { @apply hidden; }
     .body--desk:has([data-editor]) .desk { @apply grid-cols-[minmax(0,1fr)_minmax(300px,340px)]; }

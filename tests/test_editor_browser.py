@@ -33,7 +33,10 @@ def editor_server(tmp_path, request):
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(content)}}]})
 
     settings = Settings(database=tmp_path / "browser.sqlite3", offline=offline, gemini_api_key="fixture-key")
-    app = create_app(settings, gemini_transport=httpx.MockTransport(provider))
+    yield from serve(create_app(settings, gemini_transport=httpx.MockTransport(provider)))
+
+
+def serve(app):
     listener = socket.socket()
     listener.bind(("127.0.0.1", 0))
     port = listener.getsockname()[1]
@@ -50,6 +53,21 @@ def editor_server(tmp_path, request):
         server.should_exit = True
         thread.join(timeout=10)
         listener.close()
+
+
+@pytest.fixture
+def scripted_server(tmp_path, request):
+    """Serves the app with a provider that answers each scripted step in turn: a dict is a reply, an int is an HTTP failure."""
+    steps = list(request.param)
+
+    def provider(http_request):
+        step = steps.pop(0)
+        if isinstance(step, int):
+            return httpx.Response(step, json={"error": "provider failure"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(step)}}]})
+
+    settings = Settings(database=tmp_path / "scripted.sqlite3", offline=False, gemini_api_key="fixture-key")
+    yield from serve(create_app(settings, gemini_transport=httpx.MockTransport(provider)))
 
 
 @pytest.fixture
@@ -266,3 +284,59 @@ def test_textareas_have_no_inner_scrollbars(page, editor_server):
     page.goto(f"{editor_server}/cases/CASO-001/draft")
     overflowing = page.evaluate("[...document.querySelectorAll('.draft-form textarea')].filter(t => t.scrollHeight > t.clientHeight).length")
     assert overflowing == 0
+
+
+@pytest.mark.parametrize("timestamp, shown", [
+    ("2026-09-29T03:30:00Z", "28/09/2026"),
+    ("2026-09-29T05:00:00Z", "29/09/2026"),
+    ("2026-01-05T12:00:00-05:00", "05/01/2026"),
+])
+def test_related_article_dates_are_day_month_year_in_panama_time(page, editor_server, timestamp, shown):
+    article = {"id_evidencia": "N-2cf673d2b74a", "medio": "Medio de prueba", "fecha": timestamp, "titulo": "Titular de prueba", "passage": "Pasaje."}
+    reply = {"kind": "articles", "text": "Noticias relacionadas.", "articles": [article], "citations": [], "cached": False, "warnings": []}
+    page.route("**/assistant", lambda route: route.fulfill(json=reply))
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    page.locator('#ask-input').fill("Busca noticias sobre el Canal")
+    page.locator('.ask button[type="submit"]').click()
+    expect(page.locator('.result .meta')).to_have_text(f"Medio de prueba · {shown}")
+
+
+CITATION = {"id_evidencia": "N-2cf673d2b74a", "campo": "titulo", "pasaje": "32"}
+CLEAN_OPTION = "El Canal reduce a 32 los tránsitos diarios"
+UNBACKED_OPTION = "Canal limita a 32 tránsitos y 1.000.000 de dólares"
+TWO_OPTIONS = {"kind": "suggestion", "field": "titulo", "text": "Dos versiones.", "options": [CLEAN_OPTION, UNBACKED_OPTION],
+               "citations": [CITATION], "missing": None}
+
+
+@pytest.mark.parametrize("scripted_server", [[TWO_OPTIONS, 500]], indirect=True)
+def test_a_soft_rejection_followed_by_a_failed_retry_shows_the_flagged_reply_with_per_option_warnings(page, scripted_server):
+    page.goto(f"{scripted_server}/cases/CASO-001/draft")
+    page.locator('#ask-input').fill("haz el titulo mas llamativo")
+    page.locator('.ask button[type="submit"]').click()
+    options = page.locator('.option')
+    expect(options).to_have_count(2)
+    clean, warned = options.nth(0), options.nth(1)
+    expect(clean.locator('.reply__warn')).to_have_count(0)
+    expect(warned.locator('.reply__warn')).to_have_text("⚠ Verifica antes de aplicar: Cifra sin respaldo: 1.000.000")
+    for option in (clean, warned):
+        expect(option.get_by_role("button", name="Aplicar", exact=True)).to_be_enabled()
+        expect(option.get_by_role("button", name="Copiar", exact=True)).to_be_enabled()
+    expect(page.locator('.reply .reply__warn')).to_have_count(1)
+    warned.get_by_role("button", name="Aplicar", exact=True).click()
+    expect(page.locator('textarea[data-key="titulo"]')).to_have_value(UNBACKED_OPTION)
+
+
+@pytest.mark.parametrize("scripted_server", [[TWO_OPTIONS, 500]], indirect=True)
+@pytest.mark.parametrize("width, button_height, cite_size", [(1440, 36, 32), (390, 44, 44)])
+def test_reply_controls_are_comfortable_to_hit_and_never_overflow_the_assistant(page, scripted_server, width, button_height, cite_size):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(f"{scripted_server}/cases/CASO-001/draft")
+    if width < 961:
+        page.get_by_role("button", name="Abrir Co-News", exact=True).click()
+    page.locator('#ask-input').fill("haz el titulo mas llamativo")
+    page.locator('.ask button[type="submit"]').click()
+    expect(page.locator('.option')).to_have_count(2)
+    apply = page.locator('.option').first.get_by_role("button", name="Aplicar", exact=True).bounding_box()
+    cite = page.locator('.reply .cite').first.bounding_box()
+    assert apply["height"] >= button_height and cite["height"] >= cite_size and cite["width"] >= cite_size
+    assert page.evaluate("(() => { const a = document.querySelector('.draft-assistant'); return a.scrollWidth <= a.clientWidth; })()")

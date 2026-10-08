@@ -5,7 +5,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NamedTuple
 from urllib.parse import quote, unquote, urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Query, Request
@@ -119,7 +119,14 @@ GENERATOR_UNSUPPORTED = ("Se intentó generar la ficha, pero ninguna afirmación
 #: Tab names of an open topic, used in the browser title so each tab is told apart in history and tab strips.
 PANE_LABELS = {"case": "Historia", "group": "Cobertura", "context": "Contexto", "draft": "Borrador", "review": "Revisión"}
 #: What a missing record is called to the editor, by the screen that asked for it.
-MISSING_SUBJECTS = (("/groups/", "tema"), ("/cases/", "ficha"), ("/evidence/", "fuente"))
+class MissingSubject(NamedTuple):
+    heading: str
+    this_record: str
+
+
+MISSING_SUBJECTS = (("/groups/", MissingSubject("Tema no encontrado", "este tema")),
+                    ("/cases/", MissingSubject("Ficha no encontrada", "esta ficha")),
+                    ("/evidence/", MissingSubject("Fuente no encontrada", "esta fuente")))
 EVIDENCE_LABELS = {
     "suficiente_para_borrador": "Evidencia suficiente", "parcial": "Evidencia parcial", "insuficiente": "Evidencia insuficiente",
 }
@@ -261,8 +268,10 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         if request.url.path.startswith("/api/"):
             return JSONResponse({"message": "La ficha o la fuente ya no están disponibles."}, status_code=404)
         subject = next((name for prefix, name in MISSING_SUBJECTS if request.url.path.startswith(prefix)), None)
-        return render(request, "error", f"{subject.capitalize()} no encontrado" if subject else "Registro no disponible", status_code=404,
-                      message=f"No encontramos este {subject}. Puede que el enlace sea antiguo o esté incompleto." if subject else str(error))
+        if subject is None:
+            return render(request, "error", "Registro no disponible", status_code=404, message=str(error))
+        return render(request, "error", subject.heading, status_code=404,
+                      message=f"No encontramos {subject.this_record}. Puede que el enlace sea antiguo o esté incompleto.")
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, error: StarletteHTTPException):
@@ -423,7 +432,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             return review_screen(request, case_id, 422, str(error), decision.model_dump(), "note")
         except InvalidReview as error:
             return review_screen(request, case_id, 422, str(error), decision.model_dump())
-        response = review_screen(request, case_id)
+        response = review_screen(request, case_id, form={"actor": decision.actor})
         response.set_cookie(REVIEWER_COOKIE, quote(decision.actor), httponly=True, samesite="lax")
         return response
 
