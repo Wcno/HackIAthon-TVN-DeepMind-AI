@@ -2,6 +2,29 @@
 
 Este repositorio es para la hackathon.
 
+## Corpus G1 y GDELT
+
+```powershell
+uv run --locked whoami ingest --only prensa,telemetro,panamaamerica
+uv run --locked whoami ingest --only gdelt-gkg
+uv run --locked whoami build
+```
+
+Las capturas originales están en `data/raw/`; los archivos normalizados en
+`data/processed/` y sus hashes en `data/manifest.json`. `build` funciona sin red.
+El snapshot incluye datos reales de GDELT GKG y conserva las fechas de detección
+por separado de las de publicación. GKG captura seis lotes horarios multilingües:
+es una muestra parcial, registrada en `calidad_noticias.json`, no un backfill de
+30 días. Los feeds de otros medios cubren principalmente los últimos dos días.
+
+`uv run --locked whoami ingest --only gdelt` intenta DOC 2.0 con cortes diarios
+de los últimos 30 días, timeout de 60 segundos, separación mínima de 6 segundos
+y hasta cinco intentos con backoff. Divide las consultas con 250 resultados y
+reanuda intervalos completos. Puede tardar varios minutos si hay HTTP 429; los
+fallos quedan congelados en `data/raw/news/gdelt/doc/`. Seleccionar un medio con
+`--only` descarga su feed directo; GDELT se selecciona con sus propias claves.
+Ver [el cierre de G1](docs/g1-completion.md) para cobertura, evidencia y límites.
+
 ## Run the G5 backend
 
 ```powershell

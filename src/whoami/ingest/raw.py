@@ -31,7 +31,7 @@ class RawStore:
     def __init__(self, directory: Path):
         self.directory = directory
 
-    def save(self, name: str, response: Response) -> None:
+    def save(self, name: str, response: Response, *, metadata: dict | None = None) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
         (self.directory / name).write_bytes(response.body)
         entry = {
@@ -40,6 +40,7 @@ class RawStore:
             "sha256": hashlib.sha256(response.body).hexdigest(),
             "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
+        entry.update(metadata or {})
         with (self.directory / FETCH_LOG).open("a", encoding="utf-8") as log:
             log.write(json.dumps(entry, ensure_ascii=False) + "\n")
 

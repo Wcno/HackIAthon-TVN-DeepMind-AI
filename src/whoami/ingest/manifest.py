@@ -25,6 +25,8 @@ from whoami.ingest.output import iso, write_json
 from whoami.ingest.raw import FETCH_LOG, RawStore
 
 TRANSFORMATIONS = (
+    "GDELT: seendate se conserva como fecha_deteccion, nunca como fecha_publicacion; "
+    "se usa detección para la ventana solo si falta publicación. Capturas y errores se conservan sin modificar.",
     "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) "
     f"o del lastmod del sitemap; ventana de {NEWS_WINDOW.days} días hasta la fecha de corte (D-04); "
     "excluidas con su motivo en noticias_excluidas.csv.",

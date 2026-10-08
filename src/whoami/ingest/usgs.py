@@ -64,7 +64,7 @@ def build() -> dict:
         "licencia": LICENSE,
         "features": features,
     }
-    EVENTS_GEOJSON.write_text(json.dumps(collection, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    EVENTS_GEOJSON.write_text(json.dumps(collection, indent=1, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     report = quality_report(features, excluded, len(source["features"]), window_end)
     write_json(EVENTS_QUALITY_JSON, report)
     return report

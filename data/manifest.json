@@ -1,6 +1,6 @@
 {
-  "version": "20261007-e65b449c",
-  "fecha_corte_UTC": "2026-10-07T04:36:58Z",
+  "version": "20261008-3c2f413b",
+  "fecha_corte_UTC": "2026-10-08T00:51:38Z",
   "consultas": [
     {
       "archivo": "raw/inec/catalogo_ipc.html",
@@ -51,6 +51,78 @@
       "fecha_descarga": "2026-10-07T04:36:05Z"
     },
     {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T004321_b93fc32d.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004309",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:43:21Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T004329_0276c4d2.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004318",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:43:29Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T004401_f5303d31.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004309",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:44:01Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T004515_d1eb0a65.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004309",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:45:15Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T004727_2a8c9d75.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004309",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:47:27Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/doc/capture_20261008T005138_d94030e6.json",
+      "url": "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry%3APM&mode=artlist&format=json&maxrecords=250&sort=datedesc&startdatetime=20261008000000&enddatetime=20261008004309",
+      "sha256": "44c03f8dd984184218c90dc7e64aed9e6e2d8b17426feb5aa7933b3c44df64c6",
+      "fecha_descarga": "2026-10-08T00:51:38Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007230000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007230000.translation.gkg.csv.zip",
+      "sha256": "23abfd00407f2dad1db1ee187facf3f67acf706b9aceb83970b1aedc4be7a297",
+      "fecha_descarga": "2026-10-08T00:47:13Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007220000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007220000.translation.gkg.csv.zip",
+      "sha256": "fd2c24bf9c256f7c9d709cefe88602351e87a2cd089d75ed5f7083069af45ff1",
+      "fecha_descarga": "2026-10-08T00:47:17Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007210000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007210000.translation.gkg.csv.zip",
+      "sha256": "19b03740c306e4b1b087695517bde1449a77b203547fb0c5c39e49baf8f536f2",
+      "fecha_descarga": "2026-10-08T00:47:21Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007200000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007200000.translation.gkg.csv.zip",
+      "sha256": "f1c426f769c208ccd3f4c234a280aef661171cb5806703d1d2ffc78378ea7dd4",
+      "fecha_descarga": "2026-10-08T00:47:24Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007190000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007190000.translation.gkg.csv.zip",
+      "sha256": "08d398c49c559fd3b7ace9a859ecad90798bb35fa4cf4a580fb65f386b724ca6",
+      "fecha_descarga": "2026-10-08T00:47:28Z"
+    },
+    {
+      "archivo": "raw/news/gdelt/gkg/20261007180000.translation.gkg.csv.zip",
+      "url": "https://data.gdeltproject.org/gdeltv2/20261007180000.translation.gkg.csv.zip",
+      "sha256": "3982ad1986cbf653e7802f0065747e38a40f2171973c571ac4dd32b6df137818",
+      "fecha_descarga": "2026-10-08T00:47:31Z"
+    },
+    {
       "archivo": "raw/news/mef/wp_api/posts_p001.json",
       "url": "https://www.mef.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:35:57&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
       "sha256": "2dd58b4f01c936ba5b96114d770f9a69d0d83ed3c7d50e545f9940d6c45aa5b7",
@@ -75,6 +147,12 @@
       "fecha_descarga": "2026-10-07T04:36:03Z"
     },
     {
+      "archivo": "raw/news/panamaamerica/rss/capture_20261008T004346Z.xml",
+      "url": "https://www.panamaamerica.com.pa/rss/recent/index.xml",
+      "sha256": "f18a26a30d5badf29324465987d519b599d330b9628b05d4f15dbc6e8b70ed64",
+      "fecha_descarga": "2026-10-08T00:43:47Z"
+    },
+    {
       "archivo": "raw/news/pancanal/wp_api/posts_p001.json",
       "url": "https://pancanal.com/wp-json/wp/v2/posts?after=2026-09-06T04:35:54&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
       "sha256": "1fdaa428cea6e7483a37dd9e6ef857c3e6c87977d47ed6a7726a8efa73d2dc5d",
@@ -87,6 +165,18 @@
       "fecha_descarga": "2026-10-07T04:35:56Z"
     },
     {
+      "archivo": "raw/news/prensa/news_sitemap/capture_20261008T004318Z.xml",
+      "url": "https://www.prensa.com/arc/outboundfeeds/news-sitemap/?outputType=xml",
+      "sha256": "dd4167663214af0516144fc8151e4ac92746ada3b4adedca7de9f2b64a6d7d69",
+      "fecha_descarga": "2026-10-08T00:43:18Z"
+    },
+    {
+      "archivo": "raw/news/prensa/news_sitemap/capture_20261008T004345Z.xml",
+      "url": "https://www.prensa.com/arc/outboundfeeds/news-sitemap/?outputType=xml",
+      "sha256": "dd4167663214af0516144fc8151e4ac92746ada3b4adedca7de9f2b64a6d7d69",
+      "fecha_descarga": "2026-10-08T00:43:46Z"
+    },
+    {
       "archivo": "raw/news/sinaproc/wp_api/posts_p001.json",
       "url": "https://www.sinaproc.gob.pa/wp-json/wp/v2/posts?after=2026-09-06T04:35:56&_fields=id,link,title,excerpt,date_gmt,categories&per_page=100&page=1",
       "sha256": "81ee73c715257797fc94889b6b336e7aabf3166cab64252536f2e633d25b91d4",
@@ -97,6 +187,12 @@
       "url": "https://www.sinaproc.gob.pa/wp-json/wp/v2/categories?_fields=id,name&per_page=100&page=1",
       "sha256": "b4a1c00fa79e8f0d54135e6f8ca8483c9246e0b00c65dd4860f4f1909ee09e48",
       "fecha_descarga": "2026-10-07T04:35:57Z"
+    },
+    {
+      "archivo": "raw/news/telemetro/news_sitemap/capture_20261008T004346Z.xml",
+      "url": "https://www.telemetro.com/sitemap-news.xml",
+      "sha256": "8274dff66d0f31a2c0087ed61fb6f52b682ff7420a9a0d88f7d1e7d678d02478",
+      "fecha_descarga": "2026-10-08T00:43:46Z"
     },
     {
       "archivo": "raw/news/tvn/rss/capture_20261007T033304Z.xml",
@@ -239,14 +335,22 @@
   ],
   "cantidades": {
     "processed/eventos.geojson": 88,
-    "processed/fuentes.json": 7,
+    "processed/fuentes.json": 15,
     "processed/indicadores.csv": 540,
     "processed/indicadores_inec.csv": 144,
-    "processed/noticias.csv": 2941,
-    "processed/noticias_excluidas.csv": 27189
+    "processed/noticias.csv": 3176,
+    "processed/noticias_excluidas.csv": 27286
   },
   "licencias": {
-    "noticias/tvn": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed.",
+    "noticias/tvn": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/prensa": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/telemetro": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/panamaamerica": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/laestrella": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/midiario": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/critica": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/diaadia": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
+    "noticias/rpctv": "El sitio no publica condiciones de reutilización de sus feeds. Se conservan solo metadatos (titular, URL, fecha, sección) y la descripción breve del feed. Metadatos indexados por GDELT (https://www.gdeltproject.org/), con atribución. GDELT no transfiere derechos de los medios. Solo titular, URL y fecha de detección; seendate no es fecha de publicación.",
     "noticias/pancanal": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API. Los términos del sitio de la ACP restringen la copia del contenido.",
     "noticias/sinaproc": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
     "noticias/mef": "Comunicados de prensa de una entidad pública sin condiciones de reutilización declaradas. Se conservan solo metadatos (titular, URL, fecha, categoría) y el extracto que publica su API.",
@@ -261,18 +365,19 @@
     "processed/calidad_eventos.json": "f343b33cdee1fa009193fdf51c2878731c8fa316dc38c05a8e43d4c5dc604550",
     "processed/calidad_indicadores.json": "c9daff89a24eda42de970f7a10c27b1c072960f70ba735a0fd3f024711955819",
     "processed/calidad_inec.json": "d1aa273e61cf89107ae69487543ce53728ef0500b68d115355061f557f477c33",
-    "processed/calidad_noticias.json": "b85ef3f99a414114029d913b3c994e72c1041ed4049ac7b1359c9859ae4e558e",
+    "processed/calidad_noticias.json": "bbfdea461a48bc453fea2fafc3d7bc288e89c4c20fc6c041ece1393df9ce29ef",
     "processed/eventos.geojson": "79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d",
-    "processed/fuentes.json": "6bd010d0e826cea6f49e9ccd29d1f3705a7322d58fd18e5b1d8753d0cfba26b8",
+    "processed/fuentes.json": "91a62d08b866bcac633edbf0aa99e681eae75ceb556d7df1c6f803dbf09ae858",
     "processed/indicadores.csv": "f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e",
     "processed/indicadores_inec.csv": "900c4f9dab874f2a279d7e4512f4b48c0275d75dc1a587aa283492fbc1acb599",
-    "processed/noticias.csv": "2dbc4e81bdf470a6cba482db5601138baed37142f2cbbdf2bd5ee1ee2b636d9b",
-    "processed/noticias_excluidas.csv": "0a8e0d5a9b7772f3b8bbc077b7cc761e5ca612d9d0a8d19644e7c672d84d6b25"
+    "processed/noticias.csv": "f06d3528c3fc1b688d445d3bae5a10a3489a64d1a7804cf1cf8e0f7214c49fe3",
+    "processed/noticias_excluidas.csv": "d3b715e30f2c548fdee074fca7bd3f0ad5ccfcb100572c81d27f9b133e2edfc6"
   },
   "registros_extraidos_en_descarga": {
-    "raw/news/tvn/tvn_sitemap/page_dates.jsonl": "6a36f5616401787a5b75c5971fb8ed098a31000c2c4149ac6e317a4cb7701082"
+    "raw/news/tvn/tvn_sitemap/page_dates.jsonl": "da93d9f3c1a3c555ca74475d35b2c5fa99b86d719cd71bb78d273dac2b85a047"
   },
   "transformaciones": [
+    "GDELT: seendate se conserva como fecha_deteccion, nunca como fecha_publicacion; se usa detección para la ventana solo si falta publicación. Capturas y errores se conservan sin modificar.",
     "Noticias: deduplicación por URL canónica; fecha de publicación del feed, de la página (artículos reeditados) o del lastmod del sitemap; ventana de 30 días hasta la fecha de corte (D-04); excluidas con su motivo en noticias_excluidas.csv.",
     "Banco Mundial: una consulta por indicador; cuadrícula completa país x indicador x año; nulos conservados; unidad derivada del indicador.",
     "USGS: caja lat 5 a 12, lon -86 a -76, magnitud >= 3, desde 2025-10-02T00:00:00Z (D-02); propiedades del §7 (mag -> magnitude).",

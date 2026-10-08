@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
+import json
 
 from whoami.contracts import EVENTS_PROPERTIES
 from whoami.ingest import usgs
+from whoami.ingest.http import Response
+from whoami.ingest.raw import RawStore
 
 WINDOW_END = datetime(2026, 10, 7, tzinfo=UTC)
 
@@ -62,3 +65,15 @@ def test_event_after_extraction_is_excluded():
 
 def test_event_without_time_is_excluded_not_dropped_silently():
     assert usgs.exclusion(usgs.map_feature(raw_event(None)), WINDOW_END) == usgs.NO_TIME
+
+
+def test_geojson_build_uses_platform_stable_newlines(monkeypatch, tmp_path):
+    store = RawStore(tmp_path / "raw")
+    store.save(usgs.RAW_NAME, Response("https://usgs.test", json.dumps({"features": [raw_event()]}).encode(), {}))
+    output = tmp_path / "processed"
+    monkeypatch.setattr(usgs, "STORE", store)
+    monkeypatch.setattr(usgs, "PROCESSED", output)
+    monkeypatch.setattr(usgs, "EVENTS_GEOJSON", output / "eventos.geojson")
+    monkeypatch.setattr(usgs, "EVENTS_QUALITY_JSON", output / "quality.json")
+    assert usgs.build()["incluidos"] == 1
+    assert b"\r" not in (output / "eventos.geojson").read_bytes()
