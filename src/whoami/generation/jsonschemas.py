@@ -188,7 +188,8 @@ def to_answer(data: Mapping[str, Any], id_consulta: str, consulta: str) -> Answe
         fields = {
             "citas": tuple(_citation(c) for c in data.get("citas", ())),
             "versiones": tuple(
-                ContradictionVersion(valor=v["valor"], alcance=v["alcance"], id_evidencia=v["id_evidencia"])
+                ContradictionVersion(valor=v["valor"], alcance=v["alcance"], id_evidencia=v["id_evidencia"],
+                                     citas=tuple(_citation(c) for c in v.get("citas", ())))
                 for v in data["versiones"]
             ),
         }

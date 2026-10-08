@@ -234,6 +234,13 @@ class ContradictionVersion(Schema):
     valor: NonEmpty
     alcance: NonEmpty
     id_evidencia: NonEmpty
+    citas: tuple[Citation, ...] = ()
+
+    @model_validator(mode="after")
+    def _citations_belong_to_the_version(self) -> Self:
+        if any(citation.id_evidencia != self.id_evidencia for citation in self.citas):
+            raise ValueError("las citas de una versión deben pertenecer a su evidencia")
+        return self
 
 
 class Contradiction(Schema):

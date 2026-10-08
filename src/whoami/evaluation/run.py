@@ -23,6 +23,7 @@ from whoami.generation.case_files import NoGroundedClaims, TwoStepGenerator
 from whoami.generation.evidence_index import LocalEmbedder, default_retrievers
 from whoami.generation.prompting import CosineGate
 from whoami.generation.query_box import answer_query
+from whoami.generation.version_citations import enrich_version_citations
 from whoami.ingest.output import write_json
 from whoami.schemas import Answer, Group, sort_inbox
 
@@ -262,6 +263,8 @@ def evaluate(args) -> dict:
             answer = Answer.model_validate(archive[case.query] | {"id_consulta": case.id})
         else:
             answer = None
+        if answer is not None and (llm or saved):
+            answer = enrich_version_citations(answer, evidence)
         record = score_answer(case, answer, evidence)
         if llm and any(call["status"] != "ok" for call in llm.calls[before:]):
             record.update(state="error", returned_state=answer.estado, ok=False, safety=None)
@@ -293,6 +296,8 @@ def evaluate(args) -> dict:
         write_jsonl(output / filename, [{"subject_id": str(row[identity]), "subject_hash": subject_hash(subject), "subject": subject,
                                         "label": "", "reviewer": "", "reviewed_at": ""} for row, subject in subjects])
     tests = {"skipped": True} if args.skip_tests else run_tests(output)
+    measured_answers = answer_metrics(cases, results)
+    query_coverage = measured_answers["query_factual_claim_coverage"]
     prerequisites = {
         "all_queries_measured": not any(record["state"] in ("missing", "error") for record in results),
         "topics_human": topics["labels"]["provenance"] == "human",
@@ -300,7 +305,9 @@ def evaluate(args) -> dict:
         "benchmark_human": benchmark_review["complete"],
         "human_claim_sample": claims["reviewed_unique_claims"] >= 30,
         "human_support_target": claims["meets_human_target"],
-        "query_claim_mapping": not answer_metrics(cases, results)["query_factual_claim_coverage"]["unmapped_query_ids"],
+        "query_claim_mapping": not query_coverage["unmapped_query_ids"],
+        "query_citation_target": not query_coverage["unmapped_query_ids"] and query_coverage["numerator"] == query_coverage["denominator"],
+        "case_citation_target": claims["citation_coverage"]["numerator"] == claims["citation_coverage"]["denominator"],
         "tests_and_acceptance": not args.skip_tests and tests["exit_code"] == 0 and all(item["passed"] for item in tests["acceptance"].values()),
     }
     report = {
@@ -313,8 +320,9 @@ def evaluate(args) -> dict:
                    "frozen_news": len(ids), "evidence_count": len(evidence)},
         "model": {"generation": saved["model"]["generation"] if saved else args.model if llm else "recorded product outputs; original timing/tokens unavailable",
                   "embedding": MODEL_NAME, "revision": MODEL_REVISION, "cosine_threshold": gate.min_cosine,
+                  "version_citation_method": "literal-fields-v1",
                   "query_prompt_version": "structured-claims-v1" if llm else saved["model"].get("query_prompt_version", "legacy-free-text") if saved else "legacy-free-text"},
-        "index_setup_s": index_s, "index_seeded_news": len(ids), "retrieval": retrieval, "answers": answer_metrics(cases, results),
+        "index_setup_s": index_s, "index_seeded_news": len(ids), "retrieval": retrieval, "answers": measured_answers,
         "generation_latency": latency([record["generation_wall_s"] for record in results if record["generation_wall_s"] is not None]),
         "tokens": saved["tokens"] if saved else token_totals(llm.calls) if llm else None,
         "network_calls_this_run": sum(not call.get("cached", True) for call in llm.calls if call["status"] == "ok") if llm else 0,

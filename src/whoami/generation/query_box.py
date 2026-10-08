@@ -7,6 +7,7 @@ from whoami.generation.jsonschemas import answer_schema, response_format, to_ans
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import check_citations, check_claim, normalize_numbers, unsupported_numbers
+from whoami.generation.version_citations import enrich_version_citations
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
@@ -139,6 +140,7 @@ def answer_query(
         cleaned = _verified(data, consulta, evidences, set(ids), structured=structured)
         if cleaned["estado"] == "abstencion":
             return _abstention(id_consulta, consulta, cleaned["motivo_abstencion"], cleaned["faltante"])
-        return to_answer(cleaned, id_consulta, consulta)
+        answer = to_answer(cleaned, id_consulta, consulta)
+        return enrich_version_citations(answer, evidences) if structured else answer
     except (LLMError, ValueError, KeyError, TypeError, AttributeError):
         return _abstention(id_consulta, consulta, INVALID_ANSWER_REASON)
