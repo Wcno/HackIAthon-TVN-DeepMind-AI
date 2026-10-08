@@ -8,20 +8,43 @@ from whoami.backend.gemini import GenerationUnavailable
 from whoami.backend.repository import EditorialRepository
 from whoami.contracts import TOPIC_LABELS
 from whoami.schemas import Group, sort_inbox
+from whoami.schemas import Evidence
+from whoami.pipeline.tvn_coverage import assess_legacy_groups
 
 
 class EditorialService:
     def __init__(self, repository: EditorialRepository):
         self.repository = repository
+        self._coverage_key = None
+        self._coverage_groups = {}
 
-    def inbox(self, *, topic: str | None = None) -> list[dict]:
-        groups = [Group.model_validate(group) for group in self.repository.records("group")]
+    def _assessed_groups(self) -> dict[str, Group]:
+        raw = self.repository.records("group")
+        evidence = self.repository.records("evidence")
+        key = hashlib.sha256(json.dumps([raw, evidence], sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+        if key != self._coverage_key:
+            groups = [Group.model_validate(row) for row in raw]
+            sources = {row["id_evidencia"]: Evidence.model_validate(row) for row in evidence}
+            self._coverage_groups = {g.id_grupo: g for g in assess_legacy_groups(groups, sources)}
+            self._coverage_key = key
+        return self._coverage_groups
+
+    def inbox(self, *, topic: str | None = None, include_covered: bool = False) -> list[dict]:
+        groups = list(self._assessed_groups().values())
+        if not include_covered:
+            groups = [g for g in groups if g.cobertura_tvn.estado != "cubierto"]
         if topic:
             groups = [group for group in groups if group.tema == topic]
-        return [self.group(group.id_grupo) for group in sort_inbox(groups)]
+        return [self._project_group(group) for group in sort_inbox(groups)]
 
     def group(self, group_id: str) -> dict:
-        group = self.repository.record("group", group_id)
+        assessed = self._assessed_groups()
+        if group_id not in assessed:
+            return self.repository.record("group", group_id)
+        return self._project_group(assessed[group_id])
+
+    def _project_group(self, assessed: Group) -> dict:
+        group = assessed.model_dump(mode="json")
         members = group["miembros"]
         group.update(n_noticias=len(members), n_medios=len({member["medio"] for member in members}),
                      n_procedencias=len({member["procedencia"] for member in members}),
@@ -33,7 +56,10 @@ class EditorialService:
         return group
 
     def case(self, case_id: str) -> dict:
-        return self.repository.case(case_id)
+        case = self.repository.case(case_id)
+        group = self.group(case["id_grupo"])
+        return case | {"puntaje": group["puntaje"]["valor"], "componentes": group["puntaje"]["componentes"],
+                       "cobertura_tvn": group["cobertura_tvn"]}
 
     def query(self, query: str) -> dict:
         normalized = " ".join(query.split()).casefold()

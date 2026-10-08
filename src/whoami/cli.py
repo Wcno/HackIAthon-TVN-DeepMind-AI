@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from whoami import demo
-from whoami.embeddings import Embedder, embed_corpus
+from whoami.embeddings import Embedder, embed_corpus, fetch_model
 from whoami.generation import run
 from whoami.ingest import inec, manifest, usgs, worldbank
 from whoami.ingest.news import build as news_build
@@ -61,6 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("build")
     commands.add_parser("demo")
     commands.add_parser("embed")
+    download = commands.add_parser("download-model", help="install/check the pinned local embedding model")
+    download.add_argument("--directory", type=Path)
+    download.add_argument("--offline", action="store_true", help="check existing files without downloading")
     pipeline_command = commands.add_parser("pipeline")
     pipeline_command.add_argument(
         "--vectors", type=Path, help="embeddings .npy next to a manifest.json with their ids (default: the only one)"
@@ -76,6 +79,12 @@ def main(argv: list[str] | None = None) -> int:
     export_command.add_argument("--database", type=Path, help="SQLite database; defaults to WHOAMI_DATABASE")
     export_command.add_argument("--output", type=Path, default=Path("outputs"), help="delivery directory")
     args = parser.parse_args(argv)
+    if args.command == "download-model":
+        try:
+            print(fetch_model(args.directory, offline=args.offline))
+            return 0
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
 
     if args.command == "evaluar":
         try:

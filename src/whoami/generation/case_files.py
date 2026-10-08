@@ -22,13 +22,16 @@ from whoami.contracts import (
 )
 from whoami.generation.contradictions import ContradictionChecker, RuleBasedChecker
 from whoami.generation.entailment import EntailmentChecker
-from whoami.generation.jsonschemas import claims_schema, package_schema, response_format, to_claims, to_package
+from whoami.generation.jsonschemas import claims_schema, package_selection_schema, response_format, to_claims
+from whoami.generation.package_selection import compose_package
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.query_box import answer_query
 from whoami.generation.retrieval import Retriever
 from whoami.generation.verifier import VerificationReport, verify_claims
+from whoami.pipeline.tvn_coverage import assess_legacy_groups
+from whoami.reviews import bind_reviews, review_snapshots
 from whoami.llm.client import CapExceeded, LLMError
-from whoami.schemas import CaseFile, Claim, EditorialPackage, Evidence, Group, OutputSet, sort_inbox, verify
+from whoami.schemas import CaseFile, Claim, EditorialPackage, Evidence, Group, OutputSet, ReviewArchive, sort_inbox, verify
 
 #: Room for claims plus a full package; the cap stops a model that degenerates into endless output.
 GENERATION_MAX_TOKENS = 2000
@@ -39,10 +42,13 @@ CLAIMS_TASK = (
     "y al menos una cita literal."
 )
 PACKAGE_TASK = (
-    "Redacta el paquete editorial usando únicamente las afirmaciones verificadas que se te entregan: "
-    "titulo, brief (máximo {brief} palabras), enfoque_interes_publico, exactamente 3 preguntas de investigación, "
-    "fuentes_y_verificaciones, guion y copy_digital (máximo {copy} palabras). "
-    "No agregues hechos, cifras, entrevistas ni citas que no estén en las afirmaciones."
+    "Organiza un paquete editorial usando únicamente los IDs de las afirmaciones verificadas. "
+    "titulo: un ID cuya afirmación informe de forma clara y atractiva. "
+    "brief, guion, copy_digital: listas ordenadas de IDs, sin repetir. "
+    "El código conserva sus textos, tipos y atribución; no escribas prosa ni nuevas afirmaciones. "
+    "Elige un enfoque: verificacion, impacto o seguimiento, y tres preguntas distintas entre "
+    "fuentes, vacios, actualizaciones, periodo e impacto. "
+    "Selecciona textos breves: el brief no supera {brief} palabras y el copy {copy}."
 ).format(brief=BRIEF_MAX_WORDS, copy=COPY_MAX_WORDS)
 
 UNSUPPORTED_ISSUE = "los pasajes citados no respaldan la afirmación"
@@ -150,6 +156,7 @@ class TwoStepGenerator:
             contradicciones=self._checker.check(group, evidences),
             accion_recomendada=DEFAULT_ACTIONS[group.estado_evidencia],
             sintetico=group.sintetico,
+            metodo_generacion="seleccion-afirmaciones-v1",
         )
         return case_file, report, calls
 
@@ -207,9 +214,10 @@ class TwoStepGenerator:
         for attempt in (1, 2):
             try:
                 data = self._complete(
-                    build_messages(task, [], claims=report.valid_claims), "paquete", cited_ids, package_schema()
+                    build_messages(task, [], claims=report.valid_claims), "paquete", cited_ids,
+                    package_selection_schema([claim.id_afirmacion for claim in report.valid_claims])
                 )
-                return to_package(data, scope), None, attempt
+                return compose_package(data, report.valid_claims, scope), None, attempt
             except CapExceeded:
                 raise
             except (LLMError, ValueError) as failure:
@@ -243,7 +251,9 @@ def build_outputs(
     """
     evidences = output_set_in.evidencias
     case_files: list[CaseFile] = []
-    inbox = [g for g in sort_inbox(output_set_in.grupos) if not (skip_insufficient and g.estado_evidencia == "insuficiente")]
+    assessed = assess_legacy_groups(output_set_in.grupos, evidences)
+    inbox = [g for g in sort_inbox(assessed) if g.cobertura_tvn.estado != "cubierto"
+             and not (skip_insufficient and g.estado_evidencia == "insuficiente")]
     for group in inbox[:top_n]:
         id_caso = group.id_caso or f"CASO-{group.id_grupo.removeprefix('G-')}"
         try:
@@ -253,15 +263,33 @@ def build_outputs(
         case_files.append(case_file)
 
     case_ids = {case_file.id_grupo: case_file.id_caso for case_file in case_files}
+    regenerated = {case.id_caso: case for case in case_files}
+    groups = tuple(g.model_copy(update={"id_caso": case_ids.get(g.id_grupo)}) for g in assessed)
+    bindings = {snapshot.ficha.id_caso: snapshot for snapshot in output_set_in.revisiones_vinculadas}
+    legacy = output_set_in.model_copy(update={"revisiones": tuple(r for r in output_set_in.revisiones if r.id_caso not in bindings)})
+    previous = review_snapshots(legacy)
+    archives = list(output_set_in.historial_revisiones)
+    active_reviews = []
+    for case_id in dict.fromkeys(r.id_caso for r in output_set_in.revisiones):
+        reviews = tuple(r for r in output_set_in.revisiones if r.id_caso == case_id)
+        old = bindings[case_id] if case_id in bindings else previous[case_id]
+        if case_id in regenerated and case_id in bindings:
+            candidate = OutputSet(grupos=groups, evidencias=evidences, fichas=tuple(case_files),
+                                  consultas=(), revisiones=reviews)
+            if old == review_snapshots(candidate)[case_id]:
+                active_reviews.extend(reviews)
+                continue
+        if old not in archives:
+            archives.append(old)
     output = OutputSet(
-        grupos=tuple(g.model_copy(update={"id_caso": case_ids.get(g.id_grupo)}) for g in output_set_in.grupos),
+        grupos=groups,
         evidencias=evidences,
         fichas=tuple(case_files),
         consultas=tuple(
             answer_query(id_consulta, consulta, retriever, gate, evidences, llm, model)
             for id_consulta, consulta in query_specs
         ),
-        revisiones=tuple(r for r in output_set_in.revisiones if r.id_caso in case_ids.values()),
+        revisiones=tuple(active_reviews), historial_revisiones=tuple(archives),
     )
     verify(output)
-    return output
+    return bind_reviews(output)

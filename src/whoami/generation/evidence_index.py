@@ -7,6 +7,7 @@ replaced by another with the same two methods.
 """
 
 import json
+import hashlib
 import re
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
@@ -86,19 +87,44 @@ class Embedder(Protocol):
 
 
 def build_index(
-    evidences: Iterable[Evidence], embed_documents: EmbedTexts, cache_path: Path
+    evidences: Iterable[Evidence], embed_documents: EmbedTexts, cache_path: Path,
+    *, model_identity: str | None = None, expected_dimensions: int | None = None,
 ) -> tuple[list[str], np.ndarray]:
-    """Ids and vectors of every evidence. `cache_path` (`.npy`) and a JSON list of ids beside it are reused
-    while the ids are the same and rebuilt otherwise."""
+    """Reuse vectors only for the same sources, encoder, dimensions and text recipe.
+
+    An encoder can publish `cache_identity` and `dimensions`; opaque callables are
+    recomputed unless their caller supplies an explicit identity.
+    """
     evidences = list(evidences)
     ids = [evidence.id_evidencia for evidence in evidences]
+    texts = [evidence_text(evidence) for evidence in evidences]
+    encoder = getattr(embed_documents, "__self__", None)
+    identity = model_identity or getattr(encoder, "cache_identity", None)
+    dimensions = expected_dimensions or getattr(encoder, "dimensions", None)
+    fingerprint = hashlib.sha256(json.dumps(
+        [identity, dimensions, "evidence-text-v1", ids, texts], ensure_ascii=False
+    ).encode("utf-8")).hexdigest() if identity else None
     ids_path = cache_path.with_suffix(".json")
-    if cache_path.exists() and ids_path.exists() and json.loads(ids_path.read_text(encoding="utf-8")) == ids:
-        return ids, np.load(cache_path)
-    vectors = np.asarray(embed_documents([evidence_text(evidence) for evidence in evidences]))
+    metadata_path = cache_path.with_suffix(".metadata.json")
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if fingerprint and json.loads(ids_path.read_text(encoding="utf-8")) == ids and metadata["fingerprint"] == fingerprint:
+            vectors = np.load(cache_path, allow_pickle=False)
+            if (vectors.shape == (len(ids), metadata["dimensions"]) and vectors.shape[1] > 0
+                    and (dimensions is None or vectors.shape[1] == dimensions) and np.isfinite(vectors).all()
+                    and hashlib.sha256(cache_path.read_bytes()).hexdigest() == metadata["sha256"]):
+                return ids, vectors
+    except (OSError, ValueError, KeyError, TypeError, EOFError, AttributeError):
+        pass
+    vectors = np.asarray(embed_documents(texts))
+    if (vectors.ndim != 2 or vectors.shape[0] != len(ids) or vectors.shape[1] == 0
+            or (dimensions is not None and vectors.shape[1] != dimensions) or not np.isfinite(vectors).all()):
+        raise ValueError("Evidence embeddings must be a finite matrix with one row per source")
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     np.save(cache_path, vectors)
     ids_path.write_text(json.dumps(ids), encoding="utf-8")
+    metadata_path.write_text(json.dumps({"fingerprint": fingerprint, "dimensions": vectors.shape[1],
+        "sha256": hashlib.sha256(cache_path.read_bytes()).hexdigest()}), encoding="utf-8")
     return ids, vectors
 
 

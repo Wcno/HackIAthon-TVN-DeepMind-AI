@@ -67,6 +67,14 @@ def claims_schema(allowed_ids: Sequence[str]) -> Schema:
     return _object({"afirmaciones": _array(_claim_schema(allowed_ids))})
 
 
+def package_selection_schema(ids: Sequence[str]) -> Schema:
+    from whoami.generation.package_selection import FOCUSES, QUESTIONS, FACT_FIELDS
+    choices = {"type": "string", "enum": list(ids)}
+    return _object({**{field: _array(choices, min_items=1, max_items=1 if field == "titulo" else len(ids)) for field in FACT_FIELDS},
+                    "enfoque": {"type": "string", "enum": list(FOCUSES)},
+                    "preguntas": _array({"type": "string", "enum": list(QUESTIONS)}, min_items=3, max_items=3)})
+
+
 def package_schema() -> Schema:
     """The editorial package; `leyenda` is not asked of the model, code sets it from the text scope."""
     return _object(

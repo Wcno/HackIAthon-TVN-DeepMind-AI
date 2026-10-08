@@ -1,6 +1,7 @@
 """Shared LLM facade: cached, ledgered, capped and rate-limited chat and embedding calls."""
 
 import json
+import hashlib
 import os
 import random
 import time
@@ -92,7 +93,8 @@ class LLM:
         self._jitter = jitter
         self._max_retries = max_retries
         self._cache = ResponseCache(settings.cache_dir)
-        self._ledger = Ledger(settings.ledger_path, clock)
+        provider_id = hashlib.sha256(settings.base_url.rstrip("/").encode("utf-8")).hexdigest()
+        self._ledger = Ledger(settings.ledger_path, clock, provider_id=provider_id)
         self._clock = clock
         self._limiters: dict[str, RateLimiter] = {}
 
@@ -110,6 +112,7 @@ class LLM:
         limits = self._limits(model, "chat")
         key = self._cache.key(
             {
+                "provider": self._settings.base_url.rstrip("/"),
                 "model": model,
                 "messages": messages,
                 "response_format": response_format,
@@ -188,7 +191,8 @@ class LLM:
         batch_size: int = 50,
     ) -> np.ndarray:
         limits = self._limits(model, "embedding")
-        keys = [self._cache.key({"model": model, "dimensions": dimensions, "text": text}) for text in texts]
+        keys = [self._cache.key({"provider": self._settings.base_url.rstrip("/"),
+                                "model": model, "dimensions": dimensions, "text": text}) for text in texts]
         started = self._monotonic()
         vectors: dict[str, list[float]] = {}
         for key in keys:

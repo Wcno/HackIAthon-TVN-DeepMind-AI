@@ -24,6 +24,7 @@ from whoami.pipeline.recirculation import apply_recirculations, group_recirculat
 from whoami.pipeline.scoring import evidence_state, score_group
 from whoami.pipeline.text import rows_text
 from whoami.pipeline.topics_keywords import classify_keywords
+from whoami.pipeline.tvn_coverage import CoverageIndex, coverage_score
 from whoami.schemas import Evidence, Group, Member, OutputSet, parse_utc, sort_inbox
 
 Classifier = Callable[[Sequence[Mapping[str, str]], np.ndarray], list[tuple[str, float, str]]]
@@ -110,13 +111,16 @@ def build(
     centroids = np.array([centroid for _, _, centroid, _ in drafts]).reshape(len(drafts), -1)
     centroid_similarity = centroids @ centroids.T
 
+    coverage = CoverageIndex(rows, unit)
+    assessments = [coverage.assess(ordered) for ordered, _, _, _ in drafts]
     groups = []
     for position, (ordered, members, _, title) in enumerate(drafts):
         group_rows = [rows[i] for i in ordered]
         group_topics = [topics[i] for i in ordered]
         topic = _vote(group_topics)
         context, no_context_reason = link_context(rows_text(group_rows), earliest[position], topic, official)
-        earlier = [other for other in range(len(drafts)) if earliest[other] < earliest[position]]
+        earlier = [other for other in range(len(drafts)) if assessments[other].estado != "cubierto"
+                   and (earliest[other] < earliest[position] or (earliest[other] == earliest[position] and other < position))]
         max_similarity = max((float(centroid_similarity[position, other]) for other in earlier), default=0.0)
         groups.append(
             Group(
@@ -124,7 +128,8 @@ def build(
                 titulo=title,
                 tema=topic,
                 miembros=tuple(members),
-                puntaje=score_group(group_rows, members, topic, bool(context), max_similarity, fecha_corte, _topic_method(group_topics, topic)),
+                puntaje=coverage_score(score_group(group_rows, members, topic, bool(context), max_similarity, fecha_corte, _topic_method(group_topics, topic)), assessments[position]),
+                cobertura_tvn=assessments[position],
                 estado_evidencia=evidence_state(group_rows, len({m.procedencia for m in members}), bool(context)),
                 contexto=context,
                 sin_contexto_motivo=no_context_reason,

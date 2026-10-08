@@ -62,15 +62,18 @@ def group_agglomerative(
     window: timedelta = GROUP_WINDOW,
     overrides: Mapping[tuple[int, int], bool] | None = None,
 ) -> list[list[int]]:
-    """Average linkage over `1 - cosine`; `overrides[(i, j)]` is a verdict on a pair inside the window."""
+    """Average linkage candidates, partitioned so every member pair respects hard exclusions."""
     if len(dates) < 2:
         return [[index] for index in range(len(dates))]
     unit = unit_vectors(vectors)
     close = _inside_window(dates, window)
+    compatible = close.copy()
     distance = np.clip(1.0 - unit @ unit.T, 0.0, None)
     for (first, second), same_event in (overrides or {}).items():
         if close[first, second]:
             distance[first, second] = distance[second, first] = 0.0 if same_event else DIFFERENT_EVENT
+            if not same_event:
+                compatible[first, second] = compatible[second, first] = False
     distance = np.where(close, distance, OUTSIDE_WINDOW)
     np.fill_diagonal(distance, 0.0)
     labels = AgglomerativeClustering(
@@ -79,7 +82,18 @@ def group_agglomerative(
     members: dict[int, list[int]] = defaultdict(list)
     for index, label in enumerate(labels):
         members[int(label)].append(index)
-    return sorted(members.values())
+    constrained = []
+    for candidate in members.values():
+        partitions: list[list[int]] = []
+        for index in candidate:
+            for partition in partitions:
+                if all(compatible[index, other] for other in partition):
+                    partition.append(index)
+                    break
+            else:
+                partitions.append([index])
+        constrained.extend(partitions)
+    return sorted(constrained)
 
 
 def grey_pairs(

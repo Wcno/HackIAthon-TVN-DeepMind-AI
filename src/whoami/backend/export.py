@@ -7,7 +7,8 @@ from pathlib import Path
 from whoami.backend.repository import EditorialRepository
 from whoami.contracts import FICHAS_FILE, QUERIES_FILE, REVIEWS_FILE
 from whoami.schemas import OutputSet, verify
-from whoami.store import case_file_to_record, write_jsonl
+from whoami.reviews import bind_reviews
+from whoami.store import REVIEW_ARCHIVE_FILE, REVIEW_BINDINGS_FILE, case_file_to_record, write_jsonl
 
 
 def export_backend(repository: EditorialRepository, directory: Path) -> dict[str, int]:
@@ -18,16 +19,21 @@ def export_backend(repository: EditorialRepository, directory: Path) -> dict[str
         "fichas": bundle.cases,
         "consultas": bundle.answers,
         "revisiones": bundle.reviews,
+        "historial_revisiones": bundle.review_archives,
     })
     verify(output)
+    output = bind_reviews(output)
     groups = {group.id_grupo: group for group in output.grupos}
     directory.mkdir(parents=True, exist_ok=True)
     records = {
         FICHAS_FILE: [case_file_to_record(case, groups[case.id_grupo], output.review_state(case.id_caso))
                       for case in output.fichas],
         REVIEWS_FILE: [review.model_dump(mode="json") for review in output.revisiones],
+        REVIEW_BINDINGS_FILE: [snapshot.model_dump(mode="json") for snapshot in output.revisiones_vinculadas],
         QUERIES_FILE: [answer.model_dump(mode="json") for answer in output.consultas],
     }
+    if bundle.review_archives or (directory / REVIEW_ARCHIVE_FILE).exists():
+        records[REVIEW_ARCHIVE_FILE] = list(bundle.review_archives)
     # Stop the server before exporting into a shared delivery directory. Each
     # individual file is replaced atomically; this is not a multi-file transaction.
     with tempfile.TemporaryDirectory(prefix=".backend-export-", dir=directory) as temporary:

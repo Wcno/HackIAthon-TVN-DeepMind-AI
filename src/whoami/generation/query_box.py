@@ -6,8 +6,8 @@ from typing import Any
 from whoami.generation.jsonschemas import answer_schema, response_format, to_answer, to_claims
 from whoami.generation.prompting import CosineGate, build_messages, complete_json
 from whoami.generation.retrieval import Retriever
-from whoami.generation.verifier import check_citations, check_claim, normalize_numbers, unsupported_numbers
-from whoami.generation.version_citations import enrich_version_citations
+from whoami.generation.verifier import check_citations, check_claim, numeric_value_key, unsupported_numbers
+from whoami.generation.version_citations import support_version
 from whoami.llm.client import LLMError
 from whoami.schemas import Answer, Citation, ContradictionVersion, Evidence
 
@@ -22,7 +22,8 @@ TASK = (
     "estado=respondida: respuesta breve con citas literales. "
     "estado=abstencion: si las fuentes no responden, con motivo_abstencion y faltante. "
     "estado=contradiccion: si dos fuentes dan valores distintos para lo mismo, con una versión por fuente "
-    "(valor, alcance, id_evidencia). Deja en null o vacío lo que no corresponda al estado."
+    "(valor, alcance, id_evidencia). Copia el valor y el alcance literalmente de campos de esa fuente. "
+    "Deja en null o vacío lo que no corresponda al estado."
 )
 STRUCTURED_TASK = (
     TASK + " Para estado=respondida, escribe solo afirmaciones atómicas en afirmaciones: "
@@ -49,24 +50,19 @@ def _distinct_versions(
     """Versions that cite a retrieved evidence whose record supports their figures, keeping only the first of each
     value and of each evidence."""
     versions: list[ContradictionVersion] = []
+    values = set()
     for item in raw:
-        version = ContradictionVersion.model_validate(item)
+        version = support_version(ContradictionVersion.model_validate(item), evidences, require_scope=True)
+        if version is None:
+            continue
+        value = numeric_value_key(version.valor)
         if (
-            version.id_evidencia in allowed
-            and _version_supported(version, evidences)
-            and all(version.valor != v.valor and version.id_evidencia != v.id_evidencia for v in versions)
+            version.id_evidencia in allowed and value not in values
+            and all(version.id_evidencia != v.id_evidencia for v in versions)
         ):
             versions.append(version)
+            values.add(value)
     return versions
-
-
-def _version_supported(version: ContradictionVersion, evidences: Mapping[str, Evidence]) -> bool:
-    """Every figure of the version appears in some field of the record it names."""
-    record = evidences.get(version.id_evidencia)
-    if record is None:
-        return False
-    in_record = {number for value in record.campos.values() for number in normalize_numbers(value)}
-    return set(normalize_numbers(version.valor)) <= in_record
 
 
 def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Evidence], allowed: set[str], *, structured: bool = False) -> dict:
@@ -85,6 +81,7 @@ def _verified(data: Mapping[str, Any], consulta: str, evidences: Mapping[str, Ev
     citations_json = [c.model_dump() for c in citations]
     # Two verified versions with distinct values are a contradiction, whatever state the model chose.
     if len(versions) >= 2:
+        citations_json = [c.model_dump() for c in dict.fromkeys([*citations, *(c for v in versions for c in v.citas)])]
         return {"estado": "contradiccion", "citas": citations_json, "versiones": [v.model_dump() for v in versions]}
     if structured and state in ("respondida", "contradiccion"):
         claims = []
@@ -141,6 +138,6 @@ def answer_query(
         if cleaned["estado"] == "abstencion":
             return _abstention(id_consulta, consulta, cleaned["motivo_abstencion"], cleaned["faltante"])
         answer = to_answer(cleaned, id_consulta, consulta)
-        return enrich_version_citations(answer, evidences) if structured else answer
+        return answer
     except (LLMError, ValueError, KeyError, TypeError, AttributeError):
         return _abstention(id_consulta, consulta, INVALID_ANSWER_REASON)

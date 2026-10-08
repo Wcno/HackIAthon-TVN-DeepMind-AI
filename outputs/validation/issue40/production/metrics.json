@@ -1,0 +1,190 @@
+{
+  "mode": "current G1 news, local pinned embeddings, offline production AI configuration",
+  "current_news_csv_sha256": "f06d3528c3fc1b688d445d3bae5a10a3489a64d1a7804cf1cf8e0f7214c49fe3",
+  "frozen_evidence_sha256": "c6b4eb03fe42e4b715ece4fdae46af56d20aa6854474076528d1f8f2b4a9f606",
+  "frozen_vectors_sha256": "3616d53f0ab1cdfc8c6efd9aa4f4a5aca64e62f290d3d53f6ffa73e3077e74b3",
+  "new_vectors_sha256": "35e04f44178821b7b030d842154c318d0c57683105d7be14743d4f4f487dd85d",
+  "new_vectors_manifest": "C:\\Users\\canow\\.cache\\whoami\\validation\\issue40\\current-cb16649\\manifest.json",
+  "encoder_identity": "9ab50e4c00cac52ce2455a1c4014c2081154a2bfbc158630bb96a5ddce77bc1c",
+  "dated_news": 3154,
+  "frozen_texts_reused": 2844,
+  "texts_encoded_locally": 310,
+  "groups": 2302,
+  "coverage": {
+    "sin_coincidencia": 349,
+    "cubierto": 1945,
+    "no_comprobada": 7,
+    "dato_nuevo": 1
+  },
+  "inbox_groups": 357,
+  "tvn_only_inbox_groups": 0,
+  "top_five": [
+    {
+      "id_grupo": "G-9dd3cc2ae9",
+      "titulo": "Mulino llega a Vietnam para fortalecer alianzas comerciales y estratégicas con Panamá",
+      "puntaje": {
+        "componentes": {
+          "R": 1.0,
+          "I": 0.8,
+          "U": 1.0,
+          "N": 0.804,
+          "E": 0.5667
+        },
+        "valor": 87.73,
+        "rango": "alto",
+        "version_reglas": "1.0.0",
+        "justificaciones": {
+          "E": "2 procedencia(s) independiente(s); sin fuente primaria oficial; con texto más allá del titular.",
+          "I": "Base 0.6 por el tema Economía; +0.2 por señal de escala (alcance nacional).",
+          "N": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+          "R": "Tiene tema (Economía, por embeddings); el texto menciona Panamá o una de sus instituciones.",
+          "U": "La noticia original más reciente tiene 10 h al corte."
+        }
+      },
+      "cobertura_tvn": {
+        "estado": "sin_coincidencia",
+        "razon": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+        "ids_tvn": [
+          "N-f2efc8382c30"
+        ],
+        "pasajes_nuevos": [],
+        "metodo": "tvn-snapshot-v1",
+        "snapshot_sha256": "75ab05bf0911e6bf22ce1969b81e429066ab95e505a9c2ce184c28253c7f6815"
+      }
+    },
+    {
+      "id_grupo": "G-71fafd723f",
+      "titulo": "¡Drástica caída! Casos de dengue en Los Santos se reducen un 84%, aunque advierten riesgo en tres distritos",
+      "puntaje": {
+        "componentes": {
+          "R": 1.0,
+          "I": 0.7,
+          "U": 1.0,
+          "N": 1.0,
+          "E": 0.4333
+        },
+        "valor": 86.83,
+        "rango": "alto",
+        "version_reglas": "1.0.0",
+        "justificaciones": {
+          "E": "1 procedencia(s) independiente(s); sin fuente primaria oficial; con texto más allá del titular.",
+          "I": "Base 0.5 por el tema Servicios públicos; +0.2 por señal de escala (porcentaje).",
+          "N": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+          "R": "Tiene tema (Servicios públicos, por embeddings); el texto menciona Panamá o una de sus instituciones.",
+          "U": "La noticia original más reciente tiene 5 h al corte."
+        }
+      },
+      "cobertura_tvn": {
+        "estado": "sin_coincidencia",
+        "razon": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+        "ids_tvn": [],
+        "pasajes_nuevos": [],
+        "metodo": "tvn-snapshot-v1",
+        "snapshot_sha256": "75ab05bf0911e6bf22ce1969b81e429066ab95e505a9c2ce184c28253c7f6815"
+      }
+    },
+    {
+      "id_grupo": "G-f183d1ca8e",
+      "titulo": "Cierre de la mina: Comisión propone fideicomiso de US$100 millones anuales para restauración ambiental",
+      "puntaje": {
+        "componentes": {
+          "R": 1.0,
+          "I": 0.8,
+          "U": 1.0,
+          "N": 0.849,
+          "E": 0.1333
+        },
+        "valor": 84.07,
+        "rango": "alto",
+        "version_reglas": "1.0.0",
+        "justificaciones": {
+          "E": "1 procedencia(s) independiente(s); sin fuente primaria oficial; sin texto más allá del titular.",
+          "I": "Base 0.6 por el tema Economía; +0.2 por señal de escala (monto).",
+          "N": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+          "R": "Tiene tema (Economía, por embeddings); proviene de una fuente oficial panameña o de una sección nacional.",
+          "U": "La noticia original más reciente tiene 3 h al corte."
+        }
+      },
+      "cobertura_tvn": {
+        "estado": "sin_coincidencia",
+        "razon": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+        "ids_tvn": [],
+        "pasajes_nuevos": [],
+        "metodo": "tvn-snapshot-v1",
+        "snapshot_sha256": "75ab05bf0911e6bf22ce1969b81e429066ab95e505a9c2ce184c28253c7f6815"
+      }
+    },
+    {
+      "id_grupo": "G-4e16f7ccb8",
+      "titulo": "IDAAN: planta El Silencio aumentará producción de agua a 18 millones de galones diarios",
+      "puntaje": {
+        "componentes": {
+          "R": 1.0,
+          "I": 0.7,
+          "U": 1.0,
+          "N": 1.0,
+          "E": 0.1333
+        },
+        "valor": 83.83,
+        "rango": "alto",
+        "version_reglas": "1.0.0",
+        "justificaciones": {
+          "E": "1 procedencia(s) independiente(s); sin fuente primaria oficial; sin texto más allá del titular.",
+          "I": "Base 0.5 por el tema Servicios públicos; +0.2 por señal de escala (monto).",
+          "N": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+          "R": "Tiene tema (Servicios públicos, por embeddings); proviene de una fuente oficial panameña o de una sección nacional.",
+          "U": "La noticia original más reciente tiene 4 h al corte."
+        }
+      },
+      "cobertura_tvn": {
+        "estado": "sin_coincidencia",
+        "razon": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+        "ids_tvn": [],
+        "pasajes_nuevos": [],
+        "metodo": "tvn-snapshot-v1",
+        "snapshot_sha256": "75ab05bf0911e6bf22ce1969b81e429066ab95e505a9c2ce184c28253c7f6815"
+      }
+    },
+    {
+      "id_grupo": "G-95b6ff19fb",
+      "titulo": "Pagaban hasta $1,000 de agua y ahora pagan $25: residentes presentan demanda que involucra a la Defensoría",
+      "puntaje": {
+        "componentes": {
+          "R": 1.0,
+          "I": 0.7,
+          "U": 1.0,
+          "N": 1.0,
+          "E": 0.1333
+        },
+        "valor": 83.83,
+        "rango": "alto",
+        "version_reglas": "1.0.0",
+        "justificaciones": {
+          "E": "1 procedencia(s) independiente(s); sin fuente primaria oficial; sin texto más allá del titular.",
+          "I": "Base 0.5 por el tema Servicios públicos; +0.2 por señal de escala (monto).",
+          "N": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+          "R": "Tiene tema (Servicios públicos, por embeddings); proviene de una fuente oficial panameña o de una sección nacional.",
+          "U": "La noticia original más reciente tiene 12 h al corte."
+        }
+      },
+      "cobertura_tvn": {
+        "estado": "sin_coincidencia",
+        "razon": "Sin coincidencia en la cobertura TVN disponible; verificar publicaciones fuera de este snapshot.",
+        "ids_tvn": [],
+        "pasajes_nuevos": [],
+        "metodo": "tvn-snapshot-v1",
+        "snapshot_sha256": "75ab05bf0911e6bf22ce1969b81e429066ab95e505a9c2ce184c28253c7f6815"
+      }
+    }
+  ],
+  "verified": true,
+  "round_trip_verified": true,
+  "network_calls": 0,
+  "held_out_read": false,
+  "limitations": [
+    "Coverage refers to the loaded TVN snapshot, not every publication on the web.",
+    "Topic labels remain machine-proposed; these artifacts do not measure editorial appeal.",
+    "22 undated current news rows remain in the source CSV and outside grouping.",
+    "No new generative model output or human support evaluation in this offline pipeline run."
+  ]
+}

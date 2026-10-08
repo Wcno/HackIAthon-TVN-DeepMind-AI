@@ -92,6 +92,77 @@ def group_with(output, news_id):
     return next(g for g in output.grupos if any(m.id_noticia == news_id for m in g.miembros))
 
 
+def test_tvn_coverage_prevents_own_stories_and_external_replicas_being_novel():
+    rows = [news("N-tvn", "El Canal habilita 32 tránsitos diarios", "TVN", at(3)),
+            news("N-copy", "El Canal habilita 32 tránsitos diarios", "La Prensa", at(2), source="prensa")]
+    output = build(rows, np.array([[1., 0.], [1., 0.]]), classify_by_keywords,
+                   lambda vectors, dates: [[0], [1]], CUTOFF, official={})
+    assert all(g.puntaje.componentes.N == 0 for g in output.grupos)
+    assert all(g.cobertura_tvn.estado == "cubierto" for g in output.grupos)
+
+
+def test_identical_tvn_headline_is_covered_despite_different_descriptions_and_vectors():
+    title = "Mulino llega a Vietnam para fortalecer alianzas comerciales y estratégicas con Panamá"
+    rows = [news("N-tvn", title, "TVN", at(3), "El presidente inició su gira oficial."),
+            news("N-copy", title, "Telemetro", at(2), "La visita busca fortalecer relaciones bilaterales.", source="telemetro")]
+    output = build(rows, np.array([[1., 0.], [0., 1.]]), classify_by_keywords,
+                   lambda vectors, dates: [[0], [1]], CUTOFF, official={})
+    external = group_with(output, "N-copy")
+    assert external.cobertura_tvn.estado == "cubierto"
+    assert external.puntaje.componentes.N == 0
+
+
+def test_partly_covered_group_cannot_claim_no_tvn_match_or_discovery_novelty():
+    title = "Mulino llega a Vietnam para fortalecer alianzas con Panamá"
+    rows = [news("N-tvn", title, "TVN", at(3)),
+            news("N-copy", title, "Telemetro", at(2), source="telemetro"),
+            news("N-more", "Acuerdos comerciales tras la visita a Vietnam", "La Prensa", at(1), source="prensa")]
+    output = build(rows, np.eye(3), classify_by_keywords, lambda vectors, dates: [[0], [1, 2]], CUTOFF, official={})
+    mixed = group_with(output, "N-copy")
+    assert mixed.cobertura_tvn.ids_tvn == ("N-tvn",)
+    assert mixed.cobertura_tvn.estado == "no_comprobada"
+    assert mixed.puntaje.componentes.N == 0
+
+
+def test_inbox_refresh_rechecks_coverage_when_tvn_adds_the_external_story(tmp_path):
+    from dataclasses import replace
+    from whoami.backend.pipeline import load_pipeline
+    from whoami.backend.repository import EditorialRepository
+    from whoami.backend.service import EditorialService
+    from whoami.pipeline.evidence import news_evidence
+    rows = [news("N-tvn", "Nueva película en los cines", "TVN", at(3)),
+            news("N-external", "El Canal habilita 32 tránsitos diarios", "La Prensa", at(2), source="prensa")]
+    output = build(rows, np.array([[1., 0.], [0., 1.]]), classify_by_keywords,
+                   lambda vectors, dates: [[0], [1]], CUTOFF, official={})
+    store.write(output, tmp_path / "data", tmp_path / "out")
+    bundle = load_pipeline(tmp_path / "data", tmp_path / "out")
+    repository = EditorialRepository(tmp_path / "editorial.sqlite3")
+    repository.import_bundle(bundle)
+    service = EditorialService(repository)
+    assert len(service.inbox()) == 1
+    assert service.inbox()[0]["cobertura_tvn"]["estado"] == "sin_coincidencia"
+    updated = news_evidence(rows[0] | {"titulo": rows[1]["titulo"]}).model_dump(mode="json")
+    repository.import_bundle(replace(bundle, evidence=tuple(updated if e["id_evidencia"] == "N-tvn" else e for e in bundle.evidence)))
+    assert service.inbox() == []
+    assert all(g["cobertura_tvn"]["estado"] == "cubierto" for g in service.inbox(include_covered=True))
+
+
+def test_external_updates_carry_source_passages_and_copies_do_not_gain_novelty():
+    rows = [news("N-tvn", "El Canal habilita 32 tránsitos diarios", "TVN", at(3)),
+            news("N-update", "El Canal habilita 33 tránsitos diarios", "La Prensa", at(2), source="prensa"),
+            news("N-copy", "El Canal habilita 33 tránsitos diarios", "Otro medio", at(1), source="prensa"),
+            news("N-new", "Inauguran un puerto en Bocas", "MICI", at(.5), source="mici")]
+    output = build(rows, np.array([[1., 0.], [1., 0.], [1., 0.], [0., 1.]]), classify_by_keywords,
+                   lambda vectors, dates: [[0], [1], [2], [3]], CUTOFF, official={})
+    updated = group_with(output, "N-update")
+    assert updated.cobertura_tvn.estado == "dato_nuevo" and updated.puntaje.componentes.N > 0
+    assert updated.cobertura_tvn.ids_tvn == ("N-tvn",)
+    assert updated.cobertura_tvn.pasajes_nuevos[0].pasaje == rows[1]["titulo"]
+    assert group_with(output, "N-copy").puntaje.componentes.N == 0
+    assert group_with(output, "N-new").cobertura_tvn.estado == "sin_coincidencia"
+    verify(output)
+
+
 def test_the_fixture_makes_four_groups_and_the_agency_story_is_one_provenance():
     output = build_fixture()
 
@@ -233,13 +304,14 @@ def test_the_groups_and_classifier_are_injected():
 
 
 def test_novelty_compares_each_group_only_with_earlier_ones():
-    vectors = np.array([[1.0, 0.0], [0.9, 0.1]])
+    vectors = np.array([[1.0, 0.0], [0.9, 0.1], [-1., 0.]])
     rows = [
-        news("N-1", "Primera noticia", "TVN", at(100)),
-        news("N-2", "Segunda noticia", "TVN", at(10)),
+        news("N-1", "Primera noticia", "La Prensa", at(100), source="prensa"),
+        news("N-2", "Segunda noticia", "La Prensa", at(10), source="prensa"),
+        news("N-tvn", "Otra noticia", "TVN", at(200)),
     ]
 
-    output = build(rows, vectors, classify_by_keywords, lambda v, d: [[0], [1]], CUTOFF, official={})
+    output = build(rows, vectors, classify_by_keywords, lambda v, d: [[0], [1], [2]], CUTOFF, official={})
 
     first, second = group_with(output, "N-1"), group_with(output, "N-2")
     assert first.puntaje.componentes.N == 1.0

@@ -4,6 +4,9 @@ Each fetch replaces the previous pull, since it always covers the whole window.
 """
 
 import json
+import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
@@ -24,10 +27,25 @@ AFTER_MARGIN = timedelta(days=1)
 
 def fetch(feed: Feed, store: RawStore) -> None:
     after = (news_window_start(datetime.now(UTC)) - AFTER_MARGIN).strftime("%Y-%m-%dT%H:%M:%S")
-    store.delete(POSTS_PREFIX)
-    store.delete(CATEGORIES_PREFIX)
-    _fetch_pages(store, POSTS_PREFIX, f"{feed.url}/wp-json/wp/v2/posts?after={after}&_fields={POST_FIELDS}")
-    _fetch_pages(store, CATEGORIES_PREFIX, f"{feed.url}/wp-json/wp/v2/categories?_fields=id,name")
+    store.directory.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=store.directory.parent, prefix=".wp-pull-") as temporary:
+        root = Path(temporary)
+        staged = RawStore(root / "next")
+        if store.directory.exists():
+            shutil.copytree(store.directory, staged.directory)
+        staged.delete(POSTS_PREFIX)
+        staged.delete(CATEGORIES_PREFIX)
+        _fetch_pages(staged, POSTS_PREFIX, f"{feed.url}/wp-json/wp/v2/posts?after={after}&_fields={POST_FIELDS}")
+        _fetch_pages(staged, CATEGORIES_PREFIX, f"{feed.url}/wp-json/wp/v2/categories?_fields=id,name")
+        backup = root / "previous"
+        if store.directory.exists():
+            store.directory.rename(backup)
+        try:
+            staged.directory.rename(store.directory)
+        except OSError:
+            if backup.exists():
+                backup.rename(store.directory)
+            raise
 
 
 def parse(source: Source, store: RawStore) -> Iterator[Article]:
@@ -63,6 +81,8 @@ def _fetch_pages(store: RawStore, prefix: str, url: str) -> None:
     page, total_pages = 1, 1
     while page <= total_pages:
         response = http.get(f"{url}&per_page={PAGE_SIZE}&page={page}")
+        if not isinstance(json.loads(response.body), list):
+            raise ValueError("WordPress page is not a list")
         store.save(f"{prefix}{page:03d}.json", response)
         total_pages = int(response.headers.get("x-wp-totalpages", 1))
         page += 1

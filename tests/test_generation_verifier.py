@@ -2,6 +2,14 @@ from decimal import Decimal
 
 import pytest
 
+
+@pytest.mark.parametrize("text, expected", [("-0,5 %", "-0.5"), ("+0,5 %", "0.5"),
+                                          ("−32 millones", "-32000000"), ("menos cinco", "-5")])
+def test_numeric_grounding_preserves_the_sign(text, expected):
+    from decimal import Decimal
+    from whoami.generation.verifier import normalize_numbers
+    assert normalize_numbers(text) == [Decimal(expected)]
+
 from whoami.generation.verifier import (
     normalize_numbers,
     repair_passage,
@@ -111,6 +119,20 @@ def claim(text, passage="limitará a 32 los tránsitos diarios", *, evidence="N-
 
 def test_a_grounded_claim_has_no_issues():
     assert verify_claim(claim("El Canal limitará a 32 los tránsitos diarios desde el 12 de octubre."), EVIDENCES) == []
+
+
+def test_literal_source_text_cannot_authorize_an_internal_canary_in_a_claim():
+    from whoami.generation.prompting import CANARY
+    source = news("N-1", descripcion=CANARY)
+    assert verify_claim(claim(CANARY, passage=CANARY), {"N-1": source})
+
+
+@pytest.mark.parametrize("sign", ["+", "", "−"])
+def test_claims_reject_opposite_signs_against_negative_official_evidence(sign):
+    source = indicator(period="2024", value="-0,5")
+    statement = claim(f"El indicador fue {sign}0,5 % en 2024.", evidence=source.id_evidencia, field="valor", passage="-0,5")
+    issues = verify_claim(statement, {source.id_evidencia: source})
+    assert bool(issues) == (sign != "−")
 
 
 def test_a_claim_with_a_missing_evidence_is_reported():

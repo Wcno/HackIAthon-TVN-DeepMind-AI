@@ -2,5 +2,6 @@
   {% for group in groups %}<article><h2><a href="/groups/{{ group.id_grupo|urlencode }}">{{ group.titulo }}</a></h2>
   <p>{{ group.tema_etiqueta }} · Prioridad {{ group.puntaje.valor }} ({{ group.puntaje.rango }}) · Evidencia {{ group.estado_evidencia }} · {{ group.estado_revision }}</p>
   <p>{{ group.n_noticias }} noticias · {{ group.n_medios }} medios · {{ group.n_procedencias }} procedencias</p>
+  <p>{{ group.cobertura_tvn.razon }}</p>
   <dl>{% for name, value in group.puntaje.componentes.items() %}<dt>{{ name }}: {{ value }}</dt><dd>{{ group.puntaje.justificaciones[name] }}</dd>{% endfor %}</dl>
   <p>Reglas: {{ group.puntaje.version_reglas }}</p>{% if group.id_caso %}<a href="/cases/{{ group.id_caso|urlencode }}">Abrir ficha</a>{% endif %}</article>{% else %}<p>No hay grupos para este filtro.</p>{% endfor %}

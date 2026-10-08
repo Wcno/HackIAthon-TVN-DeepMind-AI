@@ -14,6 +14,7 @@ class PipelineBundle:
     cases: tuple[dict, ...]
     answers: tuple[dict, ...]
     reviews: tuple[dict, ...]
+    review_archives: tuple[dict, ...] = ()
 
 
 def load_pipeline(data_directory: Path, output_directory: Path) -> PipelineBundle:
@@ -24,6 +25,7 @@ def load_pipeline(data_directory: Path, output_directory: Path) -> PipelineBundl
         cases=tuple(case.model_dump(mode="json") for case in package.fichas),
         answers=tuple(answer.model_dump(mode="json") for answer in package.consultas),
         reviews=tuple(review.model_dump(mode="json") for review in package.revisiones),
+        review_archives=tuple(archive.model_dump(mode="json") for archive in package.historial_revisiones),
     )
 
 
