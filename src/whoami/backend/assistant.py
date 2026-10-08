@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -42,6 +43,7 @@ class AssistantReply(BaseModel):
 logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = 3
+TOTAL_BUDGET_SECONDS = 45
 GIVE_UP_MESSAGE = "No pude generar una versión válida; prueba a reformular el pedido."
 
 
@@ -283,15 +285,22 @@ class DraftAssistant:
     async def generate_checked(self, client, messages: list[dict], evidence: dict, validate, structured_format: dict) -> dict:
         """Up to MAX_ATTEMPTS generations, each retry showing the model its rejected reply and why it was rejected.
 
-        The evidence stays in the first message. Rejected replies are never cached. A reply that fails only on
+        The evidence stays in the first message. Rejected replies are never cached. After any rejection a provider failure or the
+        total time budget ends like giving up; only a failure on the first attempt is an error. A reply that fails only on
         unbacked figures or quotes is still returned, flagged with a warning per issue; any other failure ends in
         an abstention, never an error.
         """
         messages = list(messages)
+        started = time.monotonic()
+        rejection = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
+            remaining = TOTAL_BUDGET_SECONDS - (time.monotonic() - started)
+            if rejection and remaining <= 0:
+                break
             try:
-                result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-5",
-                                               response_format=structured_format, max_tokens=1200)
+                async with asyncio.timeout(remaining if rejection else None):
+                    result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-5",
+                                                   response_format=structured_format, max_tokens=1200)
                 return result.content | {"cached": result.cached, "warnings": [], "option_warnings": []}
             except InvalidGeneration as error:
                 rejection = error.cause if isinstance(error.cause, ReplyRejected) else ReplyRejected(
@@ -299,6 +308,11 @@ class DraftAssistant:
                 logger.warning("Co-News reply rejected (attempt %d/%d, check=%s): %s", attempt, MAX_ATTEMPTS, rejection.check, rejection)
                 messages += [{"role": "assistant", "content": json.dumps(error.content, ensure_ascii=False) if error.content else "{}"},
                              {"role": "user", "content": "Tu respuesta fue rechazada. " + " ".join(rejection.feedback) + " Devuelve el JSON corregido."}]
+            except (GenerationUnavailable, TimeoutError) as error:
+                if rejection is None:
+                    raise
+                logger.warning("Co-News retry %d/%d unavailable after a rejection: %s", attempt, MAX_ATTEMPTS, error)
+                break
         if rejection.is_soft:
             return rejection.reply | {"cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
         return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"cached": False, "warnings": [], "option_warnings": []}

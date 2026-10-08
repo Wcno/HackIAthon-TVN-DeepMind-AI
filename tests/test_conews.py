@@ -232,3 +232,52 @@ def test_offline_the_edit_chips_are_disabled_with_the_reason_and_search_chips_st
         html = client.get("/cases/CASO-001/draft").text
         assert 'class="prompt" data-assist="ask" data-action="rewrite" disabled' in html and "necesita conexión" in html
         assert 'data-action="articles" disabled' not in html and 'data-action="gaps" disabled' not in html
+
+
+def client_with_script(tmp_path, steps, seen):
+    """A provider that plays each step in turn: a reply dict is a 200, an int is that HTTP status."""
+    queue = list(steps)
+
+    def provider(request):
+        seen.append(json.loads(request.content))
+        step = queue.pop(0)
+        if isinstance(step, int):
+            return httpx.Response(step, json={"error": "provider failure"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(step)}}]})
+    settings = Settings(database=tmp_path / "db.sqlite3", offline=False, gemini_api_key="test-secret")
+    return TestClient(create_app(settings, gemini_transport=httpx.MockTransport(provider)))
+
+
+def test_a_provider_failure_after_a_soft_rejection_still_returns_the_flagged_reply(tmp_path):
+    seen = []
+    with client_with_script(tmp_path, [UNBACKED, 500], seen) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.status_code == 200 and len(seen) == 2
+        assert response.json()["options"] == UNBACKED["options"]
+        assert response.json()["warnings"] == ["Cifra sin respaldo: 1.000.000"]
+        assert cached_replies(client) == 0
+
+
+def test_a_provider_failure_after_a_hard_rejection_ends_in_the_friendly_abstention(tmp_path):
+    seen = []
+    with client_with_script(tmp_path, [WRONG_FIELD | {"field": "titulo"}, 500], seen) as client:
+        response, _ = rewrite(client, "Hazlo más corto", "copy_digital")
+        assert response.status_code == 200 and len(seen) == 2
+        assert response.json()["kind"] == "abstention" and "No pude generar una versión válida" in response.json()["text"]
+
+
+def test_a_provider_failure_on_the_first_attempt_is_still_unavailable(tmp_path):
+    seen = []
+    with client_with_script(tmp_path, [500], seen) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.status_code == 503 and len(seen) == 1
+
+
+def test_no_retry_starts_once_the_total_time_budget_is_spent(tmp_path, monkeypatch):
+    from whoami.backend import assistant
+    monkeypatch.setattr(assistant, "TOTAL_BUDGET_SECONDS", 0)
+    seen = []
+    with client_with_replies(tmp_path, [UNBACKED], seen) as client:
+        response, _ = rewrite(client, "Haz el título más llamativo", "titulo")
+        assert response.status_code == 200 and len(seen) == 1
+        assert response.json()["warnings"] == ["Cifra sin respaldo: 1.000.000"]
