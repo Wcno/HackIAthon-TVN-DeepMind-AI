@@ -140,3 +140,11 @@ def test_every_series_has_metadata_and_row_matches_contract_columns():
     assert tuple(row) == INEC_COLUMNS
     assert row["fecha_extraccion"] == "2026-10-07T00:00:00Z"
     assert {o.serie_id for o in observations} <= set(inec.SERIES)
+
+
+def test_labels_the_pipeline_writes_are_accented_spanish():
+    labels = [inec.LICENSE, inec.REPEATED_LABEL, inec.CPI_NAME, inec.GDP_NAME]
+    labels += [text for series in inec.SERIES.values() for text in (series.name, series.unit)]
+
+    unaccented = ("variacion", "Indice", "indice", "Estadistica", "Contraloria", "Republica", "aparicion")
+    assert [label for label in labels if any(word in label for word in unaccented)] == []

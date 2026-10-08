@@ -73,13 +73,13 @@
       "serie_id": "pib",
       "periodo": "2021-T3",
       "motivo": "periodo_duplicado",
-      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparicion"
+      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparición"
     },
     {
       "serie_id": "pib",
       "periodo": "2021-T4",
       "motivo": "periodo_duplicado",
-      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparicion"
+      "detalle": "etiqueta repetida en la fuente, se conserva la primera aparición"
     }
   ]
 }
