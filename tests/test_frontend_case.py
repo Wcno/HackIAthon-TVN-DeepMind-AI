@@ -1,6 +1,7 @@
 """G6: the case workspace (tabs, source panel, score breakdown, review form errors)."""
 
 import re
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -108,3 +109,9 @@ def test_script_budget_uses_spoken_pace(client):
 
 def test_draft_has_no_per_sentence_claim_tags(client):
     assert 'class="annotated"' not in client.get("/cases/CASO-001/draft").text
+
+
+def test_case_header_entrance_does_not_clip_the_score_popover():
+    stylesheet = (Path(__file__).parents[1] / "src/whoami/backend/static/src/app.css").read_text(encoding="utf-8")
+    rule = re.search(r"\.case\.is-entering \.case__head \{ animation: ([^;]+);", stylesheet)
+    assert rule and rule.group(1).endswith("backwards")

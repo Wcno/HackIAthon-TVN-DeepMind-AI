@@ -291,6 +291,10 @@
   .pop__key--N { @apply bg-[#8cc6ec] text-navy; } .pop__key--E { @apply bg-[#cfe6f6] text-navy; }
   .pop__pts { @apply py-2.5 pr-3 align-top text-[15px] font-semibold whitespace-nowrap; }
   .pop__why { @apply py-2.5 text-sm text-ink-3; }
+  @media (max-width: 640px) {
+    .pop__table, .pop__table tbody, .pop__table tr, .pop__table th, .pop__table td { @apply block; }
+    .pop__table th, .pop__table td { @apply pr-0 whitespace-normal; }
+  }
 
   /* photos: the article's own (credited to its outlet) or, in the demo, a labelled illustrative one */
   .photo { @apply relative m-0 overflow-hidden bg-line; }
@@ -330,7 +334,7 @@
   }
 
   /* motion: the case title wipes in like a lower third, once per case */
-  .case.is-entering .case__head { animation: wipe 480ms var(--ease-out-expo) both; }
+  .case.is-entering .case__head { animation: wipe 480ms var(--ease-out-expo) backwards; }
   .case.is-entering .panel { animation: rise 360ms var(--ease-out-expo) 80ms both; }
   @keyframes wipe { from { clip-path: inset(0 40% 0 0); opacity: 0.45; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes rise { from { opacity: 0.35; transform: translateY(8px); } }
