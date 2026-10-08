@@ -179,7 +179,7 @@ def test_draft_screen_exposes_the_editor_assistant_and_local_assets(tmp_path):
         assert 'data-editor="CASO-001"' in html
         assert 'data-key="titulo"' in html
         assert "Añadir pregunta" in html and "Quitar pregunta" in html
-        assert "Asistente del borrador" in html
+        assert ">Co-News<" in html  # the team named the draft assistant Co-News
         assert "/static/editor.js" in html
         assert "https://cdn" not in html
         assert "Cifra sin respaldo" not in html

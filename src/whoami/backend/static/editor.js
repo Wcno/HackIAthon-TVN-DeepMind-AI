@@ -26,6 +26,16 @@
     const askForm = assistant.querySelector('.ask');
     const input = assistant.querySelector('.ask__input');
     const replies = assistant.querySelector('.replies');
+    const scope = assistant.querySelector('[data-cn-scope]');
+    // Co-News: a rewrite targets the chosen field, or lets the assistant pick one when the scope is the whole draft.
+    const chosenField = () => scope.value === 'todo' ? null : scope.value;
+    const placeholders = {todo: 'Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral'};
+    function setScope(key) {
+      scope.value = key;
+      assistant.dataset.scope = key;
+      input.placeholder = placeholders[key] || `Qué hacer con ${labels[key].toLowerCase()}: por ejemplo, hazlo más corto`;
+      showPrompts(true);
+    }
     const bar = root.querySelector('.savebar');
     const message = root.querySelector('[data-save-message]');
     const abort = new AbortController();
@@ -243,7 +253,8 @@
       assistant.setAttribute('aria-busy', 'true');
       assistant.querySelector('.assistant__scroll').scrollTop = 0;
       try {
-        const result = await request(`${api}/assistant`, {method: 'POST', body: JSON.stringify({question, action, draft: snapshot, source_ids: sources.slice()})});
+        const field = action === 'rewrite' ? chosenField() : null;
+        const result = await request(`${api}/assistant`, {method: 'POST', body: JSON.stringify({question, action, field, draft: snapshot, source_ids: sources.slice()})});
         pending.remove();
         renderReply(row, result, snapshot);
       } catch (error) {
@@ -337,13 +348,16 @@
       if (action === 'close') setAssistant(false);
       if (action === 'prompts') { showPrompts(true); assistant.querySelector('.assistant__scroll').scrollTop = 0; }
       if (action === 'ask') ask(target.textContent, target.dataset.action);
+      if (action === 'scope') { setScope(target.dataset.cnField); setAssistant(true); input.focus({preventScroll: true}); }
     }, {capture: true, signal: abort.signal});
     input.addEventListener('input', () => { askForm.querySelector('button').disabled = !input.value.trim(); }, {signal: abort.signal});
+    scope.addEventListener('change', () => setScope(scope.value), {signal: abort.signal});
     askForm.addEventListener('submit', event => {
       event.preventDefault();
       if (asking || !input.value.trim()) return;
       const question = input.value.trim();
-      ask(question, /busca|buscar|noticias|art[ií]culos/i.test(question) ? 'articles' : 'ask');
+      // With a field chosen the request is an edit for that field; for the whole draft, searches stay searches.
+      ask(question, chosenField() ? 'rewrite' : /busca|buscar|noticias|art[ií]culos/i.test(question) ? 'articles' : 'ask');
       input.value = ''; askForm.querySelector('button').disabled = true;
     }, {signal: abort.signal});
     document.addEventListener('keydown', event => {
@@ -351,6 +365,7 @@
     }, {signal: abort.signal});
     form.querySelectorAll('textarea').forEach(fit);
     refresh();
+    setScope('todo');
     return {root, dispose: () => { abort.abort(); assistant.remove(); source.remove(); }};
   }
   function sync() {

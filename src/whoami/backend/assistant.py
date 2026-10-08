@@ -37,14 +37,25 @@ class AssistantReply(BaseModel):
         return self
 
 
-def assistant_schema(ids: list[str], action: str) -> dict:
-    fields = {"headlines": "titulo", "shorten": "copy_digital", "neutral": "brief"}
-    field = fields.get(action)
+TEXT_FIELDS = ["titulo", "brief", "enfoque_interes_publico", "guion", "copy_digital"]
+EDIT_ACTIONS = {"headlines": "titulo", "shorten": "copy_digital", "neutral": "brief"}
+
+
+def editable_fields(action: str, field: str | None = None) -> list[str]:
+    """The fields a reply may propose to edit: one for a fixed action or a chosen field, any text field for a
+    whole-draft Co-News rewrite, none for a question."""
+    if action == "rewrite":
+        return [field] if field else TEXT_FIELDS
+    return [EDIT_ACTIONS[action]] if action in EDIT_ACTIONS else []
+
+
+def assistant_schema(ids: list[str], action: str, field: str | None = None) -> dict:
+    fields = editable_fields(action, field)
     properties = {
-        "kind": {"type": "string", "enum": ["suggestion", "abstention"] if field else ["answer", "abstention"]},
+        "kind": {"type": "string", "enum": ["suggestion", "abstention"] if fields else ["answer", "abstention"]},
         "text": {"type": "string"},
-        "field": {"type": ["string", "null"], "enum": [field, None] if field else [None]},
-        "options": {"type": "array", "items": {"type": "string"}, "maxItems": 3 if field else 0},
+        "field": {"type": ["string", "null"], "enum": [*fields, None]},
+        "options": {"type": "array", "items": {"type": "string"}, "maxItems": 3 if fields else 0},
         "citations": {"type": "array", "items": citation_schema(ids), "maxItems": 30},
         "missing": {"type": ["string", "null"]},
     }
@@ -113,18 +124,21 @@ class DraftAssistant:
                     if answer["estado"] == "respondida":
                         return {"kind": "answer", "text": answer["respuesta"], "citations": answer["citas"], "cached": True}
         own = self.sources(case)
-        hits = [evidence_id for evidence_id, _ in await asyncio.to_thread(self.index.search, request.question, 8)]
+        # A Co-News rewrite edits this case's text: its own and selected sources ground it. Searching the corpus with
+        # an editing request ("ajústalo a 45-60 segundos") would only pull unrelated evidence that matches its words.
+        hits = [] if request.action == "rewrite" else [
+            evidence_id for evidence_id, _ in await asyncio.to_thread(self.index.search, request.question, 8)]
         ids = list(dict.fromkeys([*request.source_ids[-8:], *own[:8], *hits]))[:12]
         evidence = {evidence_id: self.evidence[evidence_id] for evidence_id in ids if evidence_id in self.evidence}
         supplied = {evidence_id: Evidence.model_validate(item) for evidence_id, item in evidence.items()}
 
         def validate(data):
             reply = AssistantReply.model_validate(data)
-            target = {"headlines": "titulo", "shorten": "copy_digital", "neutral": "brief"}.get(request.action)
+            targets = editable_fields(request.action, request.field)
             if reply.kind != "abstention":
-                if target and (reply.kind != "suggestion" or reply.field != target):
+                if targets and (reply.kind != "suggestion" or reply.field not in targets):
                     raise ValueError("The suggestion does not match the requested editing action.")
-                if not target and (reply.kind != "answer" or reply.options or reply.field is not None):
+                if not targets and (reply.kind != "answer" or reply.options or reply.field is not None):
                     raise ValueError("A question must not silently propose a document edit.")
                 if reply.kind == "suggestion":
                     for option in reply.options:
@@ -145,6 +159,11 @@ class DraftAssistant:
             "Si no puedes responder, abstente y explica qué falta. Nunca publiques ni guardes cambios. "
             "Para headlines, shorten y neutral usa kind=suggestion, nunca answer: "
             "headlines propone hasta 3 títulos en field=titulo; shorten acorta copy_digital a 80 palabras; neutral mejora el brief. "
+            "Para rewrite (Co-News) usa kind=suggestion y aplica la pregunta del periodista como pedido de edición: "
+            "si field trae un campo, propón solo ese campo; si es null, elige el campo de texto que más mejore. "
+            "En toda suggestion el texto nuevo completo va en options (de 1 a 3 versiones) y text es solo una frase breve "
+            "que explica el cambio; nunca dejes options vacío. "
+            "Escribe el texto final tal como se publicaría o leería, sin etiquetas como «Locutor:». "
             "No incluyas conteos de propuestas ni cifras en el texto explicativo. Las cifras solo van en el texto respaldado. "
             "Devuelve SOLO JSON: {kind: answer|suggestion|abstention, text: string, "
             "field: titulo|brief|enfoque_interes_publico|guion|copy_digital|null, options: [string], "
@@ -153,13 +172,14 @@ class DraftAssistant:
             "Para abstention explica missing. Las sugerencias son opcionales, no cambies el sentido de los hechos."
         )
         messages = [{"role": "system", "content": system}, {"role": "user", "content": json.dumps({
-            "action": request.action, "question": request.question, "draft": request.draft.model_dump(),
+            "action": request.action, "question": request.question, "field": request.field,
+            "draft": request.draft.model_dump(),
             "claims": case["afirmaciones"], "gaps": case["vacios"], "contradictions": case["contradicciones"],
             "sources": evidence,
         }, ensure_ascii=False)}]
         try:
-            result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-2",
-                                           response_format=response_format("draft_assistant", assistant_schema(list(evidence), request.action)),
+            result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-4",
+                                           response_format=response_format("draft_assistant", assistant_schema(list(evidence), request.action, request.field)),
                                            max_tokens=1200)
         except GenerationUnavailable:
             if client.settings.offline:

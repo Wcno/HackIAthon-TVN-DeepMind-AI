@@ -41,6 +41,19 @@
   .source-head { @apply flex items-center justify-between gap-3; }
   .assistant__head { @apply flex items-center justify-between gap-3; }
   .assistant__title { @apply font-title text-2xl leading-tight font-semibold text-navy; }
+  .assistant__title { @apply inline-flex items-center gap-2; }
+  .assistant__title .icon { @apply size-6 text-blue; }
+  /* Co-News: the scope picks the suggestions; a field's spark button picks the scope */
+  .cn-scope { @apply mt-4 grid gap-1.5 text-[15px] font-semibold text-ink; }
+  .cn-scope select { @apply h-10 w-full rounded-xl bg-white px-3 text-[15px] font-medium text-ink ring-1 ring-line outline-none focus:ring-2 focus:ring-blue; }
+  .draft-assistant .cn-prompts { @apply hidden; }
+  .draft-assistant:not(.has-replies)[data-scope="titulo"] [data-cn-prompts="titulo"],
+  .draft-assistant:not(.has-replies)[data-scope="brief"] [data-cn-prompts="brief"],
+  .draft-assistant:not(.has-replies)[data-scope="enfoque_interes_publico"] [data-cn-prompts="enfoque_interes_publico"],
+  .draft-assistant:not(.has-replies)[data-scope="guion"] [data-cn-prompts="guion"],
+  .draft-assistant:not(.has-replies)[data-scope="copy_digital"] [data-cn-prompts="copy_digital"] { @apply flex; }
+  .draft-assistant:not([data-scope="todo"]) .cn-general { @apply hidden; }
+  .cn-field { @apply text-blue hover:bg-blue-soft hover:text-blue-dark; }
   .assistant__note { @apply mt-2 text-[15px] text-ink-3; }
   .assistant__mode { @apply mt-3 text-sm font-medium text-ink-3; }
   .assistant__scroll { @apply min-h-0 flex-1 overflow-y-auto pb-5; }

@@ -11,6 +11,7 @@
   <div class="block__head"><h2 class="h2" id="ed-{{ key }}">{{ label }}</h2>
     {% if budget %}{{ meter(budget, key) }}{% endif %}
     {% if copy %}<button type="button" class="btn btn--quiet btn--small" data-edit="copy" data-key="{{ key }}">Copiar</button>{% endif %}
+    <button type="button" class="icon-btn cn-field" data-assist="scope" data-cn-field="{{ key }}" title="Pedir a Co-News sobre {{ label|lower }}" aria-label="Pedir a Co-News sobre {{ label|lower }}">{{ icon("spark") }}</button>
   </div>
   <textarea class="ed {{ 'ed--title' if key == 'titulo' else 'ed--text' }}" rows="1" data-key="{{ key }}" aria-labelledby="ed-{{ key }}" maxlength="{{ 500 if key == 'titulo' else 20000 }}">{{ value }}</textarea>
 </section>
@@ -59,17 +60,35 @@
   <section><h2 class="h2">Fuentes del caso</h2><div class="editor-sources" data-source-list>
     {% for source_id in case.ids_fuente %}<button type="button" class="link" data-source="{{ source_id }}">Ver fuente {{ loop.index }}</button>{% endfor %}
   </div></section>
-  <aside class="draft-assistant" aria-label="Asistente del borrador">
-    <div class="assistant__head"><h2 class="assistant__title">Asistente del borrador</h2><button type="button" class="btn btn--quiet btn--small assistant__close" data-assist="close">Cerrar</button></div>
-    <p class="assistant__note">Mejora el texto, consulta la evidencia o busca otras noticias. Tú decides qué aplicar.</p>
+  {% set cn_scopes = [("titulo", "Título propuesto"), ("brief", "Brief"), ("enfoque_interes_publico", "Enfoque de interés público"), ("guion", "Guion"), ("copy_digital", "Copy digital")] %}
+  {% set cn_prompts = {
+    "titulo": ["Hazlo más claro", "Hazlo más neutral"],
+    "brief": ["Hazlo más neutral", "Hazlo más corto", "Hazlo más claro"],
+    "enfoque_interes_publico": ["Propón otro enfoque", "Hazlo más concreto"],
+    "guion": ["Hazlo más fácil de leer al aire", "Ajústalo a 45-60 segundos"],
+    "copy_digital": ["Hazlo más cercano para redes", "Hazlo más neutral"]} %}
+  <aside class="draft-assistant" aria-labelledby="cn-title">
+    <div class="assistant__head"><h2 class="assistant__title" id="cn-title">{{ icon("spark") }}Co-News</h2><button type="button" class="btn btn--quiet btn--small assistant__close" data-assist="close">Cerrar</button></div>
+    <p class="assistant__note">Coescribe el borrador contigo: pídele cambios para un campo o para todo el borrador, o consulta la evidencia. Tú decides qué aplicar.</p>
     <p class="assistant__mode">{{ 'Sin conexión · corpus y respuestas precalculadas' if offline else 'Gemini · fuentes del corpus cargado' }}</p>
+    <label class="cn-scope"><span>Trabajar sobre</span>
+      <select id="cn-scope" data-cn-scope>
+        <option value="todo">Todo el borrador</option>
+        {% for key, label in cn_scopes %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+      </select></label>
     <div class="assistant__scroll">
-      <div class="prompts" data-prompts>
+      {% for key, label in cn_scopes %}
+      <div class="prompts cn-prompts" data-prompts data-cn-prompts="{{ key }}">
+        {% for text in cn_prompts[key] %}<button type="button" class="prompt" data-assist="ask" data-action="rewrite">{{ text }}</button>{% endfor %}
+      </div>
+      {% endfor %}
+      <div class="prompts cn-general" data-prompts>
+        <button type="button" class="prompt" data-assist="ask" data-action="rewrite">Mejora el borrador para televisión</button>
         <button type="button" class="prompt" data-assist="ask" data-action="articles">Busca otras noticias sobre este tema</button>
         <button type="button" class="prompt" data-assist="ask" data-action="headlines">Propón 3 titulares alternativos</button>
         <button type="button" class="prompt" data-assist="ask" data-action="shorten">Acorta el copy digital a 80 palabras</button>
       </div>
-      <details class="assistant__more"><summary>Más preguntas sugeridas</summary><div class="prompts">
+      <details class="assistant__more cn-general"><summary>Más preguntas sugeridas</summary><div class="prompts">
         <button type="button" class="prompt" data-assist="ask" data-action="neutral">Hazlo más neutral</button>
         <button type="button" class="prompt" data-assist="ask" data-action="gaps">¿Qué falta verificar antes de publicar?</button>
         <button type="button" class="prompt" data-assist="ask" data-action="contradictions">¿Hay contradicciones entre las fuentes?</button>
@@ -79,13 +98,13 @@
       <button type="button" class="link assistant__again" data-assist="prompts" hidden>Ver preguntas sugeridas</button>
       <ol class="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
     </div>
-    <form class="ask"><label class="ask__label" for="ask-input">Pregunta al asistente</label>
-      <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal"></textarea>
+    <form class="ask"><label class="ask__label" for="ask-input">Pídele a Co-News</label>
+      <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral"></textarea>
       <button type="submit" class="btn btn--primary btn--small" disabled>Enviar</button>
     </form>
   </aside>
-  <aside class="editor-source" aria-label="Fuente" hidden><div class="source-head"><h2 class="assistant__title">Fuente</h2><button type="button" class="btn btn--quiet btn--small" data-edit="close-source">Volver al asistente</button></div><div data-source-body></div></aside>
-  <button type="button" class="btn btn--primary sheet-toggle" data-assist="open" aria-expanded="false">Abrir asistente</button>
+  <aside class="editor-source" aria-label="Fuente" hidden><div class="source-head"><h2 class="assistant__title">Fuente</h2><button type="button" class="btn btn--quiet btn--small" data-edit="close-source">Volver a Co-News</button></div><div data-source-body></div></aside>
+  <button type="button" class="btn btn--primary sheet-toggle" data-assist="open" aria-expanded="false">Abrir Co-News</button>
 </div>
 {% else %}
 <div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p></div>

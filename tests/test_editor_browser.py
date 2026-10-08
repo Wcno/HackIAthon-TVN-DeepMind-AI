@@ -117,7 +117,7 @@ def test_assistant_apply_and_sources_are_real_controls(page, editor_server):
     cards.first.get_by_role("button", name="Ver fuente", exact=True).click()
     expect(page.locator('.editor-source')).to_be_visible()
     expect(page.locator('.editor-source .drawer__title')).to_contain_text("Canal")
-    page.get_by_role("button", name="Volver al asistente", exact=True).click()
+    page.get_by_role("button", name="Volver a Co-News", exact=True).click()
     cards.first.get_by_role("button", name="Añadir a la ficha", exact=True).click()
     expect(cards.first.get_by_role("button", name="Añadida · sin guardar", exact=True)).to_be_disabled()
     page.get_by_role("button", name="Guardar cambios", exact=True).click()
@@ -158,7 +158,7 @@ def test_unsaved_edits_are_not_lost_by_a_tab_change(page, editor_server):
 def test_mobile_offline_assistant_abstains_without_overflow(page, editor_server):
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(f"{editor_server}/cases/CASO-001/draft")
-    page.get_by_role("button", name="Abrir asistente", exact=True).click()
+    page.get_by_role("button", name="Abrir Co-News", exact=True).click()
     expect(page.locator('.draft-assistant')).to_be_visible()
     page.locator('#ask-input').fill("¿Qué pasará mañana?")
     page.locator('.ask button[type="submit"]').click()
