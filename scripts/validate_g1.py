@@ -8,7 +8,7 @@ import hashlib
 import json
 from collections import Counter
 
-from whoami.contracts import DATA, MANIFEST_JSON, NEWS_CSV, PROCESSED, RAW
+from whoami.contracts import DATA, MANIFEST_JSON, NEWS_CSV, PROCESSED, PROCESSED_MANIFEST_JSON, RAW
 from whoami.ingest import http, inec, manifest, usgs, worldbank
 from whoami.ingest.news import build
 from whoami.ingest.output import write_json
@@ -39,6 +39,7 @@ def main() -> None:
             assert first == current, "Rebuilding changed the frozen snapshot"
 
     document = json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))
+    assert MANIFEST_JSON.read_bytes() == PROCESSED_MANIFEST_JSON.read_bytes()
     for path, expected in document["sha256"].items():
         assert hashlib.sha256((DATA / path).read_bytes()).hexdigest() == expected, path
     raw_files = 0

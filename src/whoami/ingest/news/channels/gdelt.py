@@ -5,14 +5,14 @@ import time
 import urllib.error
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from whoami.contracts import news_window_start
 from whoami.ingest import http
 from whoami.ingest.http import Response
 from whoami.ingest.news.article import Article
-from whoami.ingest.news.parsing import clean_text, parse_iso, section_of
+from whoami.ingest.news.parsing import belongs_to_outlet, clean_text, parse_iso, section_of
 from whoami.ingest.news.sources import Channel, Feed, Source
 from whoami.ingest.raw import FETCH_LOG, RawStore
 
@@ -112,13 +112,10 @@ def _articles(body: bytes) -> list[dict] | None:
 
 
 def parse(source: Source, store: RawStore) -> Iterator[Article]:
-    domain = source.domain.removeprefix("www.")
     for file in store.files():
         for item in _articles(file.read()) or []:
             url = item.get("url")
-            if not isinstance(url, str) or urlsplit(url).scheme not in {"http", "https"}:
-                continue
-            if (urlsplit(url).hostname or "").removeprefix("www.") != domain:
+            if not belongs_to_outlet(url, source.domain):
                 continue
             yield Article(
                 source=source.key, channel=Channel.GDELT_DOC, url=url,

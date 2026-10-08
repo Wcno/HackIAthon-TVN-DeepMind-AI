@@ -47,11 +47,14 @@
     "processed/calidad_inec.json": "d1aa273e61cf89107ae69487543ce53728ef0500b68d115355061f557f477c33",
     "processed/calidad_noticias.json": "bbfdea461a48bc453fea2fafc3d7bc288e89c4c20fc6c041ece1393df9ce29ef",
     "processed/eventos.geojson": "79ab591823b5814316917723a1ffe83410a443c4f667418e9ff323e3d05f836d",
+    "processed/evidencias.jsonl": "c6b4eb03fe42e4b715ece4fdae46af56d20aa6854474076528d1f8f2b4a9f606",
     "processed/fuentes.json": "91a62d08b866bcac633edbf0aa99e681eae75ceb556d7df1c6f803dbf09ae858",
+    "processed/grupos.jsonl": "6f3d701fbc2e9f013c12ac8f6222b3c51fc72e23227de6bdd1bb04d884d66071",
     "processed/indicadores.csv": "f4ba9c8da81a4b30af98a40c3b96d141473536e16a79915dac4e2ad53c2eb50e",
     "processed/indicadores_inec.csv": "900c4f9dab874f2a279d7e4512f4b48c0275d75dc1a587aa283492fbc1acb599",
+    "processed/manifest.json": "1a9224c67dafd92ffdd1eaf95a1d9cd3623887971a53643952e3af220de6dfbf",
     "processed/noticias.csv": "f06d3528c3fc1b688d445d3bae5a10a3489a64d1a7804cf1cf8e0f7214c49fe3",
     "processed/noticias_excluidas.csv": "d3b715e30f2c548fdee074fca7bd3f0ad5ccfcb100572c81d27f9b133e2edfc6",
-    "manifest.json": "9df7299a5fe832d2440d98b821aff9935222e25e3228acac921908f97ccb968d"
+    "manifest.json": "1a9224c67dafd92ffdd1eaf95a1d9cd3623887971a53643952e3af220de6dfbf"
   }
 }

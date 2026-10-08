@@ -1,6 +1,7 @@
 .env
 .claude/
 .venv/
+.venv-g1-backup/
 __pycache__/
 .pytest_cache/
 *.sqlite3

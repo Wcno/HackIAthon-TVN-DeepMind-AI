@@ -11,11 +11,10 @@ import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlsplit
 
 from whoami.ingest import http
 from whoami.ingest.news.article import Article
-from whoami.ingest.news.parsing import clean_text, section_of
+from whoami.ingest.news.parsing import belongs_to_outlet, clean_text, section_of
 from whoami.ingest.news.sources import Channel, Feed, Source
 from whoami.ingest.raw import RawStore
 
@@ -56,11 +55,10 @@ def _rows(body: bytes) -> Iterator[list[str]]:
 
 
 def parse(source: Source, store: RawStore) -> Iterator[Article]:
-    domain = source.domain.removeprefix("www.")
     for file in store.files():
         for fields in _rows(file.read()):
             url = fields[4]
-            if urlsplit(url).scheme not in {"https", "http"} or (urlsplit(url).hostname or "").removeprefix("www.") != domain:
+            if not belongs_to_outlet(url, source.domain):
                 continue
             try:
                 detected = datetime.strptime(fields[1], "%Y%m%d%H%M%S").replace(tzinfo=UTC)

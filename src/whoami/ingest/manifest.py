@@ -17,6 +17,7 @@ from whoami.contracts import (
     MANIFEST_JSON,
     NEWS_WINDOW,
     PROCESSED,
+    PROCESSED_MANIFEST_JSON,
     RAW,
 )
 from whoami.ingest import inec, usgs, worldbank
@@ -41,7 +42,7 @@ TRANSFORMATIONS = (
 
 def build() -> dict:
     fetches = _fetches()
-    processed = sorted(path for path in PROCESSED.iterdir() if path.is_file())
+    processed = sorted(path for path in PROCESSED.iterdir() if path.is_file() and path != PROCESSED_MANIFEST_JSON)
     hashes = {_relative(path): _sha256(path) for path in processed}
     cutoff = max(datetime.fromisoformat(fetch["fecha_descarga"]) for fetch in fetches)
     manifest = {
@@ -55,6 +56,7 @@ def build() -> dict:
         "transformaciones": list(TRANSFORMATIONS),
     }
     write_json(MANIFEST_JSON, manifest)
+    write_json(PROCESSED_MANIFEST_JSON, manifest)
     return {"version": manifest["version"], "fecha_corte_UTC": manifest["fecha_corte_UTC"], "archivos": len(hashes)}
 
 

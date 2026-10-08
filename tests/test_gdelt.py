@@ -13,6 +13,7 @@ from whoami.ingest.news import build, channels, ingest
 from whoami.ingest.news.article import Article
 from whoami.ingest.news.channels import gdelt, news_sitemap
 from whoami.ingest.news.sources import GDELT_FEED, SOURCES, Channel
+from whoami.ingest.news.parsing import belongs_to_outlet
 from whoami.ingest.raw import FETCH_LOG, RawStore
 
 PR = next(source for source in SOURCES if source.key == "prensa")
@@ -60,6 +61,11 @@ def test_actual_url_host_controls_outlet_attribution(tmp_path):
     store = RawStore(tmp_path)
     store.save("capture.json", Response("https://gdelt.test", payload(url="https://evil.test/article", domain="prensa.com"), {}))
     assert list(gdelt.parse(PR, store)) == []
+
+
+@pytest.mark.parametrize("url", [None, "https://[invalid/article", "ftp://prensa.com/article", "https://prensa.com.evil.test/article"])
+def test_outlet_attribution_rejects_invalid_urls(url):
+    assert not belongs_to_outlet(url, "www.prensa.com")
 
 
 def test_capture_logs_429_bytes_then_success(monkeypatch, tmp_path):

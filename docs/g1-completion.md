@@ -3,6 +3,8 @@
 Issue de desarrollo: [G1 #19](https://github.com/Wcno/hackiaton-whoamisfc/issues/19).
 El handoff recibido corresponde a G1; la issue de GitHub #1 documenta el flujo de PRs.
 Base de revisión: `origin/prod`, fijada en `92359ec93d9e7bc665281949f3890cdc70237cf0`.
+Durante el desarrollo se integró el nuevo `prod` de G3/G4
+(`77474db4ff9b30f2ee26f4df292be6418f339fa1`); la revisión final compara contra esa base.
 Fecha de trabajo: 7 de octubre de 2026, Panamá (8 de octubre en UTC).
 
 ## Resultado
@@ -73,7 +75,16 @@ los hashes idénticos en Windows y Linux. Se restauraron desde los blobs origina
 automática a CRLF; no se volvió a consultar esas fuentes ni se cambió su contenido.
 
 El manifest conserva la ubicación estable del contrato del proyecto,
-`data/manifest.json`; no se duplica en `data/processed/`.
+`data/manifest.json`, y publica una copia idéntica en `data/processed/manifest.json`
+para cumplir también la ubicación pedida por la issue. La copia se excluye de
+sus propios hashes, para evitar una referencia circular.
+
+El contrato G3 de miembros agrupados exige publicación. Su cargador informa y
+omite las 22 filas sin publicación al agrupar; siguen disponibles en el CSV G1
+y como evidencia con fecha nula y detección explícita. Los otros 19 registros
+GKG tienen publicación obtenida del medio y son utilizables por G3. Tras cambiar
+el corpus, G3 debe regenerar sus vectores con `whoami embed` antes de ejecutar
+`whoami pipeline`; sus artefactos precalculados previos no son el nuevo corpus.
 
 Validación local: 153 pruebas pasan, el wheel se construye, y el validador
 offline confirma dos reconstrucciones idénticas, los 55 hashes de crudo y todos
