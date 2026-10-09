@@ -44,7 +44,7 @@
   /* strap */
   .strap { @apply flex min-h-16 items-center gap-8 bg-navy px-8 text-white; }
   .brand { @apply inline-flex items-center gap-3 text-white no-underline; }
-  .brand__bug { @apply h-6 w-2.5 rounded-full bg-red; }
+  .brand__logo { @apply size-9 shrink-0; }
   .brand__name { @apply whitespace-nowrap font-display text-2xl font-extrabold tracking-wide; }
   .nav { @apply flex gap-1; }
   .nav a { @apply whitespace-nowrap rounded-full px-3.5 py-1.5 text-[15px] font-medium text-white/70 no-underline transition hover:text-white; }

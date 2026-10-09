@@ -1,60 +1,183 @@
-# TVN DeepMind AI
+<p align="center">
+  <img src="src/whoami/backend/static/img/brand/logo.webp" alt="TVN DeepMind AI" width="140">
+</p>
 
-**De la señal a la decisión: copiloto de inteligencia informativa para TVN Media.**
+<h1 align="center">TVN DeepMind AI</h1>
 
-TVN DeepMind AI es un prototipo desarrollado para la hackIAthon TVN Media que
-transforma noticias públicas e indicadores oficiales en temas priorizados,
-fichas de evidencia y borradores editoriales para revisión humana. Está pensado
-para ayudar a editores, periodistas y productores digitales a planificar la
-agenda, investigar hechos y preparar contenidos con fuentes trazables.
+<p align="center">
+  <strong>De la señal a la decisión.</strong><br>
+  Copiloto editorial que encuentra lo que otros medios publican y TVN todavía no, con cada afirmación citada y un humano decidiendo.
+</p>
 
-El foco editorial es descubrir noticias de otras fuentes que TVN todavía no
-haya publicado. El archivo de TVN sirve como referencia de su cobertura: una
-noticia ya publicada por TVN no cuenta como una novedad para el medio. Los
-títulos deben captar la atención y comunicar el hecho con claridad y fidelidad.
+<p align="center">
+  <b>92.5%</b> consultas correctas ·
+  <b>7/7</b> abstenciones correctas ·
+  <b>6/6</b> ataques bloqueados ·
+  <b>41/41</b> citas literales ·
+  <b>39/41</b> afirmaciones respaldadas según revisión humana
+</p>
 
-El proyecto busca reducir el tiempo dedicado a revisar fuentes dispersas,
-identificar noticias sobre un mismo evento y encontrar contexto relevante.
-Cada resultado debe permitir revisar su evidencia, sus fechas y lo que falta
-verificar antes de tomar una decisión editorial.
+![De la señal a la decisión: fuentes públicas, embeddings locales, análisis, priorización con IA y decisión humana](docs/diagrams/senal-a-decision.png)
 
-## Funcionalidades
+## El problema en 30 segundos
 
-- **Ingesta de fuentes públicas:** noticias de TVN y otros medios, GDELT,
-  indicadores del Banco Mundial e INEC y eventos sísmicos de USGS.
-- **Análisis y priorización:** clasificación temática, agrupación de noticias,
-  detección de recirculación y puntajes explicados para organizar la agenda.
-- **Contexto y evidencia:** vinculación de noticias con datos oficiales y
-  fichas que reúnen fuentes, afirmaciones y preguntas pendientes.
-- **Generación asistida:** borradores y respuestas a consultas en español con
-  citas y verificaciones de respaldo en la evidencia.
-- **Revisión humana:** registro de decisiones y versiones en SQLite; los
-  cambios de contenido invalidan aprobaciones anteriores.
-- **Demo sin conexión:** datos sintéticos y respuestas precalculadas para
-  recorrer el flujo editorial sin una clave de API.
+Un editor de TVN revisa decenas de medios, comunicados y datos oficiales para decidir la agenda del día.
+Las mismas noticias se repiten en varios medios, las cifras llegan sin año y lo nuevo se pierde entre lo ya publicado.
 
-## Flujo editorial
+**TVN DeepMind AI** convierte esa señal dispersa en una bandeja priorizada de temas que TVN aún no ha cubierto.
+Cada tema llega con un puntaje explicado de 0 a 100, una ficha de evidencia con citas literales y un borrador listo para revisar.
+Nada se publica solo: un editor aprueba, pide evidencia o descarta, y cada decisión queda auditada.
 
-1. Consultar la calidad y cobertura de los datos cargados.
-2. Revisar la bandeja de temas priorizados.
-3. Abrir un grupo de noticias y consultar su contexto oficial.
-4. Examinar la ficha de evidencia y el borrador editorial.
-5. Registrar la decisión del revisor humano.
+## Pruébalo: sin red o con IA en la nube
 
-La caja de consultas permite explorar respuestas con evidencia. En el modo
-offline solo están disponibles las consultas precalculadas; una consulta nueva
-muestra que no puede resolverse sin conexión. El prototipo no publica contenido
-automáticamente.
+Requisitos: Python 3.12+ y [`uv`](https://docs.astral.sh/uv/).
 
-## Tecnologías y estructura
+```powershell
+git clone https://github.com/Wcno/hackiaton-whoamisfc.git
+cd hackiaton-whoamisfc
+uv sync --locked --link-mode copy
+```
 
-El proyecto utiliza Python 3.12 o superior, FastAPI y Uvicorn para el servidor,
-Jinja2 para las vistas, Pydantic para los contratos de datos y SQLite para la
-persistencia editorial. El procesamiento incluye embeddings locales con
-EmbeddingGemma en ONNX y generación con Gemini.
+### Opción A: sin internet (T10)
 
-El paquete Python y el comando de consola conservan el identificador técnico
-`whoami`, utilizado en las instrucciones de ejecución.
+```powershell
+uv run --locked whoami offline-demo prepare --output offline-demo
+uv run --locked whoami offline-demo serve --bundle offline-demo
+```
+
+Abrir <http://127.0.0.1:8000/inbox>.
+No hace falta clave ni red: el snapshot, los vectores, las fichas y 48 consultas están precalculados y verificados por hash.
+Una consulta nueva no se inventa: la app indica que no puede resolverse sin conexión.
+
+### Opción B: con IA en la nube (más potencia)
+
+```powershell
+cp .env.example .env   # completar GEMINI_API_KEY
+uv run --locked --env-file .env uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+Habilita consultas libres y generación de fichas en vivo con `gemini-3.5-flash-lite`.
+La respuesta pasa por la misma [cadena anti-alucinación](#cadena-anti-alucinación): Gemini propone y el código verifica.
+
+| | Sin red | Con Gemini |
+| --- | --- | --- |
+| Bandeja, fichas, borradores y revisión | ✅ | ✅ |
+| 48 consultas precalculadas | ✅ | ✅ |
+| Consultas nuevas | Indica que necesita conexión | ✅ con citas verificadas |
+| Latencia de generación | Instantánea | Mediana 1.4 s, p95 2.9 s; 0 fallos de API en 40 consultas |
+
+Probado con Gemini.
+La URL base usa la API compatible con OpenAI; otros proveedores compatibles son un siguiente paso, aún sin probar.
+
+## Recorrido de la demo
+
+1. **Calidad:** fecha del snapshot, fuentes, huecos y verificación de integridad.
+2. **Agenda:** temas priorizados con los componentes del puntaje y el estado de cobertura de TVN.
+3. **Cobertura:** notas del mismo evento y cuántas fuentes son realmente independientes.
+4. **Contexto:** indicadores oficiales con país, período y unidad.
+5. **Ficha:** afirmaciones aceptadas, cada una con su cita literal, y lo que falta verificar.
+6. **Borrador:** título, brief, guion y copy construidos solo con afirmaciones aceptadas.
+7. **Revisión:** responsable, nota y estado; aprobar no publica.
+
+En **Consultas**, probar una respuesta útil, una abstención y una pregunta desconocida.
+
+## IA donde aporta, medida contra un baseline
+
+Usamos IA solo donde supera a una alternativa simple, y lo medimos.
+
+| Tarea | Baseline | Con IA | Mejora |
+| --- | --- | --- | --- |
+| Clasificación temática (macro-F1, 300 etiquetas) | Palabras clave: 0.45 | EmbeddingGemma: **0.80** | +78% |
+| Detectar el mismo evento (F1, 345 pares) | Palabras clave: 0.32 | EmbeddingGemma: **0.72** | +128% |
+| Recuperar evidencia (Recall@8, 114 juicios) | BM25: 97.4% | Embeddings: **100%** | +1 fuente |
+
+Lo que no ocultamos:
+
+- BM25 es unas 10 veces más rápido (mediana de 7 ms contra 65 ms) y ya recupera casi toda la evidencia.
+- El baseline de palabras clave agrupa con más precisión (0.95 contra 0.66); los embeddings ganan en recall a cambio de más fusiones falsas.
+- Las etiquetas de temas y pares son del pool de desarrollo y fueron revisadas por una persona; no son un test independiente.
+
+Los embeddings corren en local (EmbeddingGemma en ONNX), sin enviar el corpus a terceros.
+Gemini solo redacta y propone afirmaciones; nunca decide qué es verdad.
+Detalle en [ADR 0003](docs/adr/0003-local-embeddings-embeddinggemma.md).
+
+## Cadena anti-alucinación
+
+![Cadena anti-alucinación: puerta previa, fuentes como dato, Gemini propone, verificador determinista, abstención](docs/diagrams/cadena-anti-alucinacion.png)
+
+Respuestas directas a las pruebas dinámicas del jurado:
+
+| Pregunta del jurado | Qué hace el sistema | Prueba |
+| --- | --- | --- |
+| "¿De dónde sale esta cifra y de qué año es?" | Todo dato oficial lleva país, período y unidad; el verificador descarta una cifra presentada como actual | T04 · `test_generation_verifier` |
+| "Si cinco medios replican la misma agencia, ¿cuántas fuentes cuentas?" | Una. Las copias de agencia y casi idénticas cuentan una vez y no inflan el puntaje | T02 · `test_provenance`, `test_scoring` |
+| "¿Y si no hay evidencia?" | Sin una fuente parecida (coseno ≥ 0.62) no se llama al modelo: se abstiene y dice qué falta | T06 · `test_generation_cosine_gate` |
+| "¿Y si una fuente intenta cambiar las instrucciones?" | Las fuentes viajan como dato etiquetado y neutralizado; un canario detecta fugas | T07 · `test_generation_prompting` |
+
+## Revisión humana
+
+![Ciclo de revisión humana: nuevo, en revisión, requiere evidencia, aprobado como borrador, descartado](docs/diagrams/revision-humana.png)
+
+- **Aprobar no es publicar:** la app no tiene un estado "publicado".
+- **La aprobación está ligada al contenido:** editar el borrador o regenerar la ficha crea una versión nueva y anula las decisiones previas.
+- **Trazabilidad:** cada decisión tiene responsable; pedir evidencia o reabrir exige una nota.
+
+## Resultados medidos
+
+Benchmark de 40 consultas de desarrollo sobre 3,727 registros de evidencia (2,941 noticias congeladas más fuentes oficiales).
+Las 20 consultas reservadas **no se leyeron** ni se usaron para ajustar el sistema.
+
+| Medición | Resultado |
+| --- | --- |
+| Consultas correctas | **37/40 (92.5%)** |
+| Abstenciones correctas | **7/7** |
+| Falsas abstenciones en preguntas respaldadas | **0/20** |
+| Seguridad ante consultas adversarias | **6/6** |
+| Citas literales en afirmaciones de fichas | **41/41** |
+| Afirmaciones respaldadas según revisión humana | **39/41 (95.1%)**; 2 quedan como "no concluyente" |
+| Precision@5 de la bandeja frente a la elección a ciegas de un editor | 4/5, exploratorio (ver abajo) |
+| Pruebas automatizadas | 1,114 pasan |
+| Matriz T01-T10 | 10/10 pasan |
+
+### Revisión humana de los resultados
+
+Una persona revisó las 41 afirmaciones contra sus fuentes, las 300 etiquetas de tema, los 345 pares y las 40 expectativas del benchmark.
+Para Precision@5, un revisor con rol editorial eligió 5 de los 25 temas mejor puntuados, mostrados al azar y sin puntaje.
+Coincidieron 3/5 tal como hizo clic; 4/5 tras aclarar que se refería a la alerta meteorológica más reciente y no a una anterior.
+Con un solo revisor, lo tratamos como señal, no como prueba.
+
+### Los 3 fallos y qué aprendimos
+
+| Caso | Qué pasó | Lectura |
+| --- | --- | --- |
+| D-A05 | La respuesta da 151.5 millones, exacto según la fuente; el ancla esperaba "151" | Falla el criterio de puntuación, no el modelo |
+| D-C01 | Da el crecimiento del segundo trimestre, pero no expone la otra versión que pedía la pregunta ambigua | Fallo real: mostrar todas las versiones en preguntas ambiguas |
+| D-C06 | Se abstiene ante anuncios de tránsito contradictorios | Abstención conservadora; se cuenta como fallo y el benchmark no se editó |
+
+Metodología completa en [resultados de evaluación](docs/evaluation-results.md) y [evaluación G7](docs/evaluation.md).
+
+## Rúbrica: dónde verlo
+
+| Dimensión | Peso | Evidencia |
+| --- | --- | --- |
+| Utilidad para TVN | 20 | [El problema](#el-problema-en-30-segundos), Precision@5 con editor, [recorrido](#recorrido-de-la-demo) |
+| Prototipo y flujo completo | 20 | [Opción A](#opción-a-sin-internet-t10): 7 etapas sin red, [G10](docs/g10-offline.md) |
+| Uso efectivo de IA | 15 | [Baselines y mejoras](#ia-donde-aporta-medida-contra-un-baseline), [ADR 0003](docs/adr/0003-local-embeddings-embeddinggemma.md) |
+| Evidencias y explicabilidad | 15 | [Cadena anti-alucinación](#cadena-anti-alucinación), puntaje `P = 30R + 25I + 20U + 15N + 10E` |
+| Notion: ejecución y pitch | 15 | [Espejo de Notion](docs/notion/README.md): decisiones, catálogo, pruebas y pitch |
+| Calidad técnica y evaluación | 10 | [Resultados](#resultados-medidos), `uv run --locked pytest -q`, CI en Windows y Linux |
+| Seguridad, privacidad y ética | 5 | T07, [revisión humana](#revisión-humana), [riesgos y ética](docs/notion/07-riesgos-y-etica.md) |
+
+## Limitaciones y próximos pasos
+
+- **Cobertura de TVN parcial:** que un evento no esté en el snapshot no prueba que TVN no lo publicó; la app lo marca como novedad no comprobada.
+- **Validación editorial pequeña:** Precision@5 con un solo revisor; el siguiente paso es un panel de editores y medir el tiempo ahorrado.
+- **Títulos:** las afirmaciones son fieles, pero un título se juzgó poco atractivo; el atractivo se medirá aparte de la veracidad.
+- **Proveedores:** solo se probó Gemini; el siguiente paso es validar otros proveedores compatibles con OpenAI.
+
+## Tecnología
+
+Python 3.12+, FastAPI, Jinja2 + HTMX, Pydantic, SQLite, EmbeddingGemma (ONNX local) y Gemini.
 
 ```text
 src/whoami/
@@ -64,194 +187,15 @@ src/whoami/
   llm/          Cliente de modelos, caché y control de llamadas
   backend/      Vistas web, revisión humana y persistencia
 data/           Capturas originales, corpus procesado y datos de demo
-outputs/        Fichas, consultas y entregables generados
-docs/           Requisitos, contratos, decisiones y documentación técnica
-experiments/    Evaluaciones de modelos y estrategias de análisis
+outputs/        Fichas, consultas, evaluaciones y entregables
+docs/           Reto, decisiones, ADRs y documentación técnica
 tests/          Pruebas del procesamiento y del flujo editorial
 ```
 
-## Inicio rápido
+## Más documentación
 
-Requisitos: Python 3.12 o superior y `uv`. Ejecutar desde la raíz del repositorio:
-
-```powershell
-uv sync --locked --link-mode copy
-uv run --locked uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
-```
-
-Abrir [la bandeja editorial](http://127.0.0.1:8000/inbox).
-Por defecto, la aplicación carga el corpus real procesado y las fichas de `outputs`.
-Sin una clave de Gemini utiliza el modo offline; con una clave habilita generación verificable.
-Para la demo sintética independiente, configurar `WHOAMI_DEMO=1` y `WHOAMI_OFFLINE=1`.
-`--link-mode copy` evita problemas de enlaces de archivos cuando el repositorio está en OneDrive.
-
-Las decisiones humanas se guardan fuera del repositorio, en
-`%LOCALAPPDATA%/whoami/editorial.sqlite3` en Windows. La ruta puede configurarse
-con `WHOAMI_DATABASE`.
-
-La configuración opcional está documentada en [.env.example](.env.example).
-Para usarla, copiar el archivo a `.env`, ajustar sus valores y arrancar el
-servidor con:
-
-```powershell
-uv run --locked --env-file .env uvicorn whoami.backend.app:app --host 127.0.0.1 --port 8000 --workers 1
-```
-
-El servidor carga el `.env` existente sin sobrescribir variables explícitas del entorno.
-No subir ese archivo al repositorio.
-Consultar [la documentación del backend](docs/backend.md) y [el editor G6](docs/g6-editor.md) para configurar datos, persistencia, recuperación local y cuotas.
-
-## Datos y procesamiento
-
-Para preparar y arrancar la demo completa sin internet, consulta [G10: modo offline](docs/g10-offline.md).
-`whoami offline-demo prepare --output offline-demo` congela el snapshot validado;
-`whoami offline-demo serve --bundle offline-demo` lo verifica y fuerza el modo sin conexión,
-sin llamadas a Gemini ni carga de modelos locales.
-
-Las capturas originales se conservan en `data/raw/`; los archivos normalizados
-se escriben en `data/processed/` y sus hashes en `data/manifest.json`. La
-reconstrucción del corpus funciona sin red a partir de las capturas guardadas:
-
-```powershell
-uv run --locked whoami build
-```
-
-Para actualizar fuentes concretas se necesita conexión:
-
-```powershell
-uv run --locked whoami ingest --only prensa,telemetro,panamaamerica
-uv run --locked whoami ingest --only gdelt-gkg
-uv run --locked whoami build
-```
-
-Seleccionar un medio con `--only` descarga su canal directo; GDELT se selecciona
-con sus propias claves. El snapshot de GDELT GKG contiene seis lotes horarios
-multilingües y distingue las fechas de detección de las de publicación. Su
-cobertura es parcial, registrada en `calidad_noticias.json`; los feeds de otros
-medios cubren principalmente los últimos dos días.
-
-`uv run --locked whoami ingest --only gdelt` intenta recuperar los últimos
-30 días mediante DOC 2.0, con cortes diarios, timeout de 60 segundos,
-separación mínima de 6 segundos y hasta cinco intentos con backoff. Divide las
-consultas con 250 resultados y reanuda intervalos completos. Puede tardar varios
-minutos ante respuestas HTTP 429; los fallos se conservan en
-`data/raw/news/gdelt/doc/`. Ver [el cierre de G1](docs/g1-completion.md) para
-la cobertura y los límites del corpus.
-
-Para instalar la revisión fijada de EmbeddingGemma desde una máquina nueva:
-
-```powershell
-uv run --locked whoami download-model
-uv run --locked whoami download-model --offline
-```
-
-El segundo comando comprueba que los tres archivos están disponibles sin usar
-la red. `--directory RUTA` permite elegir el directorio; para utilizarlo al
-procesar datos, definir `WHOAMI_EMBEDDING_MODEL_DIR` con esa misma ruta. Una
-descarga incompleta puede reanudarse; cada archivo se instala tras copiarse por
-completo.
-
-El comando `whoami embed` construye los vectores locales y
-`whoami pipeline --sin-llm` procesa el corpus sin llamadas al modelo generativo.
-La primera descarga de EmbeddingGemma requiere conexión; después puede
-reutilizarse el modelo en caché. `whoami generar` produce fichas y respuestas
-con el modelo configurado y requiere preparar sus entradas y credenciales.
-Consultar las opciones con `uv run --locked whoami --help` y
-`uv run --locked whoami generar --help`.
-
-La comparación de cobertura distingue eventos ya cubiertos por TVN, posibles
-actualizaciones externas con datos nuevos citados, eventos sin coincidencia en
-el snapshot y novedad no comprobada. Los grupos ya cubiertos se excluyen de la
-bandeja principal y de nuevas fichas. Una ausencia en el snapshot no demuestra
-que TVN nunca haya publicado el evento; la cobertura incompleta se muestra al
-editor. Las actualizaciones requieren verificar el alcance del dato nuevo.
-
-Para escribir borradores, el modelo selecciona y ordena afirmaciones aceptadas.
-El código conserva sus textos, tipos y atribuciones en título, brief, guion y
-copy, y comprueba sus referencias al cargar el paquete. El registro de revisiones
-exporta también el contenido revisado y el historial de versiones retiradas;
-cambiar la ficha, el grupo o sus fuentes abre un nuevo ciclo de revisión.
-
-## Validación y exportación
-
-```powershell
-uv run --locked pytest -q
-```
-
-La suite cubre contratos, procesamiento, generación y revisión editorial;
-incluye el reinicio de un servidor HTTP real y la validación de los archivos
-exportados contra el contrato compartido.
-
-Para ejecutar el benchmark G7, comparar BM25 con embeddings y guardar las
-métricas junto con todas las pruebas:
-
-```powershell
-uv run --locked whoami evaluar --mode recorded
-```
-
-El modo `live` mide la generación con Gemini. Las consultas reservadas se
-mantienen fuera del repositorio y las métricas con etiquetas de IA se marcan
-como provisionales hasta incorporar las revisiones humanas. Ver
-[la evaluación G7](docs/evaluation.md) para requisitos, métodos y formatos.
-
-Para exportar las fichas, consultas y decisiones del ciclo de revisión actual,
-detener primero el servidor y ejecutar:
-
-```powershell
-uv run --locked whoami export-backend --output outputs
-```
-
-## Documentación
-
-- [Requisitos del reto](docs/challenge/INDEX.md): alcance, casos de uso,
-  entregables y criterios de evaluación.
-- [Decisiones del equipo](docs/challenge/00-decisiones-del-equipo.md): ventanas
-  de datos y comportamiento de la demo offline.
-- [Backend y revisión editorial](docs/backend.md): rutas, persistencia,
-  configuración e integración.
-- [Contrato de pantallas](docs/screen-contract.md): interfaz del flujo editorial.
-- [Cobertura del corpus](docs/g1-completion.md): fuentes, calidad y evidencia.
-- [Embeddings locales](docs/adr/0003-local-embeddings-embeddinggemma.md):
-  propuesta técnica y evaluación del modelo.
-
-Notion forma parte de los requisitos del reto para documentar decisiones,
-pruebas y presentar el proyecto. El alcance y los entregables se describen en
-la documentación del reto.
-
-## Flujo de trabajo del equipo
-
-La rama de integración y producción es `prod`. Cada cambio se desarrolla en una rama corta y se integra mediante un pull request hacia `prod`, con los checks configurados en verde. No se requiere una aprobación para fusionar. No usamos una rama `dev` en este flujo.
-
-1. Actualizar `prod` y crear una rama para el cambio:
-
-   ```bash
-   git fetch origin
-   git switch prod
-   git pull --ff-only origin prod
-   git switch -c feat/nombre-del-cambio
-   ```
-
-   Si aún no existe `prod` localmente, crearla con `git switch --track origin/prod`.
-
-2. Implementar y probar el cambio; hacer commit y subir la rama:
-
-   ```bash
-   git add <archivos-del-cambio>
-   git commit -m "feat: describir el cambio"
-   git push -u origin feat/nombre-del-cambio
-   ```
-
-3. Abrir un pull request con destino a `prod`, explicando qué cambió y cómo probarlo.
-4. Con los checks configurados en verde, hacer squash merge y eliminar la rama del cambio.
-5. Desplegar la versión integrada en `prod` usando el proveedor que acuerde el equipo.
-
-También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen pushes directos a `prod`.
-
-### Configuración de GitHub y despliegue
-
-- Usar `prod` como rama predeterminada.
-- Proteger `prod`: exigir pull request y los checks configurados, sin aprobaciones obligatorias; aplicar la regla también a administradores e impedir force pushes y la eliminación de la rama.
-- Exigir los checks de `G5 validation`: pruebas y build en Windows y Linux. La protección de rama debe configurarse en GitHub.
-- Publicar desde `prod` con el `Dockerfile` en un VPS con Dokploy; ver [docs/deploy.md](docs/deploy.md).
-
-Estas son las reglas acordadas. La protección, la rama predeterminada y el despliegue deben verificarse en sus respectivas plataformas.
+- [Operación](docs/operacion.md): ingesta, reconstrucción del corpus, modelos, evaluación y exportación.
+- [Requisitos del reto](docs/challenge/INDEX.md) y [decisiones del equipo](docs/challenge/00-decisiones-del-equipo.md).
+- [Backend y revisión editorial](docs/backend.md) y [contrato de pantallas](docs/screen-contract.md).
+- [Cobertura del corpus](docs/g1-completion.md).
+- [Cómo contribuir](CONTRIBUTING.md).
