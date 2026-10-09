@@ -7,40 +7,31 @@ from collections.abc import Mapping
 from whoami.backend.gemini import GeminiClient
 from whoami.backend.gemini_completions import CompletionUnavailable, GeminiCompletions
 from whoami.backend.retrieval import CorpusRetriever
-from whoami.generation.prompting import CosineGate, GateDecision
-from whoami.generation.query_box import answer_query
+from whoami.generation.prompting import GateDecision
+from whoami.generation.query_box import TASK, answer_query
 from whoami.schemas import Evidence
 
-PROMPT_VERSION = "query-1"
-# Free text is shorter and looser than the benchmark's full questions. Measured on the live corpus: keyword queries
-# whose top hit is the right story score 0.46-0.70, off-topic questions 0.19-0.39 and pure prompt injections 0.28-0.30.
-# Questions on a covered topic that the sources cannot answer pass the gate and are left to the answer verifier.
-FREE_TEXT_MIN_COSINE = 0.43
+PROMPT_VERSION = "query-2"
+# People type keywords into the search box; for those, what the sources say about the topic is the answer.
+LIVE_TASK = TASK + (
+    " Si la consulta no es una pregunta sino palabras clave o un tema, usa estado=respondida y resume en una o dos frases "
+    "lo que dicen las fuentes sobre ese tema, con citas literales. Abstente solo si ninguna fuente trata el tema. "
+    "Si es una pregunta, respóndela o abstente: nunca la sustituyas por un resumen del tema."
+)
 
 __all__ = ["CompletionUnavailable", "LiveQueries"]
 
 
-class _CosineView:
-    """The corpus' embedding cosines as the `Retriever` the cosine gate reads."""
-
-    def __init__(self, corpus: CorpusRetriever) -> None:
-        self._corpus = corpus
-
-    def search(self, query: str, k: int) -> list[tuple[str, float]]:
-        return self._corpus.cosine_search(query, k) or []
-
-
 class _CorpusGate:
-    """Abstains on questions no source resembles. Without embeddings (BM25 only) the verifier is the safeguard."""
+    """Abstains before the model when no evidence is related to the query."""
 
     def __init__(self, corpus: CorpusRetriever) -> None:
         self._corpus = corpus
-        self._cosine = CosineGate(_CosineView(corpus), FREE_TEXT_MIN_COSINE)
 
     def decide(self, query: str) -> GateDecision:
-        if self._corpus.cosine_search(query, 1) is None:
+        if self._corpus.related(query, 1):
             return GateDecision(True)
-        return self._cosine.decide(query)
+        return GateDecision(False, "ninguna fuente se parece lo bastante a la consulta", f"Fuentes que respondan directamente: {query}")
 
 
 class LiveQueries:
@@ -60,5 +51,5 @@ class LiveQueries:
     def _answer(self, question: str, loop: asyncio.AbstractEventLoop) -> dict:
         llm = GeminiCompletions(self._gemini, loop, prompt_version=PROMPT_VERSION)
         identifier = "Q-live-" + hashlib.sha256(question.encode()).hexdigest()[:12]
-        answer = answer_query(identifier, question, self._corpus, self._gate, self._evidence, llm, self._gemini.settings.gemini_model)
+        answer = answer_query(identifier, question, self._corpus, self._gate, self._evidence, llm, self._gemini.settings.gemini_model, task=LIVE_TASK)
         return answer.model_dump(mode="json")

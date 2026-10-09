@@ -1,6 +1,7 @@
 """FastAPI app for the TVN DeepMind AI editorial desk: routes, error handlers and Jinja filters."""
 
 from contextlib import asynccontextmanager
+from functools import partial
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
@@ -64,6 +65,7 @@ REVIEW_FIELD_ERRORS = {
 
 
 QUERY_MAX_LENGTH = 2000
+RELATED_STORIES = 6
 
 
 def review_field_error(error: RequestValidationError) -> tuple[str | None, str]:
@@ -174,6 +176,12 @@ def safe_url(value: str) -> str:
         return value if urlsplit(value).scheme in ("https", "http") else "#"
     except ValueError:
         return "#"
+
+
+def cited_evidence(answer: dict | None) -> set[str]:
+    if answer is None:
+        return set()
+    return {item["id_evidencia"] for item in [*answer.get("citas", []), *answer.get("versiones", [])]}
 
 
 #: A seam for tests and alternative pipelines; by default the app answers with `LiveQueries`.
@@ -451,6 +459,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     async def queries(request: Request, q: Annotated[str | None, Query(max_length=QUERY_MAX_LENGTH)] = None):
         answer = None
         examples, probes = split_queries(request.app.state.repository.records("answer"))
+        related = await asyncio.to_thread(request.app.state.assistant.index.related, q, RELATED_STORIES) if q and q.strip() else []
+        screen = partial(render, request, "queries", "Consulta con evidencia", examples=examples, probes=probes, query_text=q)
         try:
             if q and q.strip():
                 try:
@@ -462,12 +472,10 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         except (GenerationUnavailable, CompletionUnavailable) as error:
             if settings.offline:
                 # Offline, a question outside the precomputed set is an honest abstention, not a server fault.
-                return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples, probes=probes,
-                              query_status="no_precomputed", query_text=q)
+                return screen(answer=None, query_status="no_precomputed", related=related)
             logger.warning("Query unavailable: %s", error)
-            return render(request, "queries", "Consulta con evidencia", status_code=503, answer=None, examples=examples, probes=probes,
-                          query_status="unavailable", query_text=q)
-        return render(request, "queries", "Consulta con evidencia", answer=answer, examples=examples, probes=probes, query_text=q)
+            return screen(status_code=503, answer=None, query_status="unavailable", related=related)
+        return screen(answer=answer, related=[key for key in related if key not in cited_evidence(answer)])
 
     async def live_answer(request: Request, question: str) -> dict:
         provider = query_provider or (lambda text, gemini, repository: request.app.state.live_queries.answer(text))

@@ -18,6 +18,10 @@ from whoami.generation.retrieval import BM25Index, Document, EmbeddingIndex, hyb
 from whoami.pipeline.run import load_vectors
 
 QUERY_CACHE_SIZE = 128
+# Measured on the live corpus: the right story scores 0.46-0.70 for short free text, off-topic questions 0.16-0.39 and
+# prompt injections 0.28-0.30. One or two bare keywords score lower, so a story containing every query word also counts.
+RELATED_MIN_COSINE = 0.43
+RELATED_POOL = 20
 _MODEL_LAYOUT = {
     "onnx/model_q4.onnx": "onnx/model.onnx",
     "onnx/model_q4.onnx_data": "onnx/model_q4.onnx_data",
@@ -46,6 +50,7 @@ class CorpusRetriever:
             for key, item in evidence.items()
         ]
         self._lexical = BM25Index([document for document in documents if tokenize(document.text)])
+        self._terms = {document.id_evidencia: set(tokenize(document.text)) for document in documents}
         self._ids = set(evidence)
         self._directory = embeddings_directory
         self._lock = RLock()
@@ -137,6 +142,15 @@ class CorpusRetriever:
             except Exception as error:
                 self._degrade(error)
                 return None
+
+    def related(self, query: str, k: int) -> list[str]:
+        """Up to k evidences about the query, best first: close in meaning, or containing every query word."""
+        terms = set(tokenize(query))
+        if k <= 0 or not terms:
+            return []
+        lexical = [key for key, _ in self._lexical.search(query, RELATED_POOL) if terms <= self._terms[key]]
+        semantic = [key for key, cosine in self.cosine_search(query, RELATED_POOL) or [] if cosine >= RELATED_MIN_COSINE]
+        return [key for key, _ in hybrid_rrf([lexical, semantic])[:k]]
 
     def search(self, query: str, k: int) -> list[tuple[str, float]]:
         if k <= 0 or not query.strip():

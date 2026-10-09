@@ -122,3 +122,30 @@ def test_without_embeddings_the_corpus_has_no_cosines():
     from whoami.backend.retrieval import CorpusRetriever
 
     assert CorpusRetriever({}, None).cosine_search("canal", 1) is None
+
+
+ABSTAINED = {"estado": "abstencion", "respuesta": None, "citas": [], "motivo_abstencion": "La consulta es demasiado amplia.",
+             "faltante": "Una pregunta concreta.", "versiones": []}
+
+
+def test_a_keyword_search_lists_the_matching_stories_even_when_the_model_abstains(tmp_path):
+    with app_with(tmp_path, Provider(ABSTAINED)) as client:
+        response = client.get("/queries", params={"q": "tránsitos diarios"})
+    assert response.status_code == 200
+    assert "Noticias relacionadas" in response.text
+    assert f"/evidence/{SOURCE}" in response.text
+
+
+def test_an_off_topic_search_lists_nothing_and_never_calls_the_model(tmp_path):
+    provider = Provider(GROUNDED)
+    with app_with(tmp_path, provider) as client:
+        response = client.get("/queries", params={"q": "receta de sancocho"})
+    assert "Noticias relacionadas" not in response.text
+    assert provider.requests == []
+
+
+def test_offline_a_keyword_search_still_lists_the_matching_stories(tmp_path):
+    with app_with(tmp_path, Provider(), offline=True) as client:
+        response = client.get("/queries", params={"q": "tránsitos diarios"})
+    assert "Noticias relacionadas" in response.text
+    assert f"/evidence/{SOURCE}" in response.text
