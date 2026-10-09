@@ -1,0 +1,12 @@
+{
+  "symptom": "A fresh grounded Canal-transit question returned HTTP 503",
+  "safe_server_reason": "The shared generation quota budget is exhausted.",
+  "cause": "local-demo replaced the configured limit with min(limit or 20, 20); the quota budget then reduced 20 to 8 shared calls",
+  "fix": "Preserve the configured daily limit and existing shared provider quota checks",
+  "quota_history_reset": false,
+  "before": {"fresh_query_http_status": 503, "launcher_daily_limit": 20},
+  "after": {"fresh_query_http_status": 200, "answer_with_evidence": true, "launcher_daily_limit": null},
+  "regression_red": {"failed": 2, "passed": 3},
+  "regression_green": {"command": "pytest tests/test_local_demo.py tests/test_editor_quota.py -q", "passed": 14},
+  "scope": "Repairs online PR47 launching; full offline QVAC generation is separate ongoing work"
+}

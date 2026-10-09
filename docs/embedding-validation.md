@@ -37,7 +37,7 @@ $env:WHOAMI_EMBEDDING_THREADS = '4'
 whoami local-demo --database "$env:LOCALAPPDATA\whoami\private-demo\editorial.sqlite3" --port 8765
 ```
 
-This serves the canonical application, with q4 semantic retrieval, generation through the existing Gemini configuration, and a separate persistent database. No key is copied or printed, no billing is enabled and no generation provider/model is changed. Startup refuses BM25 degradation. `/demo-readiness` confirms the actual retrieval mode. Provider requests are capped at the smaller of the existing limit and 20 daily calls; this is a quota guard, not evidence of the account's billing status or provider uptime. This launch does not change G10: `offline-demo serve` still uses no inference and only frozen answers.
+This serves the canonical application, with q4 semantic retrieval, generation through the existing Gemini configuration, and a separate persistent database. No key is copied or printed, no billing is enabled and no generation provider/model is changed. Startup refuses BM25 degradation. `/demo-readiness` confirms the actual retrieval mode. The launch preserves the configured generation limit; the shared provider quota guard and reservations remain active. An earlier launcher imposed 20 daily calls, which the conservative budget policy reduced to eight and could cause immediate HTTP 503 after other project generation. That artificial override was removed; shared quota history is not reset. This launch does not change G10: `offline-demo serve` still uses no inference and only frozen answers.
 
 ## Temporary private HTTPS access
 

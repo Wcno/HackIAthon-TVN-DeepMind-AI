@@ -15,8 +15,7 @@ def create_demo(settings: Settings, database: Path):
     from whoami.backend.app import create_app
     if settings.demo or settings.offline or not settings.gemini_api_key:
         raise ValueError("The complete online demo requires existing Gemini settings; no key is created or printed")
-    configured = replace(settings, database=database, data_directory=PROCESSED, output_directory=OUTPUTS,
-                         generation_daily_limit=min(settings.generation_daily_limit or 20, 20))
+    configured = replace(settings, database=database, data_directory=PROCESSED, output_directory=OUTPUTS)
     app = create_app(configured)
     original_lifespan = app.router.lifespan_context
 
