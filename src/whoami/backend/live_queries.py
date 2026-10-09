@@ -12,6 +12,10 @@ from whoami.generation.query_box import answer_query
 from whoami.schemas import Evidence
 
 PROMPT_VERSION = "query-1"
+# Free text is shorter and looser than the benchmark's full questions. Measured on the live corpus: keyword queries
+# whose top hit is the right story score 0.46-0.70, off-topic questions 0.19-0.39 and pure prompt injections 0.28-0.30.
+# Questions on a covered topic that the sources cannot answer pass the gate and are left to the answer verifier.
+FREE_TEXT_MIN_COSINE = 0.43
 
 __all__ = ["CompletionUnavailable", "LiveQueries"]
 
@@ -31,7 +35,7 @@ class _CorpusGate:
 
     def __init__(self, corpus: CorpusRetriever) -> None:
         self._corpus = corpus
-        self._cosine = CosineGate(_CosineView(corpus))
+        self._cosine = CosineGate(_CosineView(corpus), FREE_TEXT_MIN_COSINE)
 
     def decide(self, query: str) -> GateDecision:
         if self._corpus.cosine_search(query, 1) is None:

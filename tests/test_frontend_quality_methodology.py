@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from whoami.backend.app import create_app
-from whoami.backend.reports import methodology_view, quality_view
+from whoami.backend.reports import evaluation_view, methodology_view, quality_view
 from whoami.backend.settings import Settings
 from whoami.contracts import PROCESSED, RULES_VERSION, SCORE_WEIGHTS
 
@@ -167,14 +167,6 @@ def test_synthetic_notice_stays_on_the_example_only(client):
     assert "El ejemplo usa datos sintéticos" not in client.get("/quality").text
 
 
-def test_ai_versus_baseline_is_an_empty_slot_without_numbers(client):
-    page = client.get("/methodology").text
-    section = page[page.index('id="evaluacion"'):]
-    text = text_of(section)
-    assert "Pendiente de G7" in text and "Sin resultados todavía" in text
-    assert not re.findall(r"\d", re.sub(r"G7", "", text))
-
-
 def test_methodology_view_without_groups_has_no_example():
     assert methodology_view([])["example"] is None
 
@@ -183,3 +175,99 @@ def test_panama_day_helper_is_not_utc():
     from whoami.backend.reports import panama
 
     assert panama("2026-10-02T04:30:00Z").date() == date(2026, 10, 1)
+
+
+def ratio(numerator: int, denominator: int) -> dict:
+    return {"numerator": numerator, "denominator": denominator, "value": numerator / denominator}
+
+
+def write_evaluation(directory) -> None:
+    reviewed = directory / "g7-reviewed"
+    reviews = directory / "human-reviews"
+    reviewed.mkdir(parents=True)
+    reviews.mkdir()
+    metrics = {
+        "retrieval": {"bm25": {"micro_recall_at_8": {"value": 0.5123}, "latency": {"median_s": 0.02}},
+                      "emb": {"micro_recall_at_8": {"value": 0.8812}, "latency": {"median_s": 0.2}}},
+        "classification": {"methods": {"keywords": {"macro_f1": 0.1111}, "embeddings_cv": {"macro_f1": 0.7777}}},
+        "grouping": {"methods": {"keywords": {"f1": 0.2222, "precision": 0.9111}, "embeddings": {"f1": 0.6666, "precision": 0.5333}}},
+        "answers": {"correct": ratio(31, 40), "correct_abstentions": ratio(5, 7), "by_kind": {"adversarial": ratio(4, 6)}},
+        "claims": {"human_support": ratio(33, 41)},
+    }
+    review = {"system_top5": list("abcde"), "hits": list("abcd"), "precision_at_5": 0.8, "precision_at_5_as_clicked": 0.4}
+    (reviewed / "metrics.json").write_text(json.dumps(metrics), encoding="utf-8")
+    (reviews / "precision-at-5.json").write_text(json.dumps(review), encoding="utf-8")
+
+
+@pytest.fixture
+def evaluation_client(tmp_path):
+    write_evaluation(tmp_path / "evaluation")
+    settings = Settings(database=tmp_path / "editorial.sqlite3", evaluation_directory=tmp_path / "evaluation")
+    with TestClient(create_app(settings)) as client:
+        yield client
+
+
+def test_evaluation_results_are_rendered_from_the_g7_files(evaluation_client):
+    text = text_of(evaluation_client.get("/methodology").text)
+    for expected in ("51,2 %", "88,1 %", "0,11", "0,78", "0,22", "0,67", "31 de 40", "4 de 6", "5 de 7", "33 de 41", "4 de 5", "2 de 5", "0,91", "0,53", "10,00 veces"):
+        assert expected in text, expected
+    assert "Pendiente de G7" not in text
+
+
+def test_evaluation_view_reads_nothing_it_cannot_find(tmp_path):
+    assert evaluation_view(tmp_path) is None
+
+
+@pytest.mark.parametrize("payload", [{}, [], None])
+def test_methodology_survives_invalid_evaluation_shapes(tmp_path, payload):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    (directory / "g7-reviewed" / "metrics.json").write_text(json.dumps(payload), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        response = client.get("/methodology")
+    assert response.status_code == 200
+    assert "Pendiente de G7" in response.text
+
+
+@pytest.mark.parametrize("field,value", [("recall", None), ("latency", None), ("latency", 0.0)])
+def test_methodology_keeps_valid_results_when_a_measurement_is_unavailable(tmp_path, field, value):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    path = directory / "g7-reviewed" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))
+    if field == "recall":
+        metrics["retrieval"]["bm25"]["micro_recall_at_8"]["value"] = value
+    else:
+        metrics["retrieval"]["bm25"]["latency"]["median_s"] = value
+    path.write_text(json.dumps(metrics), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        response = client.get("/methodology")
+    assert response.status_code == 200
+    text = text_of(response.text)
+    assert "31 de 40" in text
+    assert "Sin medición" in text
+
+
+def test_methodology_exposes_samples_failures_and_label_provenance(tmp_path):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    path = directory / "g7-reviewed" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))
+    metrics["classification"]["labels"] = {"provenance": "ai", "reviewed": 0, "total": 300}
+    metrics["grouping"]["labels"] = {"provenance": "human", "reviewed": 345, "total": 345}
+    metrics["classification"]["methods"]["keywords"].update(n=300, correct={**ratio(172, 300), "failures": ["N-FAIL"]})
+    path.write_text(json.dumps(metrics), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        text = text_of(client.get("/methodology").text)
+    for expected in ("172 de 300", "N-FAIL", "ai", "0 de 300", "human", "345 de 345", "una persona", "una corrida", "después de ver el ranking"):
+        assert expected in text
+    assert "mismas etiquetas revisadas por personas" not in text
+
+
+def test_ai_versus_baseline_is_an_empty_slot_without_the_evaluation_files(tmp_path):
+    settings = Settings(database=tmp_path / "editorial.sqlite3", evaluation_directory=tmp_path / "missing")
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/methodology").text
+    text = text_of(page[page.index('id="evaluacion"'):])
+    assert "Pendiente de G7" in text and "Sin resultados todavía" in text
+    assert not re.findall(r"\d", re.sub(r"G7", "", text))

@@ -34,7 +34,9 @@ La validación de cifras y citas de las respuestas del modelo sigue activa en el
 La búsqueda recorre el corpus cargado, nunca la web en vivo.
 La recuperación combina BM25 y los vectores existentes de `embeddinggemma-300m-q4` mediante fusión de rankings.
 Solo las consultas se codifican localmente, en CPU, con el mismo modelo y prefijos del corpus.
-El umbral semántico es 0,62; BM25 también recupera evidencias oficiales sin vector.
+El umbral semántico de recuperación y del benchmark es 0,62; BM25 también recupera evidencias oficiales sin vector.
+En consultas de texto libre, la puerta de entrada al generador usa 0,43 para admitir preguntas breves.
+Superar esa puerta no garantiza una respuesta: siguen vigentes las comprobaciones de evidencia, cifras y citas y la abstención cuando no hay sustento.
 Se validan manifiesto, revisión, dimensiones y hashes antes de cargar el modelo.
 Si los archivos locales no están disponibles o son incompatibles, se degrada a BM25 sin descargar archivos ni llamar embeddings cloud.
 La demo usa BM25 sin inicializar el modelo local.

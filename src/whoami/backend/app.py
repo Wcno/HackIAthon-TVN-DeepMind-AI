@@ -32,7 +32,7 @@ from whoami.backend.presentation import (
     NO_CASE_FILE, abstention_copy, case_questions, draft_budgets, evidence_card, field_label, file_state, latest_date, needs_investigation, pluralize,
     review_timeline, snapshot_view, source_line, split_queries,
 )
-from whoami.backend.reports import methodology_view, quality_view, score_components, spanish_decimals
+from whoami.backend.reports import evaluation_view, methodology_view, quality_view, score_components, spanish_decimals
 from whoami.backend.service import EditorialService
 from whoami.backend.settings import Settings
 from whoami.contracts import PROCESSED, REVIEW_STATES, REVIEW_TRANSITIONS, TOPIC_LABELS, ReviewState
@@ -342,7 +342,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
     @app.get("/methodology", response_class=HTMLResponse)
     def methodology(request: Request, grupo: str | None = None, q: Annotated[str, Query(max_length=200)] = ""):
         return render(request, "methodology", "Metodología", search=q.strip(),
-                      methodology=methodology_view(request.app.state.editorial.inbox(include_covered=True), grupo, q, METHODOLOGY_OPTIONS))
+                      methodology=methodology_view(request.app.state.editorial.inbox(include_covered=True), grupo, q, METHODOLOGY_OPTIONS),
+                      evaluation=evaluation_view(settings.evaluation_directory))
 
     @app.get("/groups/{group_id}", response_class=HTMLResponse)
     def group(request: Request, group_id: str):

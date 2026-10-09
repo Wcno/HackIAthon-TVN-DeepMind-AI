@@ -21,6 +21,7 @@ class Settings:
     database: Path = field(default_factory=default_database)
     data_directory: Path = DEMO
     output_directory: Path = DEMO
+    evaluation_directory: Path = OUTPUTS / "evaluation"
     static_directory: Path | None = None
     demo: bool = True
     offline: bool = True
@@ -48,6 +49,7 @@ class Settings:
             database=Path(environment.get("WHOAMI_DATABASE", database)),
             data_directory=Path(environment.get("WHOAMI_DATA_DIRECTORY", DEMO if demo else PROCESSED)),
             output_directory=Path(environment.get("WHOAMI_OUTPUT_DIRECTORY", DEMO if demo else OUTPUTS)),
+            evaluation_directory=Path(environment.get("WHOAMI_EVALUATION_DIRECTORY", OUTPUTS / "evaluation")),
             demo=demo,
             offline=environment.get("WHOAMI_OFFLINE", "0" if api_key else "1") == "1",
             gemini_model=environment.get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
