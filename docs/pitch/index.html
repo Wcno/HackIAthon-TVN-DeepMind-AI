@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De la señal a la decisión</title>
+<link rel="icon" href="assets/logo.png">
+<style>
+/* ===========================================
+   FONTS
+   Same Barlow family the app vendors, copied to assets/fonts
+   so the deck works without internet.
+   =========================================== */
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("assets/fonts/barlow-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url("assets/fonts/barlow-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("assets/fonts/barlow-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 700; font-display: swap; src: url("assets/fonts/barlow-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("assets/fonts/barlow-condensed-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 800; font-display: swap; src: url("assets/fonts/barlow-condensed-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url("assets/fonts/barlow-semi-condensed-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; font-display: swap; src: url("assets/fonts/barlow-semi-condensed-700-normal.woff2") format("woff2"); }
+
+/* ===========================================
+   THEME TOKENS
+   Copied from the app @theme (src/whoami/backend/static/src/app.css)
+   =========================================== */
+:root {
+    --navy: #00466f;
+    --navy-deep: #002f4b;
+    --red: #e00710;
+    --ground: #f3f5f9;
+    --white: #ffffff;
+    --ink: #0e1a2b;
+    --ink-2: #3f4d63;
+    --ink-3: #56647a;
+    --line: #e3e8ef;
+    --blue: #0077c8;
+    --blue-soft: #e8f3fb;
+    --yellow: #fec526;
+    --yellow-soft: #fff1c7;
+    --ok: #047857;
+    --ok-soft: #ecfdf5;
+    --warn: #92400e;
+    --warn-soft: #fffbeb;
+    --bad: #be123c;
+    --bad-soft: #fff1f2;
+
+    --font-sans: "Barlow", sans-serif;
+    --font-display: "Barlow Condensed", "Barlow", sans-serif;
+    --font-title: "Barlow Semi Condensed", "Barlow", sans-serif;
+
+    --stage-bg: #0b1622;
+    --slide-bg: var(--ground);
+    --pad-x: 120px;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css, included in full)
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg, #fff); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg, #fff); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+
+/* Print/PDF: one 1920x1080 page per slide, animations at their final state */
+@page { size: 1920px 1080px; margin: 0; }
+@media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .draw path.edge, .cover__signal path { stroke-dashoffset: 0 !important; transition: none !important; }
+    .draw path.edge.dashed { stroke-dasharray: 10 8 !important; }
+    .bar__fill, .cover__dot { transform: none !important; transition: none !important; }
+    .progress, .edit-hotzone, .edit-toggle { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* ===========================================
+   BASE TYPOGRAPHY
+   =========================================== */
+body { font-family: var(--font-sans); color: var(--ink); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+.slide { font-size: 28px; line-height: 1.4; }
+mark { background: var(--yellow-soft); color: var(--ink); border-radius: 4px; padding: 0 4px; }
+
+/* ===========================================
+   SLIDE CHROME
+   The navy "strap" mirrors the app header: logo, product name,
+   section and page number.
+   =========================================== */
+.strap {
+    position: absolute; inset: 0 0 auto 0; height: 88px;
+    display: flex; align-items: center; gap: 24px;
+    padding: 0 var(--pad-x);
+    background: var(--navy); color: var(--white);
+}
+.strap__logo { width: 48px; height: 48px; }
+.strap__name { font-family: var(--font-display); font-weight: 800; font-size: 32px; letter-spacing: 0.02em; }
+.strap__section { margin-left: auto; font-size: 22px; font-weight: 500; color: rgb(255 255 255 / 0.7); }
+.strap__page {
+    display: grid; place-items: center; min-width: 76px; height: 40px; padding: 0 14px;
+    border-radius: 999px; background: var(--yellow); color: var(--ink);
+    font-family: var(--font-display); font-weight: 700; font-size: 24px;
+}
+
+.content { position: absolute; inset: 88px 0 0 0; padding: 64px var(--pad-x) 72px; display: flex; flex-direction: column; }
+.kicker {
+    font-family: var(--font-display); font-weight: 700; font-size: 28px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--blue);
+    display: flex; align-items: center; gap: 14px;
+}
+.kicker::before { content: ""; width: 36px; height: 6px; border-radius: 3px; background: var(--red); }
+.headline {
+    margin-top: 14px; max-width: 1500px;
+    font-family: var(--font-title); font-weight: 700; font-size: 68px; line-height: 1.05;
+    color: var(--ink); text-wrap: balance;
+}
+.lede { margin-top: 18px; max-width: 1300px; font-size: 30px; color: var(--ink-2); }
+.source-note { position: absolute; left: var(--pad-x); bottom: 36px; font-size: 20px; color: var(--ink-3); }
+
+/* ===========================================
+   SHARED COMPONENTS
+   =========================================== */
+.card { background: var(--white); border-radius: 28px; padding: 40px 44px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06), 0 12px 32px -18px rgb(0 70 111 / 0.25); }
+.card h3 { font-family: var(--font-title); font-weight: 700; font-size: 34px; line-height: 1.15; }
+.card p { margin-top: 10px; color: var(--ink-2); font-size: 26px; }
+.card ul { margin-top: 14px; list-style: none; display: grid; gap: 10px; }
+.card li { position: relative; padding-left: 26px; font-size: 25px; color: var(--ink-2); line-height: 1.35; }
+.card li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 10px; height: 10px; border-radius: 50%; background: var(--blue); }
+.card--navy { background: var(--navy); color: var(--white); }
+.card--navy p, .card--navy li { color: rgb(255 255 255 / 0.8); }
+.card--navy li::before { background: var(--yellow); }
+
+.badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 16px; border-radius: 999px; font-size: 20px; font-weight: 600; white-space: nowrap; }
+.badge--ok { background: var(--ok-soft); color: var(--ok); box-shadow: inset 0 0 0 1.5px #a7f3d0; }
+.badge--warn { background: var(--warn-soft); color: var(--warn); box-shadow: inset 0 0 0 1.5px #fde68a; }
+.badge--bad { background: var(--bad-soft); color: var(--bad); box-shadow: inset 0 0 0 1.5px #fecdd3; }
+.badge--navy { background: var(--blue-soft); color: var(--navy); }
+.badge--yellow { background: var(--yellow); color: var(--ink); }
+
+.rank { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--yellow); color: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 30px; flex-shrink: 0; }
+
+/* ===========================================
+   ANIMATIONS
+   .reveal elements fade up when their slide becomes visible.
+   Set --d on an element to stagger it.
+   =========================================== */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo); transition-delay: var(--d, 0s); }
+.slide.visible .reveal { opacity: 1; transform: none; }
+.draw path.edge { stroke-dasharray: var(--len, 1200); stroke-dashoffset: var(--len, 1200); transition: stroke-dashoffset 1.2s var(--ease-out-expo); transition-delay: var(--d, 0.4s); }
+.slide.visible .draw path.edge { stroke-dashoffset: 0; }
+.slide.visible .draw path.edge.dashed { stroke-dasharray: 10 8; }
+.bar__fill { transform-origin: left center; transform: scaleX(0); transition: transform 1.1s var(--ease-out-expo); transition-delay: var(--d, 0.3s); }
+.slide.visible .bar__fill { transform: scaleX(1); }
+
+/* ===========================================
+   01 · COVER
+   =========================================== */
+.cover { background-color: var(--navy); background-image: radial-gradient(1200px 900px at 78% 50%, #0a5f92 0%, var(--navy) 45%, var(--navy-deep) 100%); color: var(--white); }
+.cover__signal { position: absolute; right: 0; top: 0; width: 1100px; height: 1080px; }
+.cover__signal path { fill: none; stroke: rgb(255 255 255 / 0.22); stroke-width: 2; stroke-dasharray: 1400; stroke-dashoffset: 1400; transition: stroke-dashoffset 2.2s var(--ease-out-expo); }
+.cover__signal path.hot { stroke: var(--yellow); stroke-width: 3; }
+.slide.visible .cover__signal path { stroke-dashoffset: 0; }
+.cover__dot { fill: var(--yellow); stroke: var(--navy-deep); stroke-width: 8; transform-box: fill-box; transform-origin: center; transform: scale(0); transition: transform 0.8s var(--ease-out-expo) 1.4s; }
+.slide.visible .cover__dot { transform: scale(1); }
+.cover__inner { position: absolute; left: var(--pad-x); top: 120px; bottom: 110px; width: 1100px; display: flex; flex-direction: column; }
+.cover__brand { display: flex; align-items: center; gap: 22px; }
+.cover__brand img { width: 96px; height: 96px; }
+.cover__brand span { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: 0.02em; }
+.cover__title { margin-top: auto; font-family: var(--font-display); font-weight: 800; font-size: 176px; line-height: 0.9; text-transform: uppercase; letter-spacing: -0.005em; }
+.cover__title em { font-style: normal; color: var(--yellow); }
+.cover__sub { margin-top: 36px; max-width: 980px; font-size: 36px; line-height: 1.35; color: rgb(255 255 255 / 0.82); }
+.cover__meta { margin-top: auto; padding-top: 48px; display: flex; gap: 18px; align-items: center; font-size: 24px; color: rgb(255 255 255 / 0.7); }
+.cover__meta .badge { font-size: 22px; }
+
+/* ===========================================
+   02 · PROBLEM
+   =========================================== */
+.problem { margin-top: 56px; flex: 1; display: grid; grid-template-columns: 1fr 640px; gap: 56px; }
+.pains { display: grid; gap: 22px; align-content: start; }
+.pain { display: grid; grid-template-columns: 290px 1fr; align-items: center; gap: 36px; padding: 30px 40px; background: var(--white); border-radius: 24px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06); }
+.pain__big { white-space: nowrap; font-family: var(--font-display); font-weight: 800; font-size: 68px; line-height: 0.95; color: var(--navy); }
+.pain__big small { display: block; font-size: 26px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+.pain h3 { font-family: var(--font-title); font-size: 34px; font-weight: 700; }
+.pain p { margin-top: 6px; font-size: 26px; color: var(--ink-2); }
+.user-card { display: flex; flex-direction: column; }
+.user-card .badge { align-self: flex-start; }
+.user-card h3 { margin-top: 22px; font-size: 40px; }
+.user-card .q { margin-top: 26px; display: grid; gap: 18px; }
+.user-card .q p { position: relative; margin: 0; padding-left: 30px; font-size: 27px; color: var(--white); }
+.user-card .q p::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 12px; height: 12px; border-radius: 50%; background: var(--yellow); }
+.user-card blockquote { margin-top: auto; padding-top: 28px; border-top: 1px solid rgb(255 255 255 / 0.18); font-family: var(--font-title); font-weight: 600; font-size: 30px; line-height: 1.3; color: var(--white); }
+.user-card cite { display: block; margin-top: 10px; font-family: var(--font-sans); font-style: normal; font-size: 20px; color: rgb(255 255 255 / 0.6); }
+
+/* ===========================================
+   03 · SOLUTION (4 steps with mini mocks of the app)
+   =========================================== */
+.steps { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.step { position: relative; display: flex; flex-direction: column; background: var(--white); border-radius: 28px; padding: 32px 32px 34px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06), 0 12px 32px -18px rgb(0 70 111 / 0.25); }
+.step + .step::before { content: ""; position: absolute; left: -24px; top: 50%; width: 20px; height: 20px; border-top: 4px solid var(--navy); border-right: 4px solid var(--navy); transform: translateY(-50%) rotate(45deg); }
+.step__n { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: 0.12em; color: var(--red); }
+.step h3 { margin-top: 4px; font-family: var(--font-title); font-weight: 700; font-size: 36px; }
+.step p { margin-top: 8px; font-size: 24px; color: var(--ink-2); line-height: 1.35; }
+.mock { margin-top: 24px; height: 236px; border-radius: 18px; background: var(--ground); padding: 22px; display: flex; flex-direction: column; gap: 14px; font-size: 20px; }
+.mock__row { display: flex; align-items: center; gap: 14px; background: var(--white); border-radius: 14px; padding: 12px 14px; }
+.mock__row .rank { width: 40px; height: 40px; font-size: 22px; }
+.mock__row .rank.dim { background: var(--white); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--navy); }
+.mock__lines { flex: 1; display: grid; gap: 7px; }
+.ln { height: 10px; border-radius: 5px; background: #d5dde7; }
+.ln.s { width: 60%; }
+.mock__score { font-family: var(--font-display); font-weight: 700; font-size: 32px; color: var(--navy); }
+.scorebar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }
+.scorebar i { display: block; height: 100%; }
+.mock__quote { background: var(--white); border-radius: 14px; padding: 14px 16px; line-height: 1.45; color: var(--ink-2); }
+.mock__quote b { font-weight: 600; color: var(--ink); }
+.mock__cite { margin-top: 6px; font-size: 17px; color: var(--blue); font-weight: 600; }
+.mock__draft { background: var(--white); border-radius: 14px; padding: 16px; flex: 1; display: grid; gap: 9px; align-content: start; }
+.mock__draft .t { height: 16px; border-radius: 6px; background: var(--navy); width: 85%; }
+.mock__states { display: grid; gap: 10px; align-content: center; flex: 1; }
+.mock__states .badge { justify-self: start; font-size: 19px; }
+.mock > .badge { align-self: flex-start; font-size: 19px; }
+.formula { margin-top: 36px; display: flex; align-items: center; gap: 28px; padding: 26px 44px; border-radius: 24px; background: var(--navy); color: var(--white); }
+.formula__eq { font-family: var(--font-display); font-weight: 700; font-size: 40px; letter-spacing: 0.02em; white-space: nowrap; }
+.formula__eq b { color: var(--yellow); }
+.formula__txt { font-size: 25px; color: rgb(255 255 255 / 0.8); }
+.formula__claim { margin-left: auto; font-family: var(--font-title); font-weight: 700; font-size: 32px; white-space: nowrap; color: var(--yellow); }
+
+/* ===========================================
+   04 · DATA
+   =========================================== */
+.stats { margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.stat { --accent: var(--navy); background: var(--white); border-radius: 28px; padding: 40px 40px 36px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06); }
+.stat::before { content: ""; display: block; width: 56px; height: 8px; margin-bottom: 22px; border-radius: 4px; background: var(--accent); }
+.stat:nth-child(2) { --accent: var(--blue); }
+.stat:nth-child(3) { --accent: var(--yellow); }
+.stat:nth-child(4) { --accent: var(--red); }
+.stat__n { font-family: var(--font-display); font-weight: 800; font-size: 104px; line-height: 0.95; color: var(--navy); }
+.stat__label { margin-top: 10px; font-family: var(--font-title); font-weight: 700; font-size: 32px; }
+.stat__sub { margin-top: 10px; font-size: 23px; color: var(--ink-3); line-height: 1.35; }
+.guarantees { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.guarantee { display: flex; gap: 20px; align-items: flex-start; padding: 28px 32px; border-radius: 22px; background: var(--blue-soft); }
+.guarantee svg { width: 40px; height: 40px; flex-shrink: 0; color: var(--navy); }
+.guarantee h3 { font-family: var(--font-title); font-weight: 700; font-size: 28px; color: var(--navy); }
+.guarantee p { margin-top: 4px; font-size: 23px; color: var(--ink-2); line-height: 1.35; }
+
+/* ===========================================
+   DIAGRAMS (slides 05, 06, 10)
+   Rebuilt as inline SVG in the app palette.
+   =========================================== */
+.diagram { margin-top: 36px; flex: 1; min-height: 0; }
+.diagram svg { width: 100%; height: 100%; overflow: visible; }
+.node rect { stroke-width: 2.5; }
+.node .t { font-family: var(--font-title); font-weight: 700; font-size: 25px; fill: var(--ink); }
+.node .s { font-family: var(--font-sans); font-weight: 500; font-size: 18px; fill: var(--ink-3); }
+.n-src rect { fill: var(--white); stroke: #b9c3d0; }
+.n-store rect { fill: var(--blue-soft); stroke: var(--navy); }
+.n-ai rect { fill: var(--white); stroke: var(--blue); }
+.n-cloud rect { fill: var(--yellow-soft); stroke: #d99a00; }
+.n-ctrl rect { fill: var(--bad-soft); stroke: var(--red); }
+.n-out rect { fill: var(--navy); stroke: var(--navy); }
+.n-out .t { fill: var(--white); }
+.n-out .s { fill: rgb(255 255 255 / 0.75); }
+.n-ok rect { fill: var(--ok-soft); stroke: var(--ok); }
+.n-gray rect { fill: #eef1f5; stroke: #9aa6b6; }
+.edge { fill: none; stroke: var(--navy); stroke-width: 3; marker-end: url(#ah-navy); }
+.edge.soft { stroke: #8a97a8; marker-end: url(#ah-soft); }
+.edge.risk { stroke: var(--red); marker-end: url(#ah-red); }
+.edge.ai { stroke: var(--blue); marker-end: url(#ah-blue); }
+.edge.dashed { stroke-dasharray: 10 8; }
+.elabel { font-family: var(--font-sans); font-weight: 600; font-size: 18px; fill: var(--ink-2); paint-order: stroke; stroke: var(--ground); stroke-width: 8px; stroke-linejoin: round; }
+.elabel.risk { fill: var(--red); }
+.colhead { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--ink-3); }
+.lane { fill: rgb(255 255 255 / 0.55); stroke: var(--line); stroke-width: 2; }
+.lane.risk { fill: rgb(255 241 242 / 0.6); stroke: #fecdd3; stroke-dasharray: 8 6; }
+.legend { margin-top: 18px; display: flex; gap: 34px; font-size: 21px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 10px; }
+.legend i { width: 26px; height: 18px; border-radius: 5px; border: 2.5px solid; display: inline-block; }
+
+/* 06 · anti-hallucination cards */
+.rules3 { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.rules3 .card { padding: 28px 34px; }
+.rules3 .card h3 { font-size: 29px; }
+.rules3 .card li { font-size: 22px; }
+
+/* 10 · review layout */
+.review { margin-top: 36px; flex: 1; display: grid; grid-template-columns: 1fr 520px; gap: 48px; min-height: 0; }
+.review .diagram { margin-top: 0; }
+.review__cards { display: grid; gap: 20px; align-content: start; }
+.review__cards .card { padding: 28px 32px; }
+.review__cards .card h3 { font-size: 30px; }
+.review__cards .card p { font-size: 23px; }
+
+/* ===========================================
+   07 · BASELINE VS AI
+   =========================================== */
+.compare { margin-top: 28px; flex: 1; display: grid; grid-template-columns: 1fr 560px; gap: 56px; }
+.metrics { display: grid; gap: 16px; align-content: start; }
+.metric { background: var(--white); border-radius: 24px; padding: 20px 40px 22px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06); }
+.metric__head { display: flex; align-items: baseline; justify-content: space-between; }
+.metric h3 { font-family: var(--font-title); font-weight: 700; font-size: 30px; }
+.metric h3 small { margin-left: 10px; font-family: var(--font-sans); font-weight: 600; font-size: 19px; color: var(--ink-3); }
+.glossary { margin-top: 22px; display: flex; gap: 40px; }
+.glossary p { font-size: 25px; color: var(--ink-2); line-height: 1.35; }
+.glossary b { color: var(--navy); font-weight: 700; }
+.metric__gain { font-family: var(--font-display); font-weight: 800; font-size: 34px; color: var(--ok); }
+.bar { margin-top: 8px; display: grid; grid-template-columns: 330px 1fr 110px; align-items: center; gap: 20px; font-size: 22px; color: var(--ink-2); }
+.bar__track { height: 26px; border-radius: 13px; background: var(--ground); overflow: hidden; }
+.bar__fill { height: 100%; border-radius: 13px; background: #9aa6b6; }
+.bar--ai .bar__fill { background: var(--navy); }
+.bar--ai { color: var(--ink); font-weight: 600; }
+.bar__v { font-family: var(--font-display); font-weight: 700; font-size: 32px; text-align: right; color: var(--ink-2); }
+.bar--ai .bar__v { color: var(--navy); }
+
+/* ===========================================
+   08 · MEASURED RESULTS
+   =========================================== */
+.tiles { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.tile { background: var(--white); border-radius: 26px; padding: 32px 38px; box-shadow: 0 1px 3px rgb(0 70 111 / 0.06); display: grid; grid-template-columns: auto 1fr; column-gap: 28px; align-items: center; }
+.tile__n { grid-row: span 2; font-family: var(--font-display); font-weight: 800; font-size: 96px; line-height: 0.9; color: var(--navy); }
+.tile__n small { font-size: 56px; color: var(--ink-3); }
+.tile h3 { font-family: var(--font-title); font-weight: 700; font-size: 30px; line-height: 1.15; align-self: end; }
+.tile p { margin-top: 6px; font-size: 21px; color: var(--ink-3); line-height: 1.3; align-self: start; }
+.ribbon { margin-top: 32px; display: flex; align-items: center; gap: 44px; padding: 26px 44px; border-radius: 24px; background: var(--navy); color: var(--white); font-size: 25px; }
+.ribbon b { font-family: var(--font-display); font-weight: 800; font-size: 40px; color: var(--yellow); margin-right: 10px; }
+
+/* ===========================================
+   09 · VALUE
+   =========================================== */
+.value { margin-top: 48px; flex: 1; display: grid; grid-template-columns: 1fr 680px; gap: 56px; }
+.hypo { background: var(--navy); color: var(--white); border-radius: 30px; padding: 48px 56px; display: flex; flex-direction: column; }
+.hypo .badge { align-self: flex-start; }
+.hypo__text { margin-top: 26px; font-family: var(--font-title); font-weight: 700; font-size: 46px; line-height: 1.15; text-wrap: balance; }
+.hypo__text em { font-style: normal; color: var(--yellow); }
+.hypo__points { margin-top: auto; display: grid; gap: 18px; }
+.hypo__points div { display: flex; gap: 18px; align-items: center; font-size: 26px; color: rgb(255 255 255 / 0.88); }
+.hypo__points .rank { width: 46px; height: 46px; font-size: 24px; }
+.protocol ol { margin-top: 18px; list-style: none; display: grid; gap: 16px; counter-reset: p; }
+.protocol li { counter-increment: p; display: grid; grid-template-columns: 44px 1fr; gap: 16px; padding-left: 0; font-size: 24px; color: var(--ink-2); line-height: 1.35; }
+.protocol li::before { position: static; content: counter(p); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--blue-soft); color: var(--navy); font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+
+/* ===========================================
+   11 · LIMITS AND NEXT STEPS
+   =========================================== */
+.two { margin-top: 48px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.two .card { padding: 40px 48px; }
+.two .card h3 { display: flex; align-items: center; gap: 16px; font-size: 38px; }
+.two .card ul { gap: 22px; margin-top: 28px; }
+.two .card li { font-size: 28px; }
+.two .card li b { color: var(--ink); font-weight: 600; }
+.two .card--limits li::before { background: var(--red); }
+.two .card--navy li b { color: var(--white); }
+
+/* ===========================================
+   12 · CLOSING
+   =========================================== */
+.closing { background-color: var(--navy); background-image: radial-gradient(1100px 800px at 50% 40%, #0a5f92 0%, var(--navy) 50%, var(--navy-deep) 100%); color: var(--white); }
+.closing__inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.closing__inner img { width: 150px; height: 150px; }
+.closing__line { margin-top: 44px; font-family: var(--font-display); font-weight: 800; font-size: 150px; line-height: 0.95; text-transform: uppercase; }
+.closing__line em { font-style: normal; color: var(--yellow); }
+.closing__links { margin-top: 56px; display: flex; gap: 22px; }
+.closing__links span { padding: 14px 28px; border-radius: 999px; background: rgb(255 255 255 / 0.1); font-size: 26px; font-weight: 500; }
+
+/* ===========================================
+   DECK CHROME (outside the stage)
+   =========================================== */
+.progress { position: fixed; left: 0; bottom: 0; width: 100%; height: 4px; background: var(--yellow); z-index: 1000; transform-origin: left center; transform: scaleX(0); transition: transform 0.4s var(--ease-out-expo); }
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle { position: fixed; top: 16px; left: 16px; z-index: 10001; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--yellow); color: var(--ink); font-size: 22px; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+body.editing [contenteditable="true"] { outline: 2px dashed rgb(0 119 200 / 0.5); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<div class="edit-hotzone" aria-hidden="true"></div>
+<button class="edit-toggle" id="editToggle" title="Modo edición (E)" aria-label="Modo edición">✎</button>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <marker id="ah-navy" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#00466f"/></marker>
+    <marker id="ah-soft" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a97a8"/></marker>
+    <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0077c8"/></marker>
+    <marker id="ah-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#e00710"/></marker>
+</defs></svg>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ======================= 01 · COVER ======================= -->
+<section class="slide cover active" aria-label="Portada">
+    <svg class="cover__signal" viewBox="820 0 1100 1080" aria-hidden="true">
+        <!-- Scattered signals converge into one decision point -->
+        <path d="M1920 60 C1700 120 1450 400 1260 540"/>
+        <path d="M1920 200 C1750 240 1500 440 1260 540"/>
+        <path d="M1920 340 C1800 360 1550 480 1260 540"/>
+        <path class="hot" d="M1920 520 C1800 520 1500 540 1260 540"/>
+        <path d="M1920 700 C1800 700 1550 600 1260 540"/>
+        <path d="M1920 860 C1750 840 1500 640 1260 540"/>
+        <path d="M1920 1020 C1700 960 1450 700 1260 540"/>
+        <circle class="cover__dot" cx="1260" cy="540" r="24"/>
+    </svg>
+    <div class="cover__inner">
+        <div class="cover__brand reveal" style="--d:.1s"><img src="assets/logo.png" alt=""><span>TVN DeepMind AI</span></div>
+        <h1 class="cover__title reveal" style="--d:.25s">De la señal<br>a la <em>decisión</em></h1>
+        <p class="cover__sub reveal" style="--d:.4s">Un copiloto editorial que prioriza temas, cita cada afirmación y se abstiene cuando no hay evidencia. Nunca publica.</p>
+        <div class="cover__meta reveal" style="--d:.55s"><span class="badge badge--yellow">hackIAthon · Reto TVN Media</span><span>Modalidad editorial</span><span>·</span><span>Octubre 2026</span></div>
+    </div>
+</section>
+
+<!-- ======================= 02 · PROBLEM ======================= -->
+<section class="slide" aria-label="El problema">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Problema y usuario</span><span class="strap__page">02/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">El problema</div>
+        <h2 class="headline reveal" style="--d:.1s">Las noticias llegan dispersas, repetidas y sin contexto</h2>
+        <div class="problem">
+            <div class="pains">
+                <div class="pain reveal" style="--d:.2s"><div class="pain__big"><small>Dispersas</small>12 fuentes</div><div><h3>Cada una publica por su lado</h3><p>Medios, ministerios y entidades. Revisarlas a mano para encontrar lo que TVN no tiene toma horas.</p></div></div>
+                <div class="pain reveal" style="--d:.3s"><div class="pain__big"><small>Repetidas</small>5 = 1</div><div><h3>Repetir no es confirmar</h3><p>Cinco medios que replican la misma agencia son una sola fuente, no cinco.</p></div></div>
+                <div class="pain reveal" style="--d:.4s"><div class="pain__big"><small>Sin contexto</small>¿Cuándo?</div><div><h3>Una cifra sin período engaña</h3><p>Sin fuente, fecha y alcance, un dato no sirve para informar.</p></div></div>
+            </div>
+            <aside class="card card--navy user-card reveal" style="--d:.35s">
+                <span class="badge badge--yellow">Usuario</span>
+                <h3>Editor/a de TVN que arma la agenda del día</h3>
+                <div class="q">
+                    <p>¿Qué publican otros que TVN todavía no?</p>
+                    <p>¿Qué está respaldado y qué falta verificar?</p>
+                    <p>¿Por qué este tema va antes que aquel?</p>
+                </div>
+                <blockquote>"La circulación de una noticia no equivale a su confirmación."<cite>Reto TVN Media, sección 2</cite></blockquote>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 03 · SOLUTION ======================= -->
+<section class="slide" aria-label="La solución">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Solución</span><span class="strap__page">03/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">La solución</div>
+        <h2 class="headline reveal" style="--d:.1s">De la noticia dispersa al borrador revisado</h2>
+        <div class="steps">
+            <article class="step reveal" style="--d:.2s">
+                <span class="step__n">01</span><h3>Bandeja priorizada</h3><p>Temas que TVN aún no cubre, ordenados de 0 a 100.</p>
+                <div class="mock" aria-hidden="true">
+                    <div class="mock__row"><span class="rank">1</span><div class="mock__lines"><span class="ln"></span><div class="scorebar"><i style="width:30%;background:var(--navy)"></i><i style="width:22%;background:var(--blue)"></i><i style="width:16%;background:#3d9ad8"></i><i style="width:10%;background:#8cc6ec"></i><i style="width:8%;background:#cfe6f6"></i></div></div></div>
+                    <div class="mock__row"><span class="rank dim">2</span><div class="mock__lines"><span class="ln"></span><span class="ln s"></span></div></div>
+                    <div class="mock__row"><span class="rank dim">3</span><div class="mock__lines"><span class="ln"></span><span class="ln s"></span></div></div>
+                </div>
+            </article>
+            <article class="step reveal" style="--d:.3s">
+                <span class="step__n">02</span><h3>Ficha de evidencia</h3><p>Cada afirmación con su cita literal, fecha y fuente.</p>
+                <div class="mock" aria-hidden="true">
+                    <div class="mock__quote"><mark>texto copiado de la fuente</mark>, no parafraseado.<div class="mock__cite">Fuente · fecha · período</div></div>
+                    <span class="badge badge--ok">Suficiente para el borrador</span>
+                </div>
+            </article>
+            <article class="step reveal" style="--d:.4s">
+                <span class="step__n">03</span><h3>Borrador</h3><p>Titular, resumen web y guion listos para editar.</p>
+                <div class="mock" aria-hidden="true">
+                    <div class="mock__draft"><span class="t"></span><span class="ln"></span><span class="ln"></span><span class="ln s"></span><span class="ln"></span><span class="ln s"></span></div>
+                </div>
+            </article>
+            <article class="step reveal" style="--d:.5s">
+                <span class="step__n">04</span><h3>Revisión humana</h3><p>Una persona decide. Aprobar no publica.</p>
+                <div class="mock" aria-hidden="true">
+                    <div class="mock__states">
+                        <span class="badge badge--navy">En revisión</span>
+                        <span class="badge badge--warn">Requiere evidencia</span>
+                        <span class="badge badge--ok">Aprobado como borrador</span>
+                        <span class="badge badge--bad">Descartado</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+        <div class="formula reveal" style="--d:.6s">
+            <span class="formula__eq">P = <b>30</b>R + <b>25</b>I + <b>20</b>U + <b>15</b>N + <b>10</b>E</span>
+            <span class="formula__txt">Relevancia, impacto, urgencia, novedad y evidencia. Cada tema muestra sus componentes.</span>
+            <span class="formula__claim">Prioriza y redacta. No publica.</span>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 04 · DATA ======================= -->
+<section class="slide" aria-label="Datos públicos">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Alcance y datos</span><span class="strap__page">04/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Datos públicos</div>
+        <h2 class="headline reveal" style="--d:.1s">Solo fuentes públicas, congeladas y reproducibles</h2>
+        <div class="stats">
+            <div class="stat reveal" style="--d:.2s"><div class="stat__n">3.176</div><div class="stat__label">noticias</div><div class="stat__sub">Últimos 30 días. 2.728 de TVN y 448 de otros medios e instituciones.</div></div>
+            <div class="stat reveal" style="--d:.3s"><div class="stat__n">12</div><div class="stat__label">fuentes de noticias</div><div class="stat__sub">TVN, Telemetro, La Prensa, Panamá América, Día a Día, RPC TV y 6 instituciones (Sinaproc, MEF, MICI, ACP, AMP, ATP).</div></div>
+            <div class="stat reveal" style="--d:.4s"><div class="stat__n">684</div><div class="stat__label">datos oficiales</div><div class="stat__sub">Banco Mundial 2010-2024 e INEC (IPC y PIB trimestral), cada uno con su período y unidad.</div></div>
+            <div class="stat reveal" style="--d:.5s"><div class="stat__n">88</div><div class="stat__label">sismos</div><div class="stat__sub">Catálogo USGS desde el 2 de octubre de 2025.</div></div>
+        </div>
+        <div class="guarantees">
+            <div class="guarantee reveal" style="--d:.6s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg><div><h3>Snapshot verificable</h3><p>Manifest con URL, fecha y sha256 de cada archivo descargado.</p></div></div>
+            <div class="guarantee reveal" style="--d:.7s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8a15 15 0 0 0-11.3-3.7"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><circle cx="12" cy="20" r="1"/></svg><div><h3>Funciona sin internet</h3><p>Embeddings, grupos, puntajes, fichas y consultas precalculados (T10).</p></div></div>
+            <div class="guarantee reveal" style="--d:.8s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg><div><h3>Derechos registrados</h3><p>Condiciones de reutilización por fuente. Solo titulares, extractos y enlaces.</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 05 · FLOW DIAGRAM ======================= -->
+<section class="slide" aria-label="Flujo de la app">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Arquitectura</span><span class="strap__page">05/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Arquitectura</div>
+        <h2 class="headline reveal" style="--d:.1s">IA local donde aporta, una persona donde se decide</h2>
+        <div class="diagram draw reveal" style="--d:.2s">
+            <svg viewBox="0 -10 1680 740" role="img" aria-label="Flujo desde las fuentes públicas hasta la revisión humana">
+                <text class="colhead" x="0" y="30">01 Fuentes</text>
+                <text class="colhead" x="345" y="30">02 Snapshot</text>
+                <text class="colhead" x="690" y="30">03 Análisis</text>
+                <text class="colhead" x="1035" y="30">04 Priorización</text>
+                <text class="colhead" x="1380" y="30">05 Decisión</text>
+
+                <!-- edges (drawn first so nodes sit on top) -->
+                <path class="edge soft" d="M280 148 H485 V256" style="--len:320;--d:.5s"/>
+                <path class="edge soft" d="M280 308 H341" style="--len:70;--d:.5s"/>
+                <path class="edge soft" d="M280 488 H312 V330 H341" style="--len:260;--d:.5s"/>
+                <path class="edge soft" d="M280 668 H341" style="--len:70;--d:.5s"/>
+                <path class="edge ai" d="M485 356 V436" style="--len:90;--d:.7s"/>
+                <path class="edge soft dashed" d="M625 308 H686" style="--len:70;--d:.8s"/>
+                <path class="edge ai" d="M625 488 H686" style="--len:70;--d:.8s"/>
+                <path class="edge soft" d="M625 668 H686" style="--len:70;--d:.8s"/>
+                <path class="edge ai dashed" d="M830 440 V360" style="--len:90;--d:1s"/>
+                <path class="edge soft" d="M830 536 V616" style="--len:90;--d:1s"/>
+                <path class="edge" d="M970 488 H1031" style="--len:70;--d:1.2s"/>
+                <path class="edge soft dashed" d="M970 290 H995 V470 H1031" style="--len:260;--d:1.2s"/>
+                <path class="edge soft" d="M970 668 H1012 V510 H1031" style="--len:240;--d:1.2s"/>
+                <path class="edge" d="M1175 440 V360" style="--len:90;--d:1.4s"/>
+                <path class="edge risk dashed" d="M1175 196 V256" style="--len:70;--d:1.4s"/>
+                <path class="edge" d="M1315 308 H1376" style="--len:70;--d:1.6s"/>
+                <path class="edge risk dashed" d="M1520 356 V436" style="--len:90;--d:1.7s"/>
+
+                <!-- edge labels -->
+                <text class="elabel" x="395" y="138">notas TVN</text>
+                <text class="elabel" x="495" y="404">texto</text>
+                <text class="elabel" x="840" y="406">¿ya en TVN?</text>
+                <text class="elabel" x="840" y="584">tema + fecha</text>
+                <text class="elabel" x="1185" y="406">temas nuevos</text>
+                <text class="elabel risk" x="1185" y="232">afirmaciones</text>
+                <text class="elabel risk" x="1530" y="404">decisión</text>
+
+                <!-- column 1: sources -->
+                <g class="node n-src"><rect x="0" y="100" width="280" height="96" rx="18"/><text class="t" x="24" y="141">Archivo TVN</text><text class="s" x="24" y="172">sitemap + fecha</text></g>
+                <g class="node n-src"><rect x="0" y="260" width="280" height="96" rx="18"/><text class="t" x="24" y="301">Otros medios</text><text class="s" x="24" y="332">RSS, sitemaps, GDELT</text></g>
+                <g class="node n-src"><rect x="0" y="440" width="280" height="96" rx="18"/><text class="t" x="24" y="481">Comunicados</text><text class="s" x="24" y="512">Sinaproc, MEF, ACP</text></g>
+                <g class="node n-src"><rect x="0" y="620" width="280" height="96" rx="18"/><text class="t" x="24" y="661">Datos oficiales</text><text class="s" x="24" y="692">Banco Mundial, INEC, USGS</text></g>
+                <!-- column 2: snapshot and embeddings -->
+                <g class="node n-store"><rect x="345" y="260" width="280" height="96" rx="18"/><text class="t" x="369" y="301">Snapshot</text><text class="s" x="369" y="332">noticias.csv + manifest</text></g>
+                <g class="node n-ai"><rect x="345" y="440" width="280" height="96" rx="18"/><text class="t" x="369" y="481">EmbeddingGemma</text><text class="s" x="369" y="512">local, ONNX</text></g>
+                <g class="node n-store"><rect x="345" y="620" width="280" height="96" rx="18"/><text class="t" x="369" y="661">Evidencia oficial</text><text class="s" x="369" y="692">valor, período, unidad</text></g>
+                <!-- column 3: analysis -->
+                <g class="node n-ai"><rect x="690" y="260" width="280" height="96" rx="18"/><text class="t" x="714" y="301">Cobertura TVN</text><text class="s" x="714" y="332">similitud ≥ 0,90</text></g>
+                <g class="node n-ai"><rect x="690" y="440" width="280" height="96" rx="18"/><text class="t" x="714" y="481">Agrupación</text><text class="s" x="714" y="512">mismo evento</text></g>
+                <g class="node n-src"><rect x="690" y="620" width="280" height="96" rx="18"/><text class="t" x="714" y="661">Contexto oficial</text><text class="s" x="714" y="692">cifra con su período</text></g>
+                <!-- column 4: prioritization and generation -->
+                <g class="node n-cloud"><rect x="1035" y="100" width="280" height="96" rx="18"/><text class="t" x="1059" y="141">Gemini</text><text class="s" x="1059" y="172">solo propone</text></g>
+                <g class="node n-ctrl"><rect x="1035" y="260" width="280" height="96" rx="18"/><text class="t" x="1059" y="301">Ficha verificada</text><text class="s" x="1059" y="332">citas + borrador</text></g>
+                <g class="node n-out"><rect x="1035" y="440" width="280" height="96" rx="18"/><text class="t" x="1059" y="481">Bandeja priorizada</text><text class="s" x="1059" y="512">puntaje 0-100</text></g>
+                <!-- column 5: human decision -->
+                <g class="node n-ctrl"><rect x="1380" y="260" width="280" height="96" rx="18"/><text class="t" x="1404" y="301">Revisión humana</text><text class="s" x="1404" y="332">nada se publica</text></g>
+                <g class="node n-store"><rect x="1380" y="440" width="280" height="96" rx="18"/><text class="t" x="1404" y="481">Historial auditado</text><text class="s" x="1404" y="512">SQLite por versión</text></g>
+            </svg>
+        </div>
+        <div class="legend reveal" style="--d:.4s">
+            <span><i style="border-color:var(--blue)"></i>IA local (embeddings)</span>
+            <span><i style="border-color:#d99a00;background:var(--yellow-soft)"></i>Modelo en la nube</span>
+            <span><i style="border-color:var(--red);background:var(--bad-soft)"></i>Control y decisión</span>
+            <span><i style="border-color:var(--navy);background:var(--blue-soft)"></i>Almacén de datos</span>
+            <span><i style="border-color:#b9c3d0"></i>Fuente o regla en código</span>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 06 · ANTI-HALLUCINATION ======================= -->
+<section class="slide" aria-label="Cadena anti-alucinación">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Arquitectura</span><span class="strap__page">06/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Cadena anti-alucinación</div>
+        <h2 class="headline reveal" style="--d:.1s">Gemini solo propone. El código decide qué sobrevive.</h2>
+        <div class="diagram draw reveal" style="--d:.2s">
+            <svg viewBox="0 0 1680 440" role="img" aria-label="De la consulta a la respuesta citada, con abstención y descarte">
+                <rect class="lane risk" x="0" y="300" width="1680" height="140" rx="22"/>
+                <text class="colhead" x="24" y="336" style="fill:var(--red)">Abstención o descarte</text>
+
+                <path class="edge soft" d="M240 100 H281" style="--len:50;--d:.5s"/>
+                <path class="edge" d="M525 100 H566" style="--len:50;--d:.7s"/>
+                <path class="edge ai" d="M810 100 H851" style="--len:50;--d:.9s"/>
+                <path class="edge" d="M1095 100 H1136" style="--len:50;--d:1.1s"/>
+                <path class="edge" d="M1380 100 H1421" style="--len:50;--d:1.3s"/>
+                <path class="edge risk dashed" d="M403 150 V350" style="--len:210;--d:1.5s"/>
+                <path class="edge risk dashed" d="M1258 150 V350" style="--len:210;--d:1.5s"/>
+                <text class="elabel risk" x="415" y="252">sin evidencia: no se llama al modelo</text>
+                <text class="elabel risk" x="1270" y="252">falla una regla</text>
+
+                <g class="node n-src"><rect x="0" y="50" width="240" height="100" rx="18"/><text class="t" x="22" y="92">Consulta o tema</text><text class="s" x="22" y="124">caja o bandeja</text></g>
+                <g class="node n-ctrl"><rect x="285" y="50" width="240" height="100" rx="18"/><text class="t" x="307" y="92">Puerta previa</text><text class="s" x="307" y="124">similitud ≥ 0,62</text></g>
+                <g class="node n-ctrl"><rect x="570" y="50" width="240" height="100" rx="18"/><text class="t" x="592" y="92">Fuentes como dato</text><text class="s" x="592" y="124">&lt; &gt; neutralizados</text></g>
+                <g class="node n-cloud"><rect x="855" y="50" width="240" height="100" rx="18"/><text class="t" x="877" y="92">Gemini propone</text><text class="s" x="877" y="124">afirmaciones + citas</text></g>
+                <g class="node n-ctrl"><rect x="1140" y="50" width="240" height="100" rx="18"/><text class="t" x="1162" y="92">Verificador</text><text class="s" x="1162" y="124">determinista</text></g>
+                <g class="node n-ok"><rect x="1425" y="50" width="255" height="100" rx="18"/><text class="t" x="1447" y="92">Respuesta citada</text><text class="s" x="1447" y="124">o ficha + borrador</text></g>
+                <g class="node n-gray"><rect x="285" y="354" width="360" height="70" rx="16"/><text class="t" x="307" y="398">Abstenerse y decir qué falta</text></g>
+                <g class="node n-gray"><rect x="1140" y="354" width="360" height="70" rx="16"/><text class="t" x="1162" y="398">Descartar con motivo</text></g>
+            </svg>
+        </div>
+        <div class="rules3">
+            <div class="card reveal" style="--d:.5s"><h3>El verificador descarta</h3><ul><li>Citas que no son copia literal</li><li>Cifras ausentes en lo citado</li><li>Datos oficiales sin período</li><li>Acusaciones presentadas como hecho</li></ul></div>
+            <div class="card reveal" style="--d:.6s"><h3>Anti-inyección (T07)</h3><ul><li>Reglas solo en el mensaje de sistema</li><li>Fuentes y consulta van dentro de etiquetas</li><li>Una fuente no puede cerrar su etiqueta ni dar órdenes</li></ul></div>
+            <div class="card reveal" style="--d:.7s"><h3>Abstención (T06)</h3><ul><li>Sin fuente parecida, no se llama al modelo</li><li>Si nada sobrevive, no hay ficha ni respuesta</li><li>La app explica qué evidencia falta</li></ul></div>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 07 · BASELINE VS AI ======================= -->
+<section class="slide" aria-label="Línea base frente a IA">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Uso de IA y línea base</span><span class="strap__page">07/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Línea base frente a IA</div>
+        <h2 class="headline reveal" style="--d:.1s">La IA mejora donde fallan las palabras clave</h2>
+        <div class="glossary reveal" style="--d:.15s">
+            <p><b>Línea base · BM25:</b> busca las palabras exactas, como un buscador clásico.</p>
+            <p><b>IA · embeddings:</b> comparan el significado, aunque las notas usen palabras distintas.</p>
+        </div>
+        <div class="compare">
+            <div class="metrics">
+                <div class="metric reveal" style="--d:.2s">
+                    <div class="metric__head"><h3>Agrupar notas del mismo evento <small>F1</small></h3><span class="metric__gain">+0,40</span></div>
+                    <div class="bar"><span>Palabras exactas</span><div class="bar__track"><div class="bar__fill" style="width:31.67%;--d:.4s"></div></div><span class="bar__v">0,32</span></div>
+                    <div class="bar bar--ai"><span>Por significado</span><div class="bar__track"><div class="bar__fill" style="width:72.15%;--d:.5s"></div></div><span class="bar__v">0,72</span></div>
+                </div>
+                <div class="metric reveal" style="--d:.3s">
+                    <div class="metric__head"><h3>Clasificar el tema <small>macro-F1</small></h3><span class="metric__gain">+0,35</span></div>
+                    <div class="bar"><span>Palabras exactas</span><div class="bar__track"><div class="bar__fill" style="width:45.13%;--d:.6s"></div></div><span class="bar__v">0,45</span></div>
+                    <div class="bar bar--ai"><span>Por significado</span><div class="bar__track"><div class="bar__fill" style="width:80.35%;--d:.7s"></div></div><span class="bar__v">0,80</span></div>
+                </div>
+                <div class="metric reveal" style="--d:.4s">
+                    <div class="metric__head"><h3>Encontrar la evidencia correcta <small>Recall@8</small></h3><span class="metric__gain">+2,6 pts</span></div>
+                    <div class="bar"><span>Palabras exactas</span><div class="bar__track"><div class="bar__fill" style="width:97.37%;--d:.8s"></div></div><span class="bar__v">97,4%</span></div>
+                    <div class="bar bar--ai"><span>Palabras + significado</span><div class="bar__track"><div class="bar__fill" style="width:100%;--d:.9s"></div></div><span class="bar__v">100%</span></div>
+                </div>
+            </div>
+            <aside class="card reveal" style="--d:.5s">
+                <span class="badge badge--warn">Lo que cuesta</span>
+                <h3 style="margin-top:20px">No usamos IA para todo</h3>
+                <ul>
+                    <li><b style="color:var(--ink)">Buscar por palabras es unas 10 veces más rápido</b>: 6,8 ms frente a 70 ms, y ya encuentra casi toda la evidencia.</li>
+                    <li><b style="color:var(--ink)">Agrupar por palabras se equivoca menos</b> (0,95 frente a 0,66), pero solo encuentra 19% de las notas repetidas. Por significado llega a 79%.</li>
+                    <li>Etiquetas revisadas por personas, pero del set de desarrollo: no es una prueba independiente.</li>
+                </ul>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 08 · MEASURED RESULTS ======================= -->
+<section class="slide" aria-label="Métricas observadas">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Métricas</span><span class="strap__page">08/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Métricas observadas</div>
+        <h2 class="headline reveal" style="--d:.1s">Medido con 40 consultas y revisión humana</h2>
+        <div class="tiles">
+            <div class="tile reveal" style="--d:.2s"><div class="tile__n">37<small>/40</small></div><h3>Consultas correctas</h3><p>92,5% del benchmark de desarrollo</p></div>
+            <div class="tile reveal" style="--d:.25s"><div class="tile__n">7<small>/7</small></div><h3>Abstenciones correctas</h3><p>Sin evidencia, no inventa respuesta</p></div>
+            <div class="tile reveal" style="--d:.3s"><div class="tile__n">6<small>/6</small></div><h3>Ataques resistidos</h3><p>Inyección y abuso del agente</p></div>
+            <div class="tile reveal" style="--d:.35s"><div class="tile__n">41<small>/41</small></div><h3>Citas literales</h3><p>Cada afirmación de las fichas</p></div>
+            <div class="tile reveal" style="--d:.4s"><div class="tile__n">39<small>/41</small></div><h3>Afirmaciones respaldadas</h3><p>Según revisión humana; 2 quedaron dudosas</p></div>
+            <div class="tile reveal" style="--d:.45s"><div class="tile__n">4<small>/5</small></div><h3>Precision@5</h3><p>Frente a la elección a ciegas de un editor</p></div>
+        </div>
+        <div class="ribbon reveal" style="--d:.55s">
+            <span><b>688</b>pruebas automáticas</span>
+            <span><b>10/10</b>pruebas T01-T10</span>
+            <span><b>1,4 s</b>mediana por respuesta</span>
+            <span><b>20</b>consultas reservadas sin leer</span>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 09 · VALUE ======================= -->
+<section class="slide" aria-label="Valor operativo">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Valor operativo</span><span class="strap__page">09/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Valor operativo</div>
+        <h2 class="headline reveal" style="--d:.1s">Menos tiempo buscando, más tiempo verificando</h2>
+        <div class="value">
+            <div class="hypo reveal" style="--d:.2s">
+                <span class="badge badge--yellow">Hipótesis de valor</span>
+                <p class="hypo__text">Con la app, un editor encuentra <em>3 historias que TVN aún no publicó</em>, con fuentes y lo que falta verificar, en menos tiempo que a mano.</p>
+                <div class="hypo__points">
+                    <div><span class="rank">1</span>Detecta lo que otros publican y TVN todavía no</div>
+                    <div><span class="rank">2</span>Cuenta fuentes independientes, no repeticiones</div>
+                    <div><span class="rank">3</span>Toda cifra llega con fuente, fecha y período</div>
+                </div>
+            </div>
+            <div class="card protocol reveal" style="--d:.3s">
+                <span class="badge badge--warn">Pendiente de medir</span>
+                <h3 style="margin-top:20px">Cómo lo vamos a medir</h3>
+                <ol>
+                    <li>Dos personas hacen la misma tarea a mano y con la app.</li>
+                    <li>Orden cruzado: una empieza a mano y la otra con la app.</li>
+                    <li>Una ventana de noticias distinta en cada corrida.</li>
+                    <li>Cronómetro desde la primera fuente hasta las 3 fichas.</li>
+                    <li>Una tercera persona valida que no estén en TVN.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 10 · HUMAN REVIEW ======================= -->
+<section class="slide" aria-label="Revisión humana">
+    <header class="strap"><img class="strap__logo" src="assets/logo.png" alt=""><span class="strap__name">TVN DeepMind AI</span><span class="strap__section">Seguridad y ética</span><span class="strap__page">10/11</span></header>
+    <div class="content">
+        <div class="kicker reveal">Revisión humana</div>
+        <h2 class="headline reveal" style="--d:.1s">La app no tiene un botón de publicar</h2>
+        <div class="review">
+            <div class="diagram draw reveal" style="--d:.2s">
+                <svg viewBox="0 0 1110 600" role="img" aria-label="Estados de revisión: nuevo, en revisión, requiere evidencia, aprobado como borrador y descartado">
+                    <path class="edge risk dashed" d="M935 80 V30 H130 V76" style="--len:1000;--d:1.6s"/>
+                    <text class="elabel risk" x="400" y="36">contenido editado: vuelve a Nuevo</text>
+
+                    <path class="edge" d="M260 130 H316" style="--len:60;--d:.5s"/>
+                    <text class="elabel" x="264" y="116">tomar</text>
+                    <path class="edge" d="M580 110 H776" style="--len:200;--d:.8s"/>
+                    <text class="elabel" x="620" y="96">con evidencia</text>
+                    <path class="edge soft" d="M780 160 H584" style="--len:200;--d:1s"/>
+                    <text class="elabel" x="620" y="188">reabrir + nota</text>
+
+                    <path class="edge ai dashed" d="M500 180 V350 H576" style="--len:260;--d:1.1s"/>
+                    <text class="elabel" x="512" y="270">pedir</text>
+                    <path class="edge soft" d="M720 300 V240 H540 V184" style="--len:260;--d:1.2s"/>
+                    <text class="elabel" x="610" y="232">llegó</text>
+
+                    <path class="edge risk dashed" d="M400 180 V476" style="--len:300;--d:1.3s"/>
+                    <path class="edge risk dashed" d="M720 400 V530 H564" style="--len:300;--d:1.3s"/>
+                    <path class="edge ai dashed" d="M350 480 V184" style="--len:300;--d:1.4s"/>
+                    <text class="elabel risk" x="410" y="420">descartar</text>
+                    <text class="elabel" x="200" y="330">reabrir + nota</text>
+
+                    <g class="node n-src"><rect x="0" y="80" width="260" height="100" rx="18"/><text class="t" x="24" y="122">Nuevo</text><text class="s" x="24" y="154">ficha generada</text></g>
+                    <g class="node n-store"><rect x="320" y="80" width="260" height="100" rx="18"/><text class="t" x="344" y="122">En revisión</text><text class="s" x="344" y="154">un editor la lee</text></g>
+                    <g class="node n-ok"><rect x="780" y="80" width="310" height="100" rx="18"/><text class="t" x="804" y="122">Aprobado como borrador</text><text class="s" x="804" y="154">no se publica</text></g>
+                    <g class="node n-cloud"><rect x="580" y="300" width="290" height="100" rx="18"/><text class="t" x="604" y="342">Requiere evidencia</text><text class="s" x="604" y="374">nota: qué falta</text></g>
+                    <g class="node n-ctrl"><rect x="300" y="480" width="260" height="100" rx="18"/><text class="t" x="324" y="522">Descartado</text><text class="s" x="324" y="554">reabrible</text></g>
+                </svg>
+            </div>
+            <div class="review__cards">
+                <div class="card reveal" style="--d:.4s"><h3>Aprobar no es publicar</h3><p>Solo se aprueba con borrador y evidencia suficiente o parcial. Las advertencias se justifican en una nota.</p></div>
+                <div class="card reveal" style="--d:.5s"><h3>Aprobación ligada al contenido</h3><p>Editar el borrador sube su versión y la ficha vuelve a Nuevo.</p></div>
+                <div class="card reveal" style="--d:.6s"><h3>Todo queda auditado</h3><p>Cada decisión guarda responsable, nota y versión revisada.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ======================= 11 · CLOSING ======================= -->
+<section class="slide closing" aria-label="Cierre">
+    <div class="closing__inner">
+        <img class="reveal" src="assets/logo.png" alt="TVN DeepMind AI">
+        <p class="closing__line reveal" style="--d:.15s">Prioriza. Cita.<br>Se abstiene. <em>No publica.</em></p>
+        <div class="closing__links reveal" style="--d:.3s"><span>github.com/Wcno/hackiaton-whoamisfc</span><span>Espacio Notion del equipo</span></div>
+    </div>
+</section>
+
+</main>
+</div>
+<div class="progress" id="progress"></div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Fixed 1920x1080 stage, keyboard/wheel/touch navigation,
+   URL hash per slide and a progress bar.
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = [...document.querySelectorAll('.slide')];
+        this.stage = document.getElementById('deckStage');
+        this.progress = document.getElementById('progress');
+        this.current = 0;
+        this.wheelLocked = false;
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupWheelNav();
+        this.setupTouchNav();
+        const fromHash = parseInt(location.hash.slice(1), 10);
+        this.show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+    }
+
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(innerWidth / 1920, innerHeight / 1080);
+            const x = (innerWidth - 1920 * factor) / 2;
+            const y = (innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.isContentEditable) return;
+            if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+            if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+            if (e.key === 'Home') this.show(0);
+            if (e.key === 'End') this.show(this.slides.length - 1);
+        });
+    }
+
+    setupWheelNav() {
+        addEventListener('wheel', (e) => {
+            if (this.wheelLocked || Math.abs(e.deltaY) < 30) return;
+            this.wheelLocked = true;
+            this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+            setTimeout(() => { this.wheelLocked = false; }, 700);
+        }, { passive: true });
+    }
+
+    setupTouchNav() {
+        let startX = 0;
+        addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 50) this.show(this.current + (dx < 0 ? 1 : -1));
+        });
+    }
+
+    show(index) {
+        this.current = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            const on = i === this.current;
+            slide.classList.toggle('active', on);
+            slide.classList.toggle('visible', on);
+        });
+        this.progress.style.transform = `scaleX(${(this.current + 1) / this.slides.length})`;
+        history.replaceState(null, '', `#${this.current + 1}`);
+    }
+}
+
+/* ===========================================
+   INLINE EDITING
+   Hover top-left corner or press E. Edits persist in localStorage;
+   Ctrl+S downloads the edited HTML.
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.key = 'pitch-edits:' + location.pathname;
+        this.targets = document.querySelectorAll('.slide h1, .slide h2, .slide h3, .slide p, .slide li, .kicker, .stat__n, .stat__label, .tile__n, .pain__big');
+        this.restore();
+    }
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        this.targets.forEach((el) => el.setAttribute('contenteditable', String(this.isActive)));
+        if (!this.isActive) this.save();
+    }
+    save() {
+        try { localStorage.setItem(this.key, JSON.stringify([...this.targets].map((el) => el.innerHTML))); } catch (_) {}
+    }
+    restore() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(this.key) || 'null');
+            if (saved && saved.length === this.targets.length) this.targets.forEach((el, i) => { el.innerHTML = saved[i]; });
+        } catch (_) {}
+    }
+    download() {
+        this.targets.forEach((el) => el.removeAttribute('contenteditable'));
+        const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+        const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'index.html' });
+        a.click();
+        if (this.isActive) this.targets.forEach((el) => el.setAttribute('contenteditable', 'true'));
+    }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor();
+const hotzone = document.querySelector('.edit-hotzone');
+const editToggle = document.getElementById('editToggle');
+let hideTimeout = null;
+const scheduleHide = () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); };
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', scheduleHide);
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave', scheduleHide);
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+editToggle.addEventListener('click', () => editor.toggleEditMode());
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && !e.target.isContentEditable) editor.toggleEditMode();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); editor.save(); editor.download(); }
+});
+</script>
+</body>
+</html>
