@@ -2,6 +2,8 @@
 
 Development stopped at the user's explicit request on 2026-10-08. **Do not merge this checkpoint, close G10, or describe it as complete.** Continue on `feat/g10-qvac`; review and validate before publishing subsequent changes.
 
+Pre-push checkpoint findings: [Standards and Spec review](review-g10-qvac-checkpoint.md).
+
 ## Branch and inherited work
 
 This separate worktree was created from `origin/prod` at `11538206dc699699f54c11b5f33b86efa59b9cc1`, then fast-forwarded through G10 PR #46 and model-validation PR #47. The QVAC-only review baseline is `06cb2166720d58a25fc7c783a0d3ad126187acfc`.
@@ -23,7 +25,7 @@ Worktree on this PC: `C:\Users\canow\OneDrive\Escritorio\AI\TVN\hackiaton-qvac`.
 - First public query test failed before implementation because Settings did not accept `generation_provider`; query tests then passed (12 tests including existing live queries).
 - First local case-flow test failed because the offline button was disabled; after the UI change, 15 local/live-case tests passed, including case persistence across restart.
 - Latest `python -m pytest tests/test_qvac.py tests/test_editor.py -q`: **20 passed**. This uses injected HTTP replies, not real-model evidence quality.
-- Real CLI/model probe loaded the pinned GGUF and answered a fresh strict-JSON request through `/v1/chat/completions`: HTTP 200, approximately 6.53 seconds, `finish_reason=stop`. That was a minimal greeting, not an editorial acceptance test.
+- Real CLI/model probe loaded the pinned GGUF and answered a fresh strict-JSON request through `/v1/chat/completions`: HTTP 200, approximately 6.53 seconds, `finish_reason=stop`. The runtime log reports **backend=cpu, about 3.6 tokens/second**, despite the requested GPU config. GPU placement still needs diagnosis. That was a minimal greeting, not an editorial acceptance test.
 - A real-corpus query through the application was started but has no confirmed successful result at handoff. Do not count it as passed.
 - Full suite, wheel, browser flow, Linux QVAC runtime, cold network isolation, physical Wi-Fi-off rehearsal and Notion evidence are **not completed** for this checkpoint.
 
