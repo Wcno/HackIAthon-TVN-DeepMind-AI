@@ -56,5 +56,5 @@ class LiveQueries:
     def _answer(self, question: str, loop: asyncio.AbstractEventLoop) -> dict:
         llm = GeminiCompletions(self._gemini, loop, prompt_version=PROMPT_VERSION)
         identifier = "Q-live-" + hashlib.sha256(question.encode()).hexdigest()[:12]
-        answer = answer_query(identifier, question, self._corpus, self._gate, self._evidence, llm, self._gemini.settings.gemini_model)
+        answer = answer_query(identifier, question, self._corpus, self._gate, self._evidence, llm, self._gemini.settings.generation_model)
         return answer.model_dump(mode="json")

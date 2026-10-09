@@ -312,7 +312,7 @@ class DraftAssistant:
         try:
             return await self.generate_checked(client, messages, evidence, validate, structured_format)
         except GenerationUnavailable:
-            if client.settings.offline:
+            if client.settings.cached_only:
                 if request.action in EDIT_ACTIONS or request.action == "rewrite":
                     return abstention(f"Sin conexión: no puedo redactar «{request.question}» sin Gemini.",
                                       "Conecta Gemini para pedir ediciones, o edita el borrador a mano.")
@@ -339,7 +339,7 @@ class DraftAssistant:
                 async with asyncio.timeout(remaining if rejection else None):
                     result = await client.generate(messages, evidence, validate=validate, prompt_version="draft-assistant-5",
                                                    response_format=structured_format, max_tokens=1200)
-                return result.content | {"origin": "gemini", "cached": result.cached, "warnings": [], "option_warnings": []}
+                return result.content | {"origin": client.settings.generation_provider, "cached": result.cached, "warnings": [], "option_warnings": []}
             except InvalidGeneration as error:
                 rejection = error.cause if isinstance(error.cause, ReplyRejected) else ReplyRejected(
                     "reply_shape", ["Devuelve únicamente un objeto JSON con el formato pedido."])
@@ -352,5 +352,5 @@ class DraftAssistant:
                 logger.warning("Co-News retry %d/%d unavailable after a rejection: %s", attempt, MAX_ATTEMPTS, error)
                 break
         if rejection.is_soft:
-            return rejection.reply | {"origin": "gemini", "cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
-        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"origin": "gemini", "cached": False, "warnings": [], "option_warnings": []}
+            return rejection.reply | {"origin": client.settings.generation_provider, "cached": False, "warnings": rejection.warnings, "option_warnings": rejection.option_warnings}
+        return abstention(GIVE_UP_MESSAGE, "Indica con más detalle qué parte del borrador cambiar.") | {"origin": client.settings.generation_provider, "cached": False, "warnings": [], "option_warnings": []}

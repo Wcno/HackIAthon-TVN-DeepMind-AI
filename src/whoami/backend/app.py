@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from whoami.backend.assistant import DraftAssistant
 from whoami.backend.editor import AssistantRequest, SaveDraft
 from whoami.backend.gemini import GeminiClient, GenerationUnavailable
+from whoami.backend.qvac import QvacClient
 from whoami.backend.gemini_completions import CompletionUnavailable
 from whoami.backend.live_queries import LiveQueries
 from whoami.backend.live_case_files import LiveCaseFiles, NoGroundedClaims
@@ -199,9 +200,10 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.synthetic = any(group.get("sintetico", False) for group in repository.records("group"))
         app.state.editorial = EditorialService(repository, images=news_images.load(settings.data_directory))
         app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
-        app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
+        provider = QvacClient if settings.generation_provider == "qvac" else GeminiClient
+        app.state.gemini = provider(repository, settings, transport=gemini_transport)
         app.state.live_case_files = LiveCaseFiles(repository, app.state.gemini)
-        app.state.assistant = DraftAssistant(repository, None if settings.demo or settings.offline else settings.data_directory / "embeddings")
+        app.state.assistant = DraftAssistant(repository, None if settings.demo or settings.cached_only else settings.data_directory / "embeddings")
         app.state.live_queries = LiveQueries(app.state.gemini, app.state.assistant.index, app.state.assistant.evidence)
         try:
             yield
@@ -213,7 +215,8 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={
-            "screen": screen, "title": title, "offline": settings.offline, "demo": (settings.demo or request.app.state.synthetic) and screen not in REAL_DATA_SCREENS,
+            "screen": screen, "title": title, "offline": settings.offline, "cached_only": settings.cached_only,
+            "local_generation": settings.generation_provider == "qvac", "demo": (settings.demo or request.app.state.synthetic) and screen not in REAL_DATA_SCREENS,
             "fragment": request.headers.get("HX-Request") == "true", "topics": TOPIC_LABELS,
             "target": request.headers.get("HX-Target") if request.headers.get("HX-Request") == "true" else None,
             "workspace": screen == "workspace", "filter_query": "", "base_path": request.url.path,
@@ -358,19 +361,22 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         return templates.TemplateResponse(request=request, name="views/case/_generator.html", status_code=status_code,
                                           headers={"HX-Retarget": "#case-file-generator", "HX-Reswap": "outerHTML"},
                                           context={"group": group, "generator": state, "offline": settings.offline,
+                                                   "cached_only": settings.cached_only, "local_generation": settings.generation_provider == "qvac",
                                                    "filter_query": f"?{query}" if query else ""})
 
     @app.post("/groups/{group_id}/case-file", response_class=HTMLResponse)
     async def generate_case_file(request: Request, group_id: str):
         group = request.app.state.editorial.group(group_id)
         if group["id_caso"] is None:
-            if settings.offline:
+            if settings.cached_only:
                 return generator_failure(request, group, 409, GENERATOR_OFFLINE)
             try:
                 group["id_caso"] = await request.app.state.live_case_files.generate(group_id)
             except CompletionUnavailable as error:
                 logger.warning("Case file generation unavailable for %s: %s", group_id, error)
-                return generator_failure(request, group, 503, GENERATOR_UNAVAILABLE, retry=True)
+                message = ("No se pudo generar la ficha: QVAC local no está disponible. Inicia el motor preparado y reintenta."
+                           if settings.generation_provider == "qvac" else GENERATOR_UNAVAILABLE)
+                return generator_failure(request, group, 503, message, retry=True)
             except NoGroundedClaims as error:
                 logger.warning("No grounded claims for %s: %s", group_id, error)
                 return generator_failure(request, group, 422, GENERATOR_UNSUPPORTED)
@@ -455,11 +461,11 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                 try:
                     answer = request.app.state.editorial.query(q)
                 except GenerationUnavailable:
-                    if settings.offline:
+                    if settings.cached_only:
                         raise
                     answer = await live_answer(request, q)
         except (GenerationUnavailable, CompletionUnavailable) as error:
-            if settings.offline:
+            if settings.cached_only:
                 # Offline, a question outside the precomputed set is an honest abstention, not a server fault.
                 return render(request, "queries", "Consulta con evidencia", answer=None, examples=examples, probes=probes,
                               query_status="no_precomputed", query_text=q)

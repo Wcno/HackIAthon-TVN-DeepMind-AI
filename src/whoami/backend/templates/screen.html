@@ -47,7 +47,7 @@
       {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </nav>
     {% include 'views/search.html' %}
-    {% if offline %}<p class="offline-flag" role="status" title="Esta instancia trabaja con datos y respuestas precalculados">Sin conexión</p>{% endif %}
+    {% if offline %}<p class="offline-flag" role="status" title="{{ 'Datos locales y generación con QVAC' if local_generation else 'Esta instancia trabaja con datos y respuestas precalculados' }}">{{ 'Sin conexión · QVAC' if local_generation else 'Sin conexión' }}</p>{% endif %}
     {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
   </header>
   {% if demo %}<p class="synthetic" role="status">Demostración con datos sintéticos: las noticias son inventadas; las cifras oficiales son reales.</p>{% endif %}

@@ -21,10 +21,10 @@
     {% if generator %}<p class="form-error" role="alert">{{ generator.message }}</p>{% endif %}
     <p class="form-error generator__failure" role="alert" hidden>No se pudo generar la ficha: la conexión falló. No se guardó nada; reintenta.</p>
     <div class="generator__actions">
-      <button type="submit" class="btn btn--primary"{% if offline %} disabled aria-describedby="generator-hint"{% endif %}>{{ 'Reintentar' if generator else 'Generar ficha' }}</button>
-      <p class="generator__progress" role="status"><span class="generator__spinner" aria-hidden="true"></span>Generando con Gemini. Puede tardar hasta un minuto; no cierres la página.</p>
+      <button type="submit" class="btn btn--primary"{% if cached_only %} disabled aria-describedby="generator-hint"{% endif %}>{{ 'Reintentar' if generator else 'Generar ficha' }}</button>
+      <p class="generator__progress" role="status"><span class="generator__spinner" aria-hidden="true"></span>Generando con {{ 'QVAC local' if local_generation else 'Gemini' }}. Puede tardar {{ 'unos minutos' if local_generation else 'hasta un minuto' }}; no cierres la página.</p>
     </div>
-    {% if offline %}<p class="hint generator__hint" id="generator-hint">Sin conexión: esta función necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generar la ficha.</p>{% endif %}
+    {% if cached_only %}<p class="hint generator__hint" id="generator-hint">Sin conexión: esta función necesita Gemini y esta instancia trabaja sin conexión. Activa el modo en línea para generar la ficha.</p>{% endif %}
   </form>
   {% endif %}
 </section>

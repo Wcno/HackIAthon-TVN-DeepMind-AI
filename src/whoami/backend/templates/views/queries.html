@@ -14,7 +14,7 @@
   {% elif query_status == "unavailable" %}
   <div class="answer answer--offline">
     <p class="answer__state" role="alert">La consulta no pudo completarse</p>
-    <p>Gemini no respondió o se alcanzó su límite de uso, así que «{{ query_text }}» quedó sin respuesta. No se guardó nada.</p>
+    <p>{{ 'QVAC local no pudo responder. Comprueba que el motor preparado esté iniciado' if local_generation else 'Gemini no respondió o se alcanzó su límite de uso' }}, así que «{{ query_text }}» quedó sin respuesta. No se guardó nada.</p>
     <p>Puedes <a class="link" href="/queries?q={{ query_text|urlencode }}">reintentar</a> en un momento o elegir una consulta precalculada de la lista.</p>
   </div>
   {% elif answer %}
@@ -64,7 +64,7 @@
   {% else %}
   <div class="empty">
     <p>Pregunta sobre la agenda.</p>
-    <p class="muted">{% if offline %}Sin conexión, solo se responden las consultas precalculadas de la lista.{% else %}Escribe tu pregunta arriba o elige una consulta precalculada de la lista.{% endif %}</p>
+    <p class="muted">{% if cached_only %}Sin conexión, solo se responden las consultas precalculadas de la lista.{% else %}Escribe tu pregunta arriba o elige una consulta precalculada de la lista.{% endif %}</p>
   </div>
   {% endif %}
   <section class="mt-12" aria-label="Consultas disponibles">

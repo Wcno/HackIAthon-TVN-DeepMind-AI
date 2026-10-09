@@ -33,7 +33,7 @@ class LiveCaseFiles:
     def _generate(self, group_id: str, loop: asyncio.AbstractEventLoop) -> str:
         group = Group.model_validate(self._repository.record("group", group_id))
         generator = TwoStepGenerator(GeminiCompletions(self._gemini, loop, prompt_version=PROMPT_VERSION,
-                                                       validators={"afirmaciones": ensure_claims}), self._gemini.settings.gemini_model)
+                                                       validators={"afirmaciones": ensure_claims}), self._gemini.settings.generation_model)
         case_file = generate_case_file(generator, group, self._sources_of(group))
         return self._repository.add_generated_case(case_file.model_dump(mode="json"))
 
