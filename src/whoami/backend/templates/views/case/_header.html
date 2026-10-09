@@ -33,6 +33,7 @@
     </div>
   </div>
   <p class="meta">{{ group.n_noticias|number }} {{ pluralize(group.n_noticias, "noticia", "noticias") }} · {{ group.n_medios|number }} {{ pluralize(group.n_medios, "medio", "medios") }} · {{ group.n_procedencias|number }} {{ pluralize(group.n_procedencias, "procedencia independiente", "procedencias independientes") }}</p>
+  {% if case and case.borrador and tab != 'borrador' %}<a class="case-assistant-link" href="{{ conews_href }}">{{ icon('spark') }}Coescribir con Co-News {{ icon('arrow') }}</a>{% endif %}
 </header>
 {% set tabs = [("historia", "Historia", "/cases/" ~ (group.id_caso or '')|urlencode, true), ("cobertura", "Cobertura", "/groups/" ~ gid, false),
                ("contexto", "Contexto", "/groups/" ~ gid ~ "/context", false), ("borrador", "Borrador", "/cases/" ~ (group.id_caso or '')|urlencode ~ "/draft", true),

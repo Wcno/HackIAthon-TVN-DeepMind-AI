@@ -52,6 +52,9 @@
     const bar = root.querySelector('.savebar');
     const message = root.querySelector('[data-save-message]');
     const abort = new AbortController();
+    const mobile = matchMedia('(max-width: 960px)');
+    const backgroundState = new Map();
+    let assistantOpener = toggle;
     const caseId = root.dataset.editor;
     const config = JSON.parse(root.querySelector('[data-editor-config]').textContent);
     let saved = config;
@@ -59,7 +62,8 @@
     let sources = saved.source_ids.slice();
     let saving = false;
     let asking = false;
-    desk.append(assistant, source);
+    // Floating controls belong outside the case's CSS containment, so they stay attached to the viewport.
+    desk.append(assistant, source, toggle);
     const api = `/api/cases/${encodeURIComponent(caseId)}`;
 
     const notify = (text, error = false) => {
@@ -197,9 +201,27 @@
       });
     }
     function setAssistant(open) {
+      if (open && document.activeElement !== document.body && !assistant.contains(document.activeElement) && source.hidden) assistantOpener = document.activeElement;
       assistant.classList.toggle('is-open', open);
       toggle.setAttribute('aria-expanded', String(open));
-      if (matchMedia('(max-width: 960px)').matches) (open ? assistant.querySelector('[data-assist="close"]') : toggle).focus();
+      const modal = mobile.matches && open;
+      if (modal) {
+        assistant.setAttribute('role', 'dialog');
+        assistant.setAttribute('aria-modal', 'true');
+        for (const node of document.querySelectorAll('.strap, .shell-tools, .synthetic, .lead-band, .case, .inbox')) {
+          if (!backgroundState.has(node)) backgroundState.set(node, node.inert);
+          node.inert = true;
+        }
+      } else {
+        assistant.removeAttribute('role');
+        assistant.removeAttribute('aria-modal');
+        for (const [node, inert] of backgroundState) node.inert = inert;
+        backgroundState.clear();
+      }
+      if (mobile.matches) {
+        const destination = open ? assistant.querySelector('[data-assist="close"]') : assistantOpener?.isConnected ? assistantOpener : toggle;
+        destination.focus({preventScroll: true});
+      }
     }
     let sourceOpener = null;
     function closeSource() {
@@ -372,6 +394,13 @@
 
     document.addEventListener('click', event => {
       const link = event.target.closest('a[href]');
+      if (link?.matches('[data-conews-open]')) {
+        event.preventDefault();
+        source.hidden = true;
+        setAssistant(true);
+        input.focus({preventScroll: true});
+        return;
+      }
       if (!link || link.target === '_blank' || link.getAttribute('href').startsWith('/evidence/')) return;
       if (dirty()) {
         event.preventDefault();
@@ -479,6 +508,13 @@
       input.value = '';
     }, {signal: abort.signal});
     document.addEventListener('keydown', event => {
+      if (event.key === 'Tab' && mobile.matches && (assistant.classList.contains('is-open') || !source.hidden)) {
+        const panel = source.hidden ? assistant : source;
+        const controls = [...panel.querySelectorAll('button:not(:disabled), a[href], input, textarea, select, summary, [tabindex="0"]')].filter(node => node.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
+      }
       if (event.key !== 'Escape') return;
       if (!source.hidden) closeSource();
       else if (assistant.classList.contains('is-open')) setAssistant(false);
@@ -486,7 +522,19 @@
     form.querySelectorAll('textarea').forEach(fit);
     refresh();
     setScope('todo');
-    return {root, dispose: () => { abort.abort(); assistant.remove(); source.remove(); }};
+    if (location.hash === '#co-news') {
+      setAssistant(true);
+      // The browser's initial fragment scroll happens after mounting; focus after it finishes.
+      const focusAssistant = () => { if (mobile.matches && assistant.isConnected) assistant.querySelector('[data-assist="close"]').focus({preventScroll: true}); };
+      if (document.readyState === 'complete') requestAnimationFrame(focusAssistant);
+      else window.addEventListener('load', focusAssistant, {once: true, signal: abort.signal});
+    }
+    mobile.addEventListener('change', () => setAssistant(assistant.classList.contains('is-open')), {signal: abort.signal});
+    return {root, dispose: () => {
+      abort.abort();
+      for (const [node, inert] of backgroundState) node.inert = inert;
+      assistant.remove(); source.remove(); toggle.remove();
+    }};
   }
   function sync() {
     const root = document.querySelector('[data-editor]');

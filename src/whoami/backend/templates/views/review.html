@@ -15,6 +15,7 @@
       {%- elif edited %}Contenido editado el {{ edited[-1].timestamp|panama_time }} (Panamá): requiere una nueva revisión.
       {%- else %}Sin decisiones todavía.{% endif %}</p>
   </div>
+  {% if case.borrador %}<a class="case-assistant-link" href="/cases/{{ case.id_caso|urlencode }}/draft{{ filter_query }}">Revisar el borrador antes de decidir {{ icon('arrow') }}</a>{% endif %}
   <form class="decide" method="post" action="/cases/{{ case.id_caso|urlencode }}/review" hx-post="/cases/{{ case.id_caso|urlencode }}/review" hx-target="#review-panel" hx-select="#review-panel" hx-select-oob="#case-badges,#review-badge-{{ group.id_grupo }},#lead-review-badge-{{ group.id_grupo }}" hx-swap="outerHTML">
     <input type="hidden" name="expected_version" value="{{ case.version }}">
     <label class="field"><span>Responsable</span><input name="actor" required maxlength="120" autocomplete="name" placeholder="Nombre de quien decide" value="{{ form.actor or '' }}"{% if error_field == 'actor' %} aria-invalid="true" aria-describedby="review-error"{% endif %}></label>

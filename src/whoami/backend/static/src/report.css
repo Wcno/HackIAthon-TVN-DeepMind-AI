@@ -217,6 +217,11 @@
     .calc td.why { @apply col-span-2; }
     .calc .mobile-calc { @apply block; }
     .calc tfoot tr { @apply flex justify-between; }
+    /* A comparison needs both methods on small screens, unlike the worked-score breakdown. */
+    .calc--comparison thead { display: table-header-group; }
+    .calc--comparison tbody tr { display: table-row; }
+    .calc--comparison td, .calc--comparison td.num { display: table-cell; padding: 12px 4px; }
+    .calc--comparison td.pts { @apply font-sans text-base leading-normal; }
     .pending__grid { @apply grid-cols-[1.4fr_1fr_1fr]; }
   }
   @media (min-width: 961px) { .calc .mobile-calc { @apply hidden; } }

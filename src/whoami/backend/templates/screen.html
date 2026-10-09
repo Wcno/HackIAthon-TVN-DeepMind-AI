@@ -19,9 +19,13 @@
 {% macro open_href(group) -%}
 {{ ("/cases/" ~ group.id_caso|urlencode) if group.id_caso else ("/groups/" ~ group.id_grupo|urlencode) }}{{ filter_query }}
 {%- endmacro %}
-{% set nav = [("/inbox", "Temas", "inbox"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
-{% if target == "case" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/pane.html' %}
-{% elif target == "desk" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{% include 'views/desk.html' %}
+{% set conews_href = '/cases/' ~ case.id_caso|urlencode ~ '/draft' ~ filter_query ~ '#co-news' if case and case.borrador else '/inbox#co-news' %}
+{% set nav = [("/inbox", "Temas", "inbox"), (conews_href, "Co-News", "conews"), ("/queries", "Consultas", "queries"), ("/quality", "Calidad de datos", "quality"), ("/methodology", "Metodología", "methodology")] %}
+{% macro conews_link(oob=false) -%}
+<a id="conews-nav" href="{{ conews_href }}" class="nav__agent" data-conews-open{% if pane == 'draft' and case and case.borrador %} aria-current="page"{% endif %}{% if oob %} hx-swap-oob="outerHTML"{% endif %}>{{ icon('spark') }}Co-News</a>
+{%- endmacro %}
+{% if target == "case" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{{ conews_link(true) }}{% include 'views/pane.html' %}
+{% elif target == "desk" %}<title>{{ document_title or title }} · TVN DeepMind AI</title>{{ conews_link(true) }}{% include 'views/desk.html' %}
 {% elif target == "more-rows" %}{% include 'views/rows.html' %}
 {% else %}
 {% if not fragment %}
@@ -40,25 +44,30 @@
 </head>
 <body hx-boost="false"{% if workspace %} class="body--desk"{% endif %}>
   <a class="skip-link" href="#screen">Saltar al contenido</a>
-  <header class="strap">
+  <header class="app-header"><div class="strap">
     <a class="brand" href="/inbox">
       <img class="brand__logo" src="/static/img/brand/logo.webp" alt="" width="48" height="48">
       <span class="brand__name">TVN DeepMind AI</span>
     </a>
     <nav class="nav" aria-label="Principal">
-      {% for href, label, key in nav %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence")) %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+      {% for href, label, key in nav if key not in ('quality', 'methodology') %}{% if key == 'conews' %}{{ conews_link() }}{% else %}<a href="{{ href }}"{% if screen == key or (key == "inbox" and screen in ("workspace", "evidence") and not (pane == 'draft' and case and case.borrador)) %} aria-current="page"{% endif %}>{{ label }}</a>{% endif %}{% endfor %}
+      <details class="nav__more" open><summary>Más {{ icon('chevron') }}</summary><div class="nav__submenu">{% for href, label, key in nav if key in ('quality', 'methodology') %}<a href="{{ href }}"{% if screen == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</div></details>
     </nav>
+  </div>
+  <div class="shell-tools">
     {% include 'views/search.html' %}
     {% if offline %}<p class="offline-flag" role="status" title="Esta instancia trabaja con datos y respuestas precalculados">Sin conexión</p>{% endif %}
     {% if snapshot.cutoff %}<p class="corte">Corte: {{ snapshot.cutoff }}</p>{% endif %}
+  </div>
   </header>
   {% if demo %}<p class="synthetic" role="status">Demostración con datos sintéticos: las noticias son inventadas; las cifras oficiales son reales.</p>{% endif %}
 {% endif %}
 <main id="screen" tabindex="-1" class="{{ 'workspace' if workspace else 'screen' }}">
   <h1 class="screen__title{% if workspace or screen == 'evidence' %} sr-only{% endif %}">{{ title }}</h1>
+  {% if screen in ('quality', 'methodology') %}<nav class="report-nav" aria-label="Secciones de {{ title }}">{% if screen == 'quality' %}<a href="#noticias">Noticias</a><a href="#oficiales">Datos oficiales</a>{% else %}<a href="#evaluacion">Resultados G7</a><a href="#ejemplo">Ejemplo de puntaje</a>{% endif %}<a href="/inbox">Volver a la agenda {{ icon('arrow') }}</a></nav>{% endif %}
   {% include 'views/' ~ ('workspace' if workspace else screen) ~ '.html' %}
 </main>
-{% if fragment and workspace %}{% set oob = true %}{% include 'views/search.html' %}{% endif %}
+{% if fragment and workspace %}{% set oob = true %}{% include 'views/search.html' %}{{ conews_link(true) }}{% endif %}
 {% if not fragment %}
 </body>
 </html>

@@ -133,7 +133,10 @@ def test_score_popover_stays_inside_the_viewport_and_its_box(browser_page, serve
 def test_every_nav_item_is_reachable_without_page_overflow(browser_page, server, width):
     page = browser_page.new_page(viewport={"width": width, "height": 800})
     page.goto(f"{server}/inbox")
-    assert page.evaluate("document.documentElement.scrollWidth") <= width
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+    more = page.locator('.nav__more > summary')
+    if more.is_visible():
+        more.click()
     for link in page.locator("nav.nav a").all():
         box = link.bounding_box()
         assert box["x"] >= 0 and box["x"] + box["width"] <= width, link.inner_text()

@@ -1,5 +1,6 @@
 {# Master list: filters and ranked rows. Needs rows, total, rank, selected, topic, estado, cobertura, topic_search, filter_query, base_path. #}
 <section class="inbox" id="inbox" aria-label="Temas priorizados">
+  <div class="inbox__heading"><h2>{{ 'Más temas' if lead else 'Temas priorizados' }}</h2><span class="muted">Ordenados por prioridad</span></div>
   <form class="filters" method="get" action="{{ base_path }}" role="group" aria-label="Filtrar temas"
         hx-get="{{ base_path }}" hx-trigger="change" hx-target="#screen" hx-swap="outerHTML" hx-push-url="true">
     <label class="select">
@@ -37,6 +38,7 @@
   {% else %}
   <div class="empty">
     <p>No hay temas con estos filtros.</p>
+    <p class="muted">Prueba otra cobertura, tema o estado para seguir explorando la agenda.</p>
     <a class="btn" href="{{ base_path }}">Quitar filtros</a>
   </div>
   {% endif %}

@@ -1,2 +1,11 @@
+{% if not opened %}
+<section class="agenda-intro" aria-labelledby="agenda-heading" id="co-news">
+  <div><h2 id="agenda-heading">Agenda editorial</h2><p>Explora temas, comprueba qué ha cubierto TVN y prepara tu siguiente historia.</p></div>
+  <div class="agenda-intro__actions">
+    <a class="btn btn--quiet" href="/inbox?cobertura=nuevo">Nuevos para TVN</a>
+    {% if case and case.borrador %}<a class="btn btn--primary" href="{{ conews_href }}">{{ icon('spark') }}Trabajar con Co-News</a>{% else %}<a class="btn" href="/queries">Consultar la evidencia</a>{% endif %}
+  </div>
+</section>
+{% endif %}
 {% if lead %}{% include 'views/lead.html' %}{% endif %}
 {% include 'views/desk.html' %}

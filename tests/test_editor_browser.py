@@ -187,6 +187,53 @@ def test_mobile_offline_assistant_abstains_without_overflow(page, editor_server)
     expect(page.locator('.draft-assistant')).to_be_hidden()
 
 
+def test_mobile_co_news_entry_opens_the_agent_and_keeps_keyboard_focus_inside(page, editor_server):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(f"{editor_server}/inbox")
+    page.get_by_role("link", name="Co-News", exact=True).click()
+    panel = page.get_by_role("dialog", name="Co-News", exact=True)
+    expect(panel).to_be_visible()
+    expect(panel.get_by_role("button", name="Cerrar", exact=True)).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    assert panel.evaluate("node => node.contains(document.activeElement)")
+    page.keyboard.press("Escape")
+    expect(page.locator('.draft-assistant')).to_be_hidden()
+    expect(page.get_by_role("button", name="Abrir Co-News", exact=True)).to_be_focused()
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_co_news_navigation_preserves_unsaved_text_in_the_current_draft(page, editor_server):
+    page.goto(f"{editor_server}/cases/CASO-001/draft")
+    field = page.get_by_role("textbox", name="Título propuesto", exact=True)
+    field.fill("Mi titular todavía sin guardar")
+    page.get_by_role("link", name="Co-News", exact=True).click()
+    expect(field).to_have_value("Mi titular todavía sin guardar")
+    expect(page.get_by_role("textbox", name="Pídele a Co-News", exact=True)).to_be_focused()
+    expect(page.locator('[data-save-state]')).to_have_text("Cambios sin guardar")
+
+
+@pytest.mark.parametrize("width", [320, 390])
+def test_mobile_evaluation_keeps_both_comparison_methods_visible(page, editor_server, width):
+    page.set_viewport_size({"width": width, "height": 844})
+    page.goto(f"{editor_server}/methodology")
+    comparison = page.locator('.calc--comparison')
+    expect(comparison.get_by_role("columnheader", name="Línea base", exact=True)).to_be_visible()
+    expect(comparison.get_by_role("columnheader", name="Con IA", exact=True)).to_be_visible()
+    first_result = comparison.locator('tbody tr').first
+    expect(first_result.locator('td').nth(1)).to_be_visible()
+    expect(first_result.locator('td').nth(2)).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_co_news_entry_tracks_the_selected_topic_after_htmx_navigation(page, editor_server):
+    page.goto(f"{editor_server}/inbox")
+    page.locator('.rows a[href^="/cases/CASO-002"]').click()
+    agent = page.get_by_role("link", name="Co-News", exact=True)
+    expect(agent).to_have_attribute('href', '/cases/CASO-002/draft#co-news')
+    agent.click()
+    expect(page.locator('[data-editor]')).to_have_attribute('data-editor', 'CASO-002')
+
+
 def test_co_news_free_text_edit_is_a_rewrite_sent_with_ctrl_enter_and_stale_sections_keep_the_suggestion(page, editor_server):
     sent = []
     page.on("request", lambda request: sent.append(json.loads(request.post_data)) if request.url.endswith("/assistant") else None)

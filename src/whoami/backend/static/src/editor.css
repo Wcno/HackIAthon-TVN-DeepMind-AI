@@ -7,7 +7,7 @@
   .savebar__msg { @apply basis-full text-sm font-medium text-navy; }
   .savebar__msg[role="alert"] { @apply text-rose-700; }
   .ed-hint { @apply mt-4 text-[15px] text-ink-3; }
-  .ed { @apply -mx-3 block w-[calc(100%+1.5rem)] resize-none overflow-hidden rounded-lg border-b border-line bg-transparent px-3 py-1.5 text-ink transition hover:bg-ground focus:bg-white focus:ring-2 focus:ring-blue; }
+  .ed { @apply -mx-3 block w-[calc(100%+1.5rem)] resize-none overflow-hidden rounded-lg border-b border-line bg-ground/50 px-3 py-2 text-ink transition hover:bg-ground focus:bg-white focus:ring-2 focus:ring-blue; }
   .ed[aria-invalid="true"], .field [aria-invalid="true"] { @apply bg-rose-50 ring-2 ring-rose-600; }
   .conflict { @apply mt-4 grid gap-3 rounded-2xl bg-yellow-soft/70 px-5 py-4 text-[15px] text-[#5a4300] ring-1 ring-yellow; }
   .conflict__title { @apply text-base font-semibold; }
@@ -40,13 +40,12 @@
   .body--desk:has([data-editor]) .lead .btn { @apply h-8 shrink-0 px-3 text-sm; }
   .body--desk:has([data-editor]) .lead-band { @apply pt-3; }
   .body--desk:has([data-editor]) .snapshot { @apply mb-2; }
-  .body--desk:has([data-editor]) .search { @apply invisible; }
-  .draft-assistant, .editor-source { @apply flex min-h-0 flex-col overflow-hidden rounded-t-3xl bg-white px-5 pt-6 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
+  .draft-assistant, .editor-source { @apply flex min-h-0 flex-col overflow-hidden rounded-t-2xl bg-white px-5 pt-6 shadow-[0_1px_3px_rgb(0_70_111/0.06)]; }
   .editor-source { @apply overflow-y-auto pb-10; }
   .desk:has(> .editor-source:not([hidden])) > .draft-assistant { @apply hidden; }
   .source-head { @apply flex items-center justify-between gap-3; }
   .assistant__head { @apply flex items-center justify-between gap-3; }
-  .assistant__title { @apply font-title text-2xl leading-tight font-semibold text-navy; }
+  .assistant__title { @apply font-title text-[28px] leading-tight font-semibold text-navy; }
   .assistant__title { @apply inline-flex items-center gap-2; }
   .assistant__title .icon { @apply size-6 text-blue; }
   /* Co-News: the scope picks the suggestions; a field's spark button picks the scope */
@@ -59,9 +58,9 @@
   .draft-assistant:not(.has-replies)[data-scope="guion"] [data-cn-prompts="guion"],
   .draft-assistant:not(.has-replies)[data-scope="copy_digital"] [data-cn-prompts="copy_digital"] { @apply flex; }
   .draft-assistant:not([data-scope="todo"]) .cn-general { @apply hidden; }
-  .cn-field { @apply text-blue hover:bg-blue-soft hover:text-blue-dark; }
+  .btn.cn-field { @apply shrink-0 bg-blue-soft text-blue-dark hover:bg-blue hover:text-white; }
   .assistant__note { @apply mt-2 text-[15px] text-ink-3; }
-  .assistant__mode { @apply mt-3 text-sm font-medium text-ink-3; }
+  .assistant__mode { @apply mt-3 rounded-lg bg-ground px-3 py-2 text-sm font-medium text-ink-2; }
   .assistant__scroll { @apply min-h-0 flex-1 overflow-y-auto pb-5; }
   .prompts { @apply mt-5 flex flex-wrap gap-2; }
   .prompt:disabled { @apply cursor-not-allowed opacity-50 hover:bg-blue-soft hover:text-navy; }
@@ -76,6 +75,7 @@
   .draft-assistant.has-replies [data-prompts], .draft-assistant.has-replies .assistant__more { @apply hidden; }
   .ask { @apply mt-auto grid shrink-0 gap-2 border-t border-line bg-white pt-4 pb-5; }
   .ask__label { @apply text-[15px] font-semibold; }
+  .ask__help { @apply text-xs leading-relaxed text-ink-3; }
   .ask__input { @apply w-full resize-none rounded-xl bg-white px-4 py-2.5 text-[15px] ring-1 ring-line transition placeholder:text-ink-3 focus:ring-2 focus:ring-blue; }
   .ask .btn { @apply justify-self-end; }
   .replies { @apply mt-4 grid list-none gap-4; }
@@ -99,7 +99,7 @@
   .result { @apply grid gap-1.5 rounded-2xl bg-ground px-4 py-3.5; }
   .result__title { @apply font-semibold leading-snug; }
   .result__passage { @apply text-[15px] text-ink-2; }
-  .assistant__close, .sheet-toggle { @apply hidden; }
+  .btn.assistant__close, .btn.sheet-toggle { @apply hidden; }
   @media (min-width: 961px) {
     .draft-assistant .reply .btn { @apply min-h-9; }
     .draft-assistant .reply .cite { @apply min-h-8 min-w-8; }
@@ -114,15 +114,20 @@
     .body--desk:has([data-editor]) .case__title { @apply text-2xl; }
     .body--desk:has([data-editor]) .tabs { @apply gap-3; }
     .body--desk:has([data-editor]) .tab { @apply text-sm; }
-    .body--desk:has([data-editor]) .search { @apply hidden; }
+    .body--desk:has([data-editor]) { @apply h-auto; }
+    .body--desk:has([data-editor]) .workspace { @apply block; }
+    .body--desk:has([data-editor]) .desk { grid-template-rows: auto; }
     .draft-assistant, .editor-source { @apply fixed inset-x-0 bottom-0 z-40 h-[85dvh] max-h-[85dvh] rounded-t-3xl; box-shadow: 0 -16px 40px -16px rgb(0 70 111 / 0.45); }
     .draft-assistant:not(.is-open) { display: none; }
-    .assistant__close { @apply inline-flex; }
-    .sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
+    .draft-assistant.is-open { animation: assistant-reveal 180ms var(--ease-out-expo); }
+    .btn.assistant__close { @apply inline-flex; }
+    .btn.sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
     .savebar { @apply -mx-2 px-3; }
     .ask { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
     .draft-assistant .prompt, .draft-assistant .btn, .draft-assistant .cite, .draft-assistant .assistant__more summary, .editor-source .btn { @apply min-h-11; }
     .draft-assistant .cite { @apply min-w-11; }
     .draft-assistant .reply__actions { @apply gap-3; }
   }
+  @keyframes assistant-reveal { from { transform: translateY(1.5rem); opacity: .7; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .draft-assistant.is-open { animation: none; } }
 }

@@ -1,10 +1,12 @@
 <div class="page-card">
-  <form class="query-form" action="/queries" method="get">
+  <p class="query-intro">Consulta los hechos antes de redactar. Cada respuesta muestra sus fuentes; si falta evidencia o las versiones difieren, verás qué queda por comprobar.</p>
+  <form class="query-form" action="/queries" method="get" data-progress-label="Consultando…">
     <label class="field" for="query">Pregunta sobre la agenda</label>
     <div class="query-form__row">
-      <input id="query" name="q" type="search" required maxlength="2000" autocomplete="off" placeholder="Por ejemplo: ¿A cuántos tránsitos diarios se limitará el Canal?" value="{{ query_text or '' }}">
+      <input id="query" name="q" type="search" required maxlength="2000" autocomplete="off" aria-describedby="query-help" placeholder="Por ejemplo: ¿A cuántos tránsitos diarios se limitará el Canal?" value="{{ query_text or '' }}">
       <button class="btn btn--primary" type="submit">Consultar</button>
     </div>
+    <p class="query-hint" id="query-help">{% if offline %}Sin conexión: elige una de las consultas disponibles abajo.{% else %}Pregunta sobre las noticias y fuentes del corpus cargado.{% endif %}</p>
   </form>
   {% if query_status == "no_precomputed" %}
   <div class="answer answer--abstain">
@@ -74,6 +76,7 @@
     </ul>
   </section>
   {% if probes %}
+  <details class="query-checks"><summary>Pruebas de seguridad</summary>
   <section class="mt-12" aria-label="Pruebas de seguridad">
     <h2 class="h2">Pruebas de seguridad: el sistema debe abstenerse</h2>
     <p class="muted">Entradas hostiles del benchmark (inyección de instrucciones, citas inventadas). Se muestran como texto, nunca se ejecutan.</p>
@@ -81,5 +84,6 @@
       {% for item in probes %}<li><a class="link" href="/queries?q={{ item.consulta|urlencode }}"><code>{{ item.consulta }}</code></a></li>{% endfor %}
     </ul>
   </section>
+  </details>
   {% endif %}
 </div>

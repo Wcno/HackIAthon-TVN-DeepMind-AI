@@ -11,7 +11,7 @@
   <div class="block__head"><h2 class="h2" id="ed-{{ key }}">{{ label }}</h2>
     {% if budget %}{{ meter(budget, key) }}{% endif %}
     {% if copy %}<button type="button" class="btn btn--quiet btn--small" data-edit="copy" data-key="{{ key }}">Copiar</button>{% endif %}
-    <button type="button" class="icon-btn cn-field" data-assist="scope" data-cn-field="{{ key }}" title="Pedir a Co-News sobre {{ label|lower }}" aria-label="Pedir a Co-News sobre {{ label|lower }}">{{ icon("spark") }}</button>
+    <button type="button" class="btn btn--quiet btn--small cn-field" data-assist="scope" data-cn-field="{{ key }}" aria-label="Pedir a Co-News sobre {{ label|lower }}">{{ icon("spark") }}Co-News</button>
   </div>
   <textarea class="ed {{ 'ed--title' if key == 'titulo' else 'ed--text' }}" rows="1" data-key="{{ key }}" aria-labelledby="ed-{{ key }}" maxlength="{{ 500 if key == 'titulo' else 20000 }}">{{ value }}</textarea>
 </section>
@@ -76,10 +76,10 @@
     "enfoque_interes_publico": ["Propón otro enfoque", "Hazlo más concreto"],
     "guion": ["Hazlo más fácil de leer al aire", "Ajústalo a 45-60 segundos"],
     "copy_digital": ["Hazlo más cercano para redes", "Hazlo más neutral"]} %}
-  <aside class="draft-assistant" aria-labelledby="cn-title">
+  <aside class="draft-assistant" aria-labelledby="cn-title" id="co-news">
     <div class="assistant__head"><h2 class="assistant__title" id="cn-title">{{ icon("spark") }}Co-News</h2><button type="button" class="btn btn--quiet btn--small assistant__close" data-assist="close">Cerrar</button></div>
     <p class="assistant__note">Coescribe el borrador contigo: pídele cambios para un campo o para todo el borrador, o consulta la evidencia. Tú decides qué aplicar.</p>
-    <p class="assistant__mode">{{ 'Sin conexión · corpus y respuestas precalculadas' if offline else 'Fuentes del corpus cargado · Gemini solo para redactar' }}</p>
+    <p class="assistant__mode">{{ 'Sin conexión · búsqueda y respuestas guardadas disponibles. Para reescribir necesitas conexión.' if offline else 'Trabaja con las fuentes del corpus cargado. Tú revisas y aplicas cada propuesta.' }}</p>
     <label class="cn-scope"><span>Trabajar sobre</span>
       <select id="cn-scope" data-cn-scope>
         <option value="todo">Todo el borrador</option>
@@ -108,14 +108,15 @@
       <ol class="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
     </div>
     <form class="ask"><label class="ask__label" for="ask-input">Pídele a Co-News</label>
-      <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral"></textarea>
+      <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" aria-describedby="cn-input-help" placeholder="Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral"></textarea>
+      <p class="ask__help" id="cn-input-help">Tus propuestas se aplican al borrador solo cuando tú lo decides.</p>
       <button type="submit" class="btn btn--primary btn--small" disabled>Enviar</button>
     </form>
   </aside>
   <aside class="editor-source" aria-label="Fuente" hidden><div class="source-head"><h2 class="assistant__title">Fuente</h2><button type="button" class="btn btn--quiet btn--small" data-edit="close-source">Volver a Co-News</button></div><div data-source-body></div></aside>
-  <button type="button" class="btn btn--primary sheet-toggle" data-assist="open" aria-expanded="false">Abrir Co-News</button>
+  <button type="button" class="btn btn--primary sheet-toggle" data-assist="open" aria-controls="co-news" aria-expanded="false">{{ icon('spark') }}Abrir Co-News</button>
 </div>
 {% else %}
-<div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p></div>
+<div class="empty"><p>No hay borrador</p><p class="muted">Se necesita más evidencia antes de redactar.</p><a class="btn" href="/groups/{{ group.id_grupo|urlencode }}{{ filter_query }}">Revisar las fuentes del tema {{ icon('arrow') }}</a></div>
 {% endif %}
 </div>

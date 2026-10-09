@@ -118,7 +118,7 @@
     <p class="section__lede">El sistema con IA se midió contra una línea base sin IA (BM25 y palabras clave), sobre las mismas consultas y etiquetas. La procedencia y el tamaño de cada muestra se detallan debajo.</p>
     {% macro measurement(value, percentage=false) %}{% if value is none %}Sin medición{% elif percentage %}{{ value|percent(1) }}{% else %}{{ value|number(2) }}{% endif %}{% endmacro %}
 
-    <table class="calc">
+    <table class="calc calc--comparison">
       <thead><tr><th>Métrica</th><th class="num">Línea base</th><th class="num">Con IA</th></tr></thead>
       <tbody>
         {% for row in evaluation.comparison %}
