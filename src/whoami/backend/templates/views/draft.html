@@ -86,6 +86,7 @@
         {% for key, label in cn_scopes %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
       </select></label>
     <div class="assistant__scroll">
+      <ol class="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
       {% for key, label in cn_scopes %}
       <div class="prompts cn-prompts" data-prompts data-cn-prompts="{{ key }}">
         {% for text in cn_prompts[key] %}<button type="button" class="prompt" data-assist="ask" data-action="rewrite"{% if offline %} disabled title="Este pedido necesita conexión"{% endif %}>{{ text }}</button>{% endfor %}
@@ -105,7 +106,6 @@
       </div></details>
       <div class="assistant__welcome"><h3>Una segunda mirada a tu borrador</h3><p>Pide un título alternativo o encuentra una fuente. Ninguna sugerencia cambia el documento hasta que la apliques.</p></div>
       <button type="button" class="link assistant__again" data-assist="prompts" hidden>Ver preguntas sugeridas</button>
-      <ol class="replies" aria-live="polite" aria-label="Respuestas del asistente"></ol>
     </div>
     <form class="ask"><label class="ask__label" for="ask-input">Pídele a Co-News</label>
       <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral"></textarea>

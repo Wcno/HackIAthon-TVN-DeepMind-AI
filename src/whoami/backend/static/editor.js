@@ -342,6 +342,10 @@
       askButton.disabled = busy || !input.value.trim();
       if (busy) assistant.setAttribute('aria-busy', 'true'); else assistant.removeAttribute('aria-busy');
     }
+    function scrollToLatest() {
+      const scroller = assistant.querySelector('.assistant__scroll');
+      scroller.scrollTo({top: scroller.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+    }
     async function ask(question, action = 'ask', field = action === 'rewrite' ? chosenField() : null) {
       if (asking || !question.trim()) return;
       asking = true;
@@ -352,12 +356,13 @@
       row.append(element('p', 'reply__q', question));
       const pending = element('p', 'reply__state', pendingLabels[action] || 'Buscando evidencia…');
       row.append(pending);
-      replies.prepend(row);
-      assistant.querySelector('.assistant__scroll').scrollTop = 0;
+      replies.append(row);
+      scrollToLatest();
       try {
         const result = await request(`${api}/assistant`, {method: 'POST', body: JSON.stringify({question, action, field, draft: snapshot, source_ids: sources.slice()})});
         pending.remove();
         renderReply(row, result, snapshot);
+        scrollToLatest();
       } catch (error) {
         if (error.name !== 'AbortError') {
           pending.textContent = error.message;
@@ -462,7 +467,7 @@
       const action = target.dataset.assist;
       if (action === 'open') setAssistant(true);
       if (action === 'close') setAssistant(false);
-      if (action === 'prompts') { showPrompts(true); assistant.querySelector('.assistant__scroll').scrollTop = 0; }
+      if (action === 'prompts') { showPrompts(true); scrollToLatest(); }
       if (action === 'ask') ask(target.textContent, target.dataset.action);
       if (action === 'scope') { setScope(target.dataset.cnField); setAssistant(true); input.focus({preventScroll: true}); }
     }, {capture: true, signal: abort.signal});
