@@ -114,6 +114,50 @@
 
   <section class="section" aria-labelledby="evaluacion">
     <h2 class="section__title" id="evaluacion">Sistema con IA frente a línea base</h2>
+    {% if evaluation %}
+    <p class="section__lede">El sistema con IA se midió contra una línea base sin IA (BM25 y palabras clave), sobre las mismas consultas y las mismas etiquetas revisadas por personas.</p>
+
+    <table class="calc">
+      <thead><tr><th>Métrica</th><th class="num">Línea base</th><th class="num">Con IA</th></tr></thead>
+      <tbody>
+        {% for row in evaluation.comparison %}
+        <tr>
+          <td>{{ row.name }}</td>
+          <td class="num">{% if row.percent %}{{ row.baseline|percent(1) }}{% else %}{{ row.baseline|number(2) }}{% endif %}</td>
+          <td class="pts">{% if row.percent %}{{ row.ai|percent(1) }}{% else %}{{ row.ai|number(2) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h3 class="rule__title mt-10">Calidad del sistema</h3>
+    <table class="calc">
+      <thead><tr><th>Medida</th><th class="num">Resultado</th></tr></thead>
+      <tbody>
+        {% for row in evaluation.outcomes %}
+        <tr>
+          <td>{{ row.name }}{% if row.as_clicked is defined %}<span class="muted"> - {{ row.as_clicked }} de {{ row.total }} con la selección tal como se marcó, antes de la corrección</span>{% endif %}</td>
+          <td class="pts">{{ row.hits }} de {{ row.total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="rule-list">
+      <div class="rule">
+        <h3 class="rule__title">Agrupar gana alcance, no precisión</h3>
+        <p>La agrupación con IA encuentra más eventos repetidos, pero une algunos que no lo son: su precisión es {{ evaluation.grouping_precision.ai|number(2) }} frente a {{ evaluation.grouping_precision.baseline|number(2) }} de la línea base.</p>
+      </div>
+      <div class="rule">
+        <h3 class="rule__title">La búsqueda por palabras es más rápida</h3>
+        <p>BM25 responde unas {{ evaluation.speed_ratio|number }} veces más rápido que la búsqueda con embeddings y ya recupera casi toda la evidencia esperada.</p>
+      </div>
+      <div class="rule">
+        <h3 class="rule__title">No es una prueba independiente</h3>
+        <p>Las etiquetas salen del mismo conjunto de desarrollo con el que se eligió el modelo, no de un conjunto de prueba aparte.</p>
+      </div>
+    </div>
+    {% else %}
     <p class="section__lede">Aquí se comparará el resultado del sistema con IA contra una línea base sin IA, sobre las mismas consultas.</p>
 
     <div class="pending" role="status">
@@ -125,5 +169,6 @@
         <em>Sin resultados todavía</em>
       </div>
     </div>
+    {% endif %}
   </section>
 </div>

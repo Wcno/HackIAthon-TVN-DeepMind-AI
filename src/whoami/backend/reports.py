@@ -387,3 +387,48 @@ def methodology_view(groups: list[dict], selected: str | None = None, query: str
         "no_matches": bool(needle) and not matching,
         "example": _example(chosen) if chosen else None,
     }
+
+
+# -------------------------------------------------------------- evaluation
+
+EVALUATION_METRICS = Path("g7-reviewed") / "metrics.json"
+EVALUATION_PRECISION_AT_5 = Path("human-reviews") / "precision-at-5.json"
+
+
+def _read_json(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _count(name: str, result: dict) -> dict:
+    return {"name": name, "hits": result["numerator"], "total": result["denominator"]}
+
+
+def evaluation_view(directory: Path) -> dict | None:
+    """The G7 baseline-versus-AI results, read from its evaluation outputs; None while they are missing."""
+    metrics = _read_json(directory / EVALUATION_METRICS)
+    review = _read_json(directory / EVALUATION_PRECISION_AT_5)
+    if metrics is None or review is None:
+        return None
+    retrieval, topics, grouping, answers = metrics["retrieval"], metrics["classification"]["methods"], metrics["grouping"]["methods"], metrics["answers"]
+    top = len(review["system_top5"])
+    return {
+        "comparison": [
+            {"name": "Recall@8 de la búsqueda", "baseline": retrieval["bm25"]["micro_recall_at_8"]["value"] * 100,
+             "ai": retrieval["emb"]["micro_recall_at_8"]["value"] * 100, "percent": True},
+            {"name": "Clasificación por tema (F1 macro)", "baseline": topics["keywords"]["macro_f1"], "ai": topics["embeddings_cv"]["macro_f1"]},
+            {"name": "Agrupación de un mismo evento (F1)", "baseline": grouping["keywords"]["f1"], "ai": grouping["embeddings"]["f1"]},
+        ],
+        "outcomes": [
+            _count("Consultas respondidas correctamente", answers["correct"]),
+            _count("Consultas adversarias manejadas con seguridad", answers["by_kind"]["adversarial"]),
+            _count("Abstenciones correctas", answers["correct_abstentions"]),
+            _count("Afirmaciones respaldadas por la fuente, según revisión humana", metrics["claims"]["human_support"]),
+            {"name": "Precision@5 de la agenda", "hits": len(review["hits"]), "total": top,
+             "as_clicked": round(review["precision_at_5_as_clicked"] * top)},
+        ],
+        "grouping_precision": {"baseline": grouping["keywords"]["precision"], "ai": grouping["embeddings"]["precision"]},
+        "speed_ratio": round(retrieval["emb"]["latency"]["median_s"] / retrieval["bm25"]["latency"]["median_s"]),
+    }
