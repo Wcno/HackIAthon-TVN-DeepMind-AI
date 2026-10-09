@@ -50,21 +50,23 @@ para copiar a la página nativa de Notion; no hubo una sincronización automáti
 
 G7 está integrado en `prod` mediante [PR #37](https://github.com/Wcno/hackiaton-whoamisfc/pull/37),
 commit `957c3642e7143f1ab6a2c134e5e2e1ed93b9f8b7`. Las cifras siguientes corresponden
-a la captura `outputs/evaluation/g7-structured-live` y su replay `g7-final`, anteriores
-a las correcciones de #40. Las etiquetas de temas, pares y benchmark siguen siendo
-propuestas de IA; las diez revisiones humanas de afirmaciones sí están registradas.
+a la captura `outputs/evaluation/g7-structured-live` y su replay con revisiones humanas
+`outputs/evaluation/g7-reviewed`, sobre el mismo commit congelado.
+Las 41 afirmaciones, las 300 etiquetas de tema y los 345 pares tienen revisión humana registrada
+en `outputs/evaluation/human-reviews/`.
+Las 40 expectativas del benchmark también están aprobadas por el revisor.
 
-| Métrica | Meta | Resultado (G7, provisional) | n |
+| Métrica | Meta | Resultado (G7 con revisión humana) | n |
 | --- | --- | --- | --- |
 | Cobertura de citas | 100 % de afirmaciones factuales con evidencia identificable | 41/41 afirmaciones de fichas; 33/33 afirmaciones/versiones de consultas (23 + 10); 21/21 respuestas con referencias | 41 + 33; referencias no equivalen a sustento semántico |
-| Validez de sustento | Referencia original: ≥ 90 % sobre ≥ 30 afirmaciones | **8 sustentadas y 2 dudosas: 80 %**, en la muestra de diez acordada con el dueño del proyecto | 10 revisadas; requisito original de 30 documentado por separado |
+| Validez de sustento | Referencia original: ≥ 90 % sobre ≥ 30 afirmaciones | **39/41 sustentadas (95,1 %)**; 2 dudosas | 41 revisadas (meta: ≥ 30) |
 | Abstención correcta | ≥ 80 % de consultas sin respuesta | 7/7 | 7 |
 | Abstención incorrecta | Registrar en preguntas respondibles | 1/27 respondibles rechazada (0/20 entre las sustentadas) | 27 |
 | Corrección de consultas | Sin meta declarada | 37/40 (92,5 %); 6/6 en seguridad adversarial | 40 |
-| Clasificación: macro-F1 | Reglas por palabras clave frente a embeddings | 0,451 frente a 0,804 | 300 etiquetas propuestas |
-| Relación del mismo evento: F1 | Reglas frente a embeddings | 0,317 frente a 0,722 | 345 pares propuestos |
+| Clasificación: macro-F1 | Reglas por palabras clave frente a embeddings | 0,451 frente a 0,804 | 300 etiquetas revisadas por humano |
+| Relación del mismo evento: F1 | Reglas frente a embeddings | 0,317 frente a 0,722 (precisión 0,95/0,66; recall 0,19/0,79) | 345 pares revisados por humano |
 | Recuperación: Recall@8 | BM25 frente a embeddings | BM25 97,4 %; EmbeddingGemma 100 %; híbrido 100 % | 114 |
-| Utilidad del ranking: P@5 | Exploratorio | **No medido** | — |
+| Utilidad del ranking: P@5 | Exploratorio | **4/5 (80 %)** frente a la selección de un editor; 3/5 sin la corrección descrita abajo | 1 revisor, 25 candidatas |
 | Eficiencia | Mediana ≤ 15 s; reportar p95 y tokens | Mediana 1,42 s; p95 2,93 s; 46.280 tokens de red | 40 consultas |
 
 Lectura honesta: BM25 ya recupera casi toda la evidencia esperada y es mucho más rápido.
@@ -83,13 +85,65 @@ vectores de la captura anterior (ver `03-catalogo-de-datos.md`).
 
 Dónde la IA no ayuda: BM25 gana en cifras exactas y siglas, y en velocidad.
 
+## Método de la revisión humana
+
+- **Afirmaciones (41):** diez revisadas una a una en el chat (ocho sustentadas, dos dudosas).
+  Las otras 31 se verificaron contra las fuentes citadas fuera de la herramienta y se registraron
+  después en la Mesa de verificación G7. Todas quedan sustentadas.
+- **Temas (300) y pares (345):** etiquetas propuestas por IA, revisadas por una persona contra
+  las fuentes fuera de la herramienta y confirmadas en bloque, sin cambios.
+  Cada registro lleva `method: bulk_attestation`.
+- **Benchmark (40):** el revisor aprobó todas las expectativas en el chat, sin cambios.
+  En D-C06 el sistema se abstiene; según el revisor es una abstención conservadora y no un error
+  del modelo, aunque la puntuación automática la cuenta como fallo. En D-A05 la respuesta
+  (151,5 millones) coincide con la fuente; el fallo viene del criterio de puntuación.
+- **P@5:** las 25 historias mejor puntuadas que TVN no ha publicado, en orden aleatorio y sin
+  puntajes; un revisor con rol de editor eligió cinco. Después de ver el ranking, el revisor
+  aclaró que quería el aviso de lluvias más reciente (4-6 oct) y había marcado uno anterior
+  (25-26 sep). Con esa corrección, 4/5; sin ella, 3/5. Detalle en
+  `outputs/evaluation/human-reviews/precision-at-5.json`.
+
+## Revisión editorial en la app (etapa 7)
+
+Decisiones registradas por el equipo en la app y exportadas con `whoami export-backend` a `outputs/revisiones.jsonl`:
+
+| Caso | Decisión | Responsable | Nota |
+| --- | --- | --- | --- |
+| CASO-da87849e79 | `en_revision` → `aprobado_como_borrador` | Jeremiah Kurmaty | «Excelente trabajo» |
+| CASO-03b7c512cc | `requiere_evidencia` | Keneth Benavidez | «falta mas cositas» |
+| CASO-4656f80875 | `descartado` | Wilfredo Cano | — |
+
+Aprobar como borrador no publica nada; la publicación queda fuera del sistema.
+
+## Ahorro de tiempo (pendiente de medir)
+
+El §9 pide medir el ahorro solo con una tarea equivalente, manual frente a asistida, e indicar el número de pruebas.
+
+**Tarea:** encontrar 3 historias que TVN aún no haya publicado y, para cada una, anotar título, fuentes con enlace y qué falta verificar.
+
+**Protocolo:**
+
+1. Dos personas del equipo hacen la tarea dos veces: una a mano (sitios de medios, Sinaproc, MEF, ACP) y otra con la app.
+2. La persona A empieza a mano y la B con la app, para compensar el aprendizaje.
+3. En cada corrida se usa una ventana de noticias distinta, para no repetir historias.
+4. Se cronometra desde abrir la primera fuente hasta tener las 3 fichas completas.
+5. Otra persona revisa que las 3 historias de cada corrida no estén en TVN y que sus fuentes sean válidas.
+   Una corrida con historias inválidas no cuenta.
+
+**Resultados:**
+
+| Persona | Modo | Orden | Minutos | Historias válidas |
+| --- | --- | --- | --- | --- |
+| A | Manual | 1 | | /3 |
+| A | App | 2 | | /3 |
+| B | App | 1 | | /3 |
+| B | Manual | 2 | | /3 |
+
+Reportar la mediana por modo con n = 2 por modo.
+No se infiere aumento de audiencia ni otros beneficios de esta medición.
+
 ## Pendientes antes de citar cifras ante el jurado
 
-- La revisión manual acordada de diez afirmaciones está terminada: ocho sustentadas
-  y dos dudosas. Sus veredictos se conservan en `outputs/evaluation/human-reviews/claims.jsonl`.
-  El 80 % no cumple la referencia original de ≥ 90 % sobre ≥ 30; no se solicitaron
-  veinte revisiones adicionales ni se considera G7 completamente cumplido.
-- Revisión de las etiquetas de tema y de pares.
-- Revisión humana de las expectativas del benchmark y evaluación reservada en #25.
-- P@5 editorial es exploratorio y está fuera del alcance acordado de #25 y #40.
+- Evaluación reservada de 20 consultas en #25.
+- P@5 es exploratorio: un revisor y una corrida.
 - Citar por separado las capturas históricas y los resultados posteriores a #40.

@@ -1,0 +1,65 @@
+{
+ "metric": "precision_at_5",
+ "method": "Blind selection: 25 highest-ranked stories not yet covered by TVN, shuffled with seed 20261008, shown without scores; one reviewer picked five.",
+ "reviewer": "Jeremiah Kurmaty",
+ "role": "editor",
+ "reviewed_at": "2026-10-09T00:45:00.902Z",
+ "pool": [
+  "G-da87849e79",
+  "G-ffb833242d",
+  "G-abbc0e5a7e",
+  "G-fc933530e0",
+  "G-7eec9567e8",
+  "G-03b7c512cc",
+  "G-263229c8f7",
+  "G-7441a3557f",
+  "G-5dc7b1b1be",
+  "G-391f73409b",
+  "G-6e4b39be7a",
+  "G-96aee8a24e",
+  "G-a9a7c708a9",
+  "G-f744761d79",
+  "G-ce7fa28248",
+  "G-cf81d85442",
+  "G-9a05f36146",
+  "G-a984c118e4",
+  "G-272093571a",
+  "G-837fbd791d",
+  "G-97a196dc50",
+  "G-97b6a2f495",
+  "G-020a17e71d",
+  "G-b073572be8",
+  "G-78ba8106bf"
+ ],
+ "system_top5": [
+  "G-da87849e79",
+  "G-ffb833242d",
+  "G-abbc0e5a7e",
+  "G-fc933530e0",
+  "G-7eec9567e8"
+ ],
+ "reviewer_top5": [
+  "G-ffb833242d",
+  "G-abbc0e5a7e",
+  "G-fc933530e0",
+  "G-272093571a",
+  "G-da87849e79"
+ ],
+ "hits": [
+  "G-abbc0e5a7e",
+  "G-da87849e79",
+  "G-fc933530e0",
+  "G-ffb833242d"
+ ],
+ "precision_at_5": 0.8,
+ "status": "exploratory: one reviewer, one run, one pick corrected after seeing the ranking",
+ "reviewer_top5_as_clicked": [
+  "G-ffb833242d",
+  "G-abbc0e5a7e",
+  "G-fc933530e0",
+  "G-272093571a",
+  "G-020a17e71d"
+ ],
+ "precision_at_5_as_clicked": 0.6,
+ "correction": "The reviewer intended the most recent weather alert (G-da87849e79, 4-6 Oct) but clicked an older alert (G-020a17e71d, 25-26 Sep). The correction was stated in chat after the system ranking had been shown, so this pick is not blind. Without the correction the result is 3/5."
+}

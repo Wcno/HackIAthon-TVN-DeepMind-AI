@@ -23,7 +23,7 @@ contenido sin perderlo.
 - **Despliegue gratuito.** Queda para el final y depende de G6, que aún no está en `prod`.
 - **Pitch de 10 minutos.** El guion, los ensayos y las pruebas dinámicas del jurado los
   maneja el equipo; GitHub solo guarda la estructura.
-- **Revisión humana.** Las etiquetas y las 30 afirmaciones de sustento siguen sin revisar.
+- **Revisión humana.** Afirmaciones, temas, pares, benchmark y P@5 revisados.
 
 Cada cifra de estas páginas indica su fuente. Si una cifra cambia, se actualiza aquí y
 en Notion en la misma sesión.
