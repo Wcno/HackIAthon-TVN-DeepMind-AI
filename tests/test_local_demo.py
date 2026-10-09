@@ -1,11 +1,26 @@
 """Local hosting refuses semantic degradation and keeps its own durable database."""
 
+import argparse
+
 from fastapi.testclient import TestClient
 import pytest
+import uvicorn
 
+from whoami import local_demo
 from whoami.backend.retrieval import CorpusRetriever
 from whoami.backend.settings import Settings
 from whoami.local_demo import create_demo
+
+
+@pytest.mark.parametrize("arguments, host", [([], "127.0.0.1"), (["--host", "0.0.0.0"], "0.0.0.0")])
+def test_serves_on_loopback_unless_a_container_asks_for_every_interface(tmp_path, monkeypatch, arguments, host):
+    served = {}
+    monkeypatch.setattr(local_demo, "create_demo", lambda settings, database: "app")
+    monkeypatch.setattr(uvicorn, "run", lambda app, **options: served.update(options))
+    parser = argparse.ArgumentParser()
+    local_demo.add_arguments(parser)
+    local_demo.main(parser.parse_args(["--database", str(tmp_path / "demo.sqlite3"), *arguments]))
+    assert served == {"host": host, "port": 8765}
 
 
 def test_requires_existing_online_configuration(tmp_path):

@@ -42,10 +42,11 @@ def create_demo(settings: Settings, database: Path):
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--database", type=Path, required=True, help="persistent demo database; use an explicit separate path")
+    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 inside a container behind a reverse proxy")
     parser.add_argument("--port", type=int, default=8765)
 
 
 def main(args: argparse.Namespace) -> int:
     import uvicorn
-    uvicorn.run(create_demo(Settings.from_environment(), args.database), host="127.0.0.1", port=args.port)
+    uvicorn.run(create_demo(Settings.from_environment(), args.database), host=args.host, port=args.port)
     return 0

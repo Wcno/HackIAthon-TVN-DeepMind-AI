@@ -252,6 +252,6 @@ También se usan ramas `fix/nombre-del-arreglo` para correcciones. No se hacen p
 - Usar `prod` como rama predeterminada.
 - Proteger `prod`: exigir pull request y los checks configurados, sin aprobaciones obligatorias; aplicar la regla también a administradores e impedir force pushes y la eliminación de la rama.
 - Exigir los checks de `G5 validation`: pruebas y build en Windows y Linux. La protección de rama debe configurarse en GitHub.
-- Configurar el proveedor de despliegue para publicar desde `prod`; actualmente no hay un despliegue configurado.
+- Publicar desde `prod` con el `Dockerfile` en un VPS con Dokploy; ver [docs/deploy.md](docs/deploy.md).
 
 Estas son las reglas acordadas. La protección, la rama predeterminada y el despliegue deben verificarse en sus respectivas plataformas.
