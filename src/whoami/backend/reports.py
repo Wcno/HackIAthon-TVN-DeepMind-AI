@@ -2,6 +2,7 @@
 
 import csv
 import json
+import math
 import re
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
@@ -397,38 +398,81 @@ EVALUATION_PRECISION_AT_5 = Path("human-reviews") / "precision-at-5.json"
 
 def _read_json(path: Path) -> dict | None:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        result = json.loads(path.read_text(encoding="utf-8"))
+        return result if isinstance(result, dict) else None
     except (OSError, ValueError):
         return None
 
 
 def _count(name: str, result: dict) -> dict:
-    return {"name": name, "hits": result["numerator"], "total": result["denominator"]}
+    hits, total = result.get("numerator"), result.get("denominator")
+    measured = type(hits) is int and type(total) is int and 0 <= hits <= total and total > 0
+    return {"name": name, "hits": hits if measured else None, "total": total if measured else None,
+            "failures": result.get("failures")}
+
+
+def _measurement(value: object, scale: float = 1) -> float | None:
+    if type(value) not in (int, float):
+        return None
+    try:
+        result = value * scale
+        return result if math.isfinite(result) and result >= 0 else None
+    except OverflowError:
+        return None
 
 
 def evaluation_view(directory: Path) -> dict | None:
-    """The G7 baseline-versus-AI results, read from its evaluation outputs; None while they are missing."""
+    """Missing or malformed reports stay pending; unavailable measurements retain the other results."""
     metrics = _read_json(directory / EVALUATION_METRICS)
     review = _read_json(directory / EVALUATION_PRECISION_AT_5)
     if metrics is None or review is None:
         return None
+    try:
+        return _evaluation_results(metrics, review)
+    except (KeyError, TypeError, AttributeError):
+        # Evaluation artifacts are an external input, including partially written files.
+        return None
+
+
+def _evaluation_results(metrics: dict, review: dict) -> dict | None:
     retrieval, topics, grouping, answers = metrics["retrieval"], metrics["classification"]["methods"], metrics["grouping"]["methods"], metrics["answers"]
+    if not isinstance(review["system_top5"], list) or not isinstance(review["hits"], list):
+        return None
     top = len(review["system_top5"])
+    baseline_latency = _measurement(retrieval["bm25"]["latency"]["median_s"])
+    ai_latency = _measurement(retrieval["emb"]["latency"]["median_s"])
+    speed = _measurement(ai_latency / baseline_latency) if baseline_latency and ai_latency is not None else None
+    clicked = _measurement(review.get("precision_at_5_as_clicked"), top)
+    context = []
+    for method in ("bm25", "emb"):
+        row = _count(f"Recall@8 · {method}", retrieval[method]["micro_recall_at_8"])
+        row["failures"] = retrieval[method].get("failures")
+        row["n"] = retrieval[method].get("judged_queries")
+        context.append(row)
+    for family, label, methods in (("classification", "Clasificación", topics), ("grouping", "Agrupación", grouping)):
+        for method, result in methods.items():
+            row = _count(f"{label} · {method}", result.get("correct", {}))
+            row.update(n=result.get("n"), failures=result.get("failures", row["failures"]),
+                       labels=metrics[family].get("labels", {}))
+            if family == "grouping":
+                row["pairs"] = {key: result.get(key) for key in ("tp", "fp", "fn", "tn")}
+            context.append(row)
     return {
         "comparison": [
-            {"name": "Recall@8 de la búsqueda", "baseline": retrieval["bm25"]["micro_recall_at_8"]["value"] * 100,
-             "ai": retrieval["emb"]["micro_recall_at_8"]["value"] * 100, "percent": True},
-            {"name": "Clasificación por tema (F1 macro)", "baseline": topics["keywords"]["macro_f1"], "ai": topics["embeddings_cv"]["macro_f1"]},
-            {"name": "Agrupación de un mismo evento (F1)", "baseline": grouping["keywords"]["f1"], "ai": grouping["embeddings"]["f1"]},
+            {"name": "Recall@8 de la búsqueda", "baseline": _measurement(retrieval["bm25"]["micro_recall_at_8"]["value"], 100),
+             "ai": _measurement(retrieval["emb"]["micro_recall_at_8"]["value"], 100), "percent": True},
+            {"name": "Clasificación por tema (F1 macro)", "baseline": _measurement(topics["keywords"]["macro_f1"]), "ai": _measurement(topics["embeddings_cv"]["macro_f1"])},
+            {"name": "Agrupación de un mismo evento (F1)", "baseline": _measurement(grouping["keywords"]["f1"]), "ai": _measurement(grouping["embeddings"]["f1"])},
         ],
         "outcomes": [
             _count("Consultas respondidas correctamente", answers["correct"]),
             _count("Consultas adversarias manejadas con seguridad", answers["by_kind"]["adversarial"]),
             _count("Abstenciones correctas", answers["correct_abstentions"]),
             _count("Afirmaciones respaldadas por la fuente, según revisión humana", metrics["claims"]["human_support"]),
-            {"name": "Precision@5 de la agenda", "hits": len(review["hits"]), "total": top,
-             "as_clicked": round(review["precision_at_5_as_clicked"] * top)},
+            {**_count("Precision@5 de la agenda", {"numerator": len(review["hits"]), "denominator": top}),
+             "as_clicked": round(clicked) if clicked is not None and clicked <= top else None},
         ],
-        "grouping_precision": {"baseline": grouping["keywords"]["precision"], "ai": grouping["embeddings"]["precision"]},
-        "speed_ratio": round(retrieval["emb"]["latency"]["median_s"] / retrieval["bm25"]["latency"]["median_s"]),
+        "context": context,
+        "grouping_precision": {"baseline": _measurement(grouping["keywords"]["precision"]), "ai": _measurement(grouping["embeddings"]["precision"])},
+        "speed_ratio": speed,
     }

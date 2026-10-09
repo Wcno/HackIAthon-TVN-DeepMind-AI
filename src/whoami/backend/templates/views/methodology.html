@@ -115,7 +115,8 @@
   <section class="section" aria-labelledby="evaluacion">
     <h2 class="section__title" id="evaluacion">Sistema con IA frente a línea base</h2>
     {% if evaluation %}
-    <p class="section__lede">El sistema con IA se midió contra una línea base sin IA (BM25 y palabras clave), sobre las mismas consultas y las mismas etiquetas revisadas por personas.</p>
+    <p class="section__lede">El sistema con IA se midió contra una línea base sin IA (BM25 y palabras clave), sobre las mismas consultas y etiquetas. La procedencia y el tamaño de cada muestra se detallan debajo.</p>
+    {% macro measurement(value, percentage=false) %}{% if value is none %}Sin medición{% elif percentage %}{{ value|percent(1) }}{% else %}{{ value|number(2) }}{% endif %}{% endmacro %}
 
     <table class="calc">
       <thead><tr><th>Métrica</th><th class="num">Línea base</th><th class="num">Con IA</th></tr></thead>
@@ -123,8 +124,8 @@
         {% for row in evaluation.comparison %}
         <tr>
           <td>{{ row.name }}</td>
-          <td class="num">{% if row.percent %}{{ row.baseline|percent(1) }}{% else %}{{ row.baseline|number(2) }}{% endif %}</td>
-          <td class="pts">{% if row.percent %}{{ row.ai|percent(1) }}{% else %}{{ row.ai|number(2) }}{% endif %}</td>
+          <td class="num">{{ measurement(row.baseline, row.percent) }}</td>
+          <td class="pts">{{ measurement(row.ai, row.percent) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -136,21 +137,31 @@
       <tbody>
         {% for row in evaluation.outcomes %}
         <tr>
-          <td>{{ row.name }}{% if row.as_clicked is defined %}<span class="muted"> - {{ row.as_clicked }} de {{ row.total }} con la selección tal como se marcó, antes de la corrección</span>{% endif %}</td>
-          <td class="pts">{{ row.hits }} de {{ row.total }}</td>
+          <td>{{ row.name }}{% if row.as_clicked is defined and row.as_clicked is not none and row.total is not none %}<span class="muted"> - {{ row.as_clicked }} de {{ row.total }} con la selección tal como se marcó, antes de la corrección</span>{% endif %}{% if row.as_clicked is defined %}<p class="muted">Muestra exploratoria: una persona, una corrida y una selección corregida después de ver el ranking. No es una evaluación ciega independiente.</p>{% endif %}{% if row.failures %}<p class="muted">Fallos: {{ row.failures|join(', ') }}</p>{% endif %}</td>
+          <td class="pts">{% if row.hits is none %}Sin medición{% else %}{{ row.hits }} de {{ row.total }}{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
 
+    <details class="mt-10">
+      <summary>Muestras, etiquetas y fallos de la comparación</summary>
+      {% for row in evaluation.context %}
+      <p><b>{{ row.name }}</b>: {% if row.hits is not none %}{{ row.hits }} de {{ row.total }} aciertos; {% endif %}n = {{ row.n if row.n is not none else 'no declarado' }}.
+        {% if row.labels is defined %}Procedencia de las etiquetas: {{ row.labels.get('provenance', 'no declarada') }}; revisadas: {{ row.labels.get('reviewed', 'no declarado') }} de {{ row.labels.get('total', 'no declarado') }}.{% endif %}
+        {% if row.pairs is defined %}Pares: TP {{ row.pairs.tp }}, FP {{ row.pairs.fp }}, FN {{ row.pairs.fn }}, TN {{ row.pairs.tn }}.{% endif %}
+        Fallos: {% if row.failures %}{{ row.failures|join(', ') }}{% else %}{{ 'ninguno' if row.failures is not none else 'no declarados' }}{% endif %}</p>
+      {% endfor %}
+    </details>
+
     <div class="rule-list">
       <div class="rule">
         <h3 class="rule__title">Agrupar gana alcance, no precisión</h3>
-        <p>La agrupación con IA encuentra más eventos repetidos, pero une algunos que no lo son: su precisión es {{ evaluation.grouping_precision.ai|number(2) }} frente a {{ evaluation.grouping_precision.baseline|number(2) }} de la línea base.</p>
+        <p>La agrupación puede unir eventos que no son el mismo: su precisión con IA es {{ measurement(evaluation.grouping_precision.ai) }} frente a {{ measurement(evaluation.grouping_precision.baseline) }} de la línea base.</p>
       </div>
       <div class="rule">
-        <h3 class="rule__title">La búsqueda por palabras es más rápida</h3>
-        <p>BM25 responde unas {{ evaluation.speed_ratio|number }} veces más rápido que la búsqueda con embeddings y ya recupera casi toda la evidencia esperada.</p>
+        <h3 class="rule__title">Latencia de la búsqueda</h3>
+        <p>{% if evaluation.speed_ratio is none %}Sin medición de la relación entre latencias.{% else %}La latencia mediana de embeddings equivale a unas {{ evaluation.speed_ratio|number(2) }} veces la de BM25.{% endif %}</p>
       </div>
       <div class="rule">
         <h3 class="rule__title">No es una prueba independiente</h3>

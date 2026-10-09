@@ -181,7 +181,7 @@ def ratio(numerator: int, denominator: int) -> dict:
     return {"numerator": numerator, "denominator": denominator, "value": numerator / denominator}
 
 
-def write_evaluation(directory, *, spread: int = 0) -> None:
+def write_evaluation(directory) -> None:
     reviewed = directory / "g7-reviewed"
     reviews = directory / "human-reviews"
     reviewed.mkdir(parents=True)
@@ -209,13 +209,59 @@ def evaluation_client(tmp_path):
 
 def test_evaluation_results_are_rendered_from_the_g7_files(evaluation_client):
     text = text_of(evaluation_client.get("/methodology").text)
-    for expected in ("51,2 %", "88,1 %", "0,11", "0,78", "0,22", "0,67", "31 de 40", "4 de 6", "5 de 7", "33 de 41", "4 de 5", "2 de 5", "0,91", "0,53", "10 veces"):
+    for expected in ("51,2 %", "88,1 %", "0,11", "0,78", "0,22", "0,67", "31 de 40", "4 de 6", "5 de 7", "33 de 41", "4 de 5", "2 de 5", "0,91", "0,53", "10,00 veces"):
         assert expected in text, expected
     assert "Pendiente de G7" not in text
 
 
 def test_evaluation_view_reads_nothing_it_cannot_find(tmp_path):
     assert evaluation_view(tmp_path) is None
+
+
+@pytest.mark.parametrize("payload", [{}, [], None])
+def test_methodology_survives_invalid_evaluation_shapes(tmp_path, payload):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    (directory / "g7-reviewed" / "metrics.json").write_text(json.dumps(payload), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        response = client.get("/methodology")
+    assert response.status_code == 200
+    assert "Pendiente de G7" in response.text
+
+
+@pytest.mark.parametrize("field,value", [("recall", None), ("latency", None), ("latency", 0.0)])
+def test_methodology_keeps_valid_results_when_a_measurement_is_unavailable(tmp_path, field, value):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    path = directory / "g7-reviewed" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))
+    if field == "recall":
+        metrics["retrieval"]["bm25"]["micro_recall_at_8"]["value"] = value
+    else:
+        metrics["retrieval"]["bm25"]["latency"]["median_s"] = value
+    path.write_text(json.dumps(metrics), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        response = client.get("/methodology")
+    assert response.status_code == 200
+    text = text_of(response.text)
+    assert "31 de 40" in text
+    assert "Sin medición" in text
+
+
+def test_methodology_exposes_samples_failures_and_label_provenance(tmp_path):
+    directory = tmp_path / "evaluation"
+    write_evaluation(directory)
+    path = directory / "g7-reviewed" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))
+    metrics["classification"]["labels"] = {"provenance": "ai", "reviewed": 0, "total": 300}
+    metrics["grouping"]["labels"] = {"provenance": "human", "reviewed": 345, "total": 345}
+    metrics["classification"]["methods"]["keywords"].update(n=300, correct={**ratio(172, 300), "failures": ["N-FAIL"]})
+    path.write_text(json.dumps(metrics), encoding="utf-8")
+    with TestClient(create_app(Settings(database=tmp_path / "db", evaluation_directory=directory))) as client:
+        text = text_of(client.get("/methodology").text)
+    for expected in ("172 de 300", "N-FAIL", "ai", "0 de 300", "human", "345 de 345", "una persona", "una corrida", "después de ver el ranking"):
+        assert expected in text
+    assert "mismas etiquetas revisadas por personas" not in text
 
 
 def test_ai_versus_baseline_is_an_empty_slot_without_the_evaluation_files(tmp_path):
