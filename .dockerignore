@@ -1,0 +1,13 @@
+# Only what the web app reads at runtime enters the image; secrets, history and evidence stay out.
+*
+!pyproject.toml
+!uv.lock
+!src/
+!data/
+!outputs/
+data/raw/
+data/processed/evidencias_vectores.*
+outputs/validation/
+outputs/experiments/
+**/__pycache__/
+**/*.sqlite3*

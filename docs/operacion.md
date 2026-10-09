@@ -110,3 +110,7 @@ Para exportar las fichas, consultas y decisiones del ciclo de revisión actual, 
 ```powershell
 uv run --locked whoami export-backend --output outputs
 ```
+
+## Despliegue
+
+Ver [despliegue en un VPS con Dokploy](despliegue.md).
