@@ -23,7 +23,7 @@ Si una sección `01`-`12` contradice este archivo, **prevalece este archivo**.
 
 - Sin red, la caja de consultas solo responde consultas precalculadas (demo y benchmark).
   Una consulta nueva muestra «sin conexión: solo consultas precalculadas».
-- No se usan modelos locales (ver `docs/adr/0001-gemini-free-tier-for-embeddings-and-generation.md`).
+- Durante la demo sin red no se carga ningún modelo: los embeddings (EmbeddingGemma local, ver `docs/adr/0003-local-embeddings-embeddinggemma.md`) y la generación con Gemini quedan precalculados.
 - La matriz de pruebas en Notion cubre T01-T10 y deja evidencia de la ejecución sin red.
 
 ## D-02 · Ventana de fechas: un año hacia atrás, desde 2025-10-02
@@ -90,6 +90,8 @@ Si una sección `01`-`12` contradice este archivo, **prevalece este archivo**.
   Las entidades públicas no declaran condiciones de reutilización.
   Los términos del sitio de la ACP restringen la copia de su contenido.
   Para las demás fuentes no hay ningún permiso escrito de uso de fotos.
+- **Decisión del equipo:** se conservan las fotos, incluidas las de la ACP, por tratarse de un uso demostrativo y no comercial, con crédito y enlace a la noticia original.
+  Se retiran si algún titular lo pide.
 - **Pendiente:** el permiso para reutilizar las fotos no está confirmado con ningún medio ni entidad.
   Si algún titular lo pide o no se confirma, se retira la copia local y la ficha queda sin foto.
 

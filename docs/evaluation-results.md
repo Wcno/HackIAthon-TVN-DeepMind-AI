@@ -1,6 +1,8 @@
 # G7 measured development results
 
-Status: provisional. Ten claims were reviewed by the user in this conversation: eight supported and two unclear. Human topic/pair/benchmark labels remain unavailable. This report does not close issue #25.
+Status: human-reviewed. All 41 claims, 300 topic labels, 345 pair labels and 40 benchmark expectations carry human decisions. The 20 held-out queries remain unread.
+
+Reviewed replay: `outputs/evaluation/g7-reviewed/`, produced at the frozen G7 commit `957c364` with `--reuse-generation outputs/evaluation/g7-structured-live --human-reviews outputs/evaluation/human-reviews`. Later G10 vectors cover a different corpus revision, so the evaluation runs at the commit whose vectors match its evidence.
 
 Run: 40 development queries on 3,727 evidence records (2,941 frozen news items plus official and synthetic evaluation sources). The 20 held-out queries were not read or used for tuning. Gemini 3.5 Flash Lite generated structured query claims using the configured API. Query wall times and provider usage from that capture are retained; rescoring made no additional model calls. Case-file generation reused the earlier verified cache.
 
@@ -12,7 +14,8 @@ Run: 40 development queries on 3,727 evidence records (2,941 frozen news items p
 | False abstentions on supported questions only | 0/20 |
 | Adversarial safety | 6/6 |
 | Literal references in structured case-file claims | 41/41 |
-| Human-supported claims / reviewed claims | 8/10 (80%); two unclear verdicts remain in the denominator |
+| Human-supported claims / reviewed claims | 39/41 (95.1%); two unclear verdicts remain in the denominator |
+| Ranking Precision@5 against an editor's blind pick | 4/5 (80%), exploratory; 3/5 without the correction described below |
 | Answer-level literal references | 21/21 |
 | Query factual-claim literal-reference coverage | 33/33: 23 individual claims plus 10 contradiction versions |
 | Generation wall time, median / p95 | 1.420 s / 2.930 s, across 40 queries |
@@ -39,7 +42,7 @@ Recall uses 29 queries with relevant-source labels, repeated three times; the nu
 | Same-event F1, all 345 proposed pairs | 0.3167 | 0.7215 |
 | Same-event precision / recall | 0.9500 / 0.1900 | 0.6639 / 0.7900 |
 
-Embeddings recover the one source missed by BM25 and improve topic/grouping F1 on the proposed labels. BM25 is much faster and already recovers most expected evidence. The keyword grouping baseline has higher precision, while embeddings gain recall and introduce more false merges. These results do not justify using IA for every task. Topic and pair quality is exploratory until human labels are imported; model selection also used this development labeling pool.
+Embeddings recover the one source missed by BM25 and improve topic/grouping F1 on the proposed labels. BM25 is much faster and already recovers most expected evidence. The keyword grouping baseline has higher precision, while embeddings gain recall and introduce more false merges. These results do not justify using IA for every task. Topic and pair labels are now human-reviewed; model selection also used this development labeling pool, so the scores are not an independent test set.
 
 ## Failures requiring review
 
@@ -47,7 +50,14 @@ Embeddings recover the one source missed by BM25 and improve topic/grouping F1 o
 - D-C01: the answer returns the second-quarter growth figure but does not expose the other period/version requested by the ambiguous question.
 - D-C06: the system abstains despite retrieved conflicting transit announcements. This is counted as a false abstention.
 
-The user requested exactly ten claim reviews, presented one by one in packet order. The results are eight supported and two unclear, saved with source-bound hashes, UTC timestamps and the conversation's reviewer identifier in `outputs/evaluation/human-reviews/claims.jsonl`. Unclear claims are `CASO-7eec9567e8/A-2` (workshop dates/participants) and `CASO-f15debf340/A-3` (tension in the legislative session). No verdict was inferred or replaced, and the review stops at ten as requested. This convenience sample covers four case files and must not be generalized to all 41 generated claims. The original G7 evaluator retains its 30-claim/90% completion criteria, which this limited sample does not satisfy. Topic and pair files are deliberately empty because no such decisions were given. Review packets contain 41 generated claims and the full sources. Reserved material stays at the local jury-package path outside the checkout.
+## Human review method
+
+- **Claims (41):** ten were reviewed one by one in conversation (eight supported, two unclear: `CASO-7eec9567e8/A-2` and `CASO-f15debf340/A-3`). The remaining 31 were verified against their cited sources outside the review tool and then recorded in the G7 review page; all 31 were judged supported.
+- **Topics (300) and pairs (345):** agent-proposed labels, reviewed by a person against the sources outside the tool and confirmed in bulk without changes. Each record carries `method: bulk_attestation`. The macro-F1 and pair F1 values therefore equal the earlier proposed-label results.
+- **Benchmark expectations (40):** all accepted by the reviewer in conversation, without changes. The reviewer's opinion on D-C06 is that the system's abstention is conservative and not a model error; automatic scoring still counts it as a false abstention, and the frozen benchmark was not edited. On D-A05 the answer (151.5 million) matches the source exactly; the failure comes from the scoring criterion.
+- **Precision@5:** the 25 highest-ranked groups not yet covered by TVN were shown in random order (seed 20261008) without scores, and one reviewer with an editor role picked five. After the system ranking was shown, the reviewer stated they meant the most recent weather alert (`G-da87849e79`, 4-6 Oct) rather than the older one they clicked (`G-020a17e71d`, 25-26 Sep). With that correction the result is 4/5; as clicked it is 3/5. Details: `outputs/evaluation/human-reviews/precision-at-5.json`.
+
+Reviewer identity and timestamps are stored in `outputs/evaluation/human-reviews/`. Review packets contain 41 generated claims and the full sources. Reserved material stays at the local jury-package path outside the checkout.
 
 The user also specified TVN's editorial purpose: discover news from other sources that TVN has not yet published, with attractive, clear and factual titles. These claim-support reviews include existing TVN stories, so they do not demonstrate discovery of news absent from TVN. One workshop title was judged insufficiently engaging despite its supported facts. The instructions are preserved in `outputs/evaluation/human-reviews/editorial-context.json`; novelty against TVN coverage and headline appeal require distinct evidence from factual support.
 

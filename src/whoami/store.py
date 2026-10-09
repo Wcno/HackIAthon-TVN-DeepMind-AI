@@ -106,13 +106,23 @@ def write(output: OutputSet, data: Path = PROCESSED, outputs: Path = OUTPUTS) ->
         write_jsonl(outputs / REVIEW_ARCHIVE_FILE, [record.model_dump(mode="json") for record in output.historial_revisiones])
 
 
+def link_live_case_files(groups: list[dict], case_files: list[dict]) -> list[dict]:
+    """A case file generated live in the app names its group, but the frozen group file predates it.
+
+    Only a group without a case file is linked; a group naming a different case file stays incoherent."""
+    owner = {case["id_grupo"]: case["id_caso"] for case in case_files}
+    return [group | {"id_caso": owner[group["id_grupo"]]} if group["id_caso"] is None and group["id_grupo"] in owner else group
+            for group in groups]
+
+
 def load(data: Path = PROCESSED, outputs: Path = OUTPUTS) -> OutputSet:
     """Loads the real pipeline output, rejecting anything that breaks a schema or a rule between records."""
+    case_files = [case_file_from_record(record).model_dump() for record in read_jsonl(outputs / FICHAS_FILE)]
     output = OutputSet.model_validate(
         {
-            "grupos": read_jsonl(data / GROUPS_FILE),
+            "grupos": link_live_case_files(read_jsonl(data / GROUPS_FILE), case_files),
             "evidencias": {record["id_evidencia"]: record for record in read_jsonl(data / EVIDENCE_FILE)},
-            "fichas": [case_file_from_record(record).model_dump() for record in read_jsonl(outputs / FICHAS_FILE)],
+            "fichas": case_files,
             "consultas": read_jsonl(outputs / QUERIES_FILE),
             "revisiones": read_jsonl(outputs / REVIEWS_FILE),
             "historial_revisiones": read_jsonl(outputs / REVIEW_ARCHIVE_FILE) if (outputs / REVIEW_ARCHIVE_FILE).exists() else [],

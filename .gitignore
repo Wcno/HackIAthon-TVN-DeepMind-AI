@@ -17,3 +17,7 @@ outputs/validation/g10*/server-*.log
 data/processed/evidencias_vectores.*
 .cache/
 outputs/experiments/embedding-validation/*.npy
+
+# Local design and diagram tool workspaces
+.archify/
+.impeccable/
