@@ -1,0 +1,8 @@
+{
+  "installed_wheel": true,
+  "relocated_bundle": true,
+  "model_available_to_runtime": false,
+  "quality_and_inbox": "passed",
+  "answered_and_abstained_queries": "passed",
+  "isolation_audit": "zero network or model attempts"
+}

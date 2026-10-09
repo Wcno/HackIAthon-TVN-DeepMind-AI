@@ -161,10 +161,10 @@ def percent(value: float | int | None, decimals: int = 2) -> str:
 PHOTO_PLACEHOLDER = "/static/img/photo-placeholder.svg"
 
 
-def image_src(value: str) -> str:
+def image_src(value: str, directory: Path = STATIC_DIRECTORY) -> str:
     """One of the app's own static images that exists on disk; anything else (an outlet's URL, a missing copy)
     is the local placeholder, so a page never asks an external server for a photo."""
-    if value.startswith("/static/") and ".." not in value and (STATIC_DIRECTORY / value.removeprefix("/static/")).is_file():
+    if value.startswith("/static/") and ".." not in value and (directory / value.removeprefix("/static/")).is_file():
         return value
     return PHOTO_PLACEHOLDER
 
@@ -182,8 +182,9 @@ QueryProvider = Callable[[str, GeminiClient, EditorialRepository], Awaitable[dic
 
 def create_app(settings: Settings | None = None, *, query_provider: QueryProvider | None = None, gemini_transport=None) -> FastAPI:
     settings = settings or Settings.from_environment()
+    static_directory = settings.static_directory or STATIC_DIRECTORY
     templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=image_src, number=number, score=score, percent=percent,
+    templates.env.filters.update(panama_time=panama_time, safe_url=safe_url, image_src=lambda value: image_src(value, static_directory), number=number, score=score, percent=percent,
                             short_date=short_date, spanish_decimals=spanish_decimals, latest_date=latest_date, needs_investigation=needs_investigation)
     templates.env.globals.update(review_labels=REVIEW_LABELS, file_states=FILE_STATE_LABELS, coverage_filters=COVERAGE_FILTERS, coverage_badges=COVERAGE_BADGES, evidence_labels=EVIDENCE_LABELS, draft_budgets=draft_budgets,
                                  score_components=score_components, abstention_copy=abstention_copy, approval_cautions=approval_cautions,
@@ -200,7 +201,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         app.state.snapshot = snapshot_view(PROCESSED if settings.demo else settings.data_directory)
         app.state.gemini = GeminiClient(repository, settings, transport=gemini_transport)
         app.state.live_case_files = LiveCaseFiles(repository, app.state.gemini)
-        app.state.assistant = DraftAssistant(repository, None if settings.demo else settings.data_directory / "embeddings")
+        app.state.assistant = DraftAssistant(repository, None if settings.demo or settings.offline else settings.data_directory / "embeddings")
         app.state.live_queries = LiveQueries(app.state.gemini, app.state.assistant.index, app.state.assistant.evidence)
         try:
             yield
@@ -208,7 +209,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
             await app.state.gemini.close()
 
     app = FastAPI(title="TVN DeepMind AI", lifespan=lifespan)
-    app.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
+    app.mount("/static", StaticFiles(directory=static_directory), name="static")
 
     def render(request: Request, screen: str, title: str, status_code: int = 200, **context):
         return templates.TemplateResponse(request=request, name="screen.html", context={

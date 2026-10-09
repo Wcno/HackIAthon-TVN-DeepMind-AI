@@ -21,6 +21,7 @@ class Settings:
     database: Path = field(default_factory=default_database)
     data_directory: Path = DEMO
     output_directory: Path = DEMO
+    static_directory: Path | None = None
     demo: bool = True
     offline: bool = True
     gemini_model: str = "gemini-3.5-flash-lite"

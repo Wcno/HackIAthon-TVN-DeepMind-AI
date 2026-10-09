@@ -1,0 +1,255 @@
+{
+  "timestamp_utc": "2026-10-08T21:22:36.100014+00:00",
+  "counts": {
+    "groups": 2142,
+    "cases": 11,
+    "answers": 48,
+    "query_states": [
+      "abstencion",
+      "contradiccion",
+      "respondida"
+    ],
+    "embedded_news": 3154
+  },
+  "seven_stages": [
+    {
+      "path": "/quality",
+      "status": 200
+    },
+    {
+      "path": "/inbox",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-da87849e79",
+      "status": 200
+    },
+    {
+      "path": "/groups/G-da87849e79/context",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-da87849e79",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-da87849e79/draft",
+      "status": 200
+    },
+    {
+      "path": "/cases/CASO-da87849e79/review",
+      "status": 200
+    },
+    {
+      "path": "/methodology",
+      "status": 200
+    }
+  ],
+  "precomputed_queries": [
+    {
+      "id": "D-A01",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A02",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A03",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A04",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A05",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A06",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A07",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A08",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A09",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A10",
+      "state": "respondida"
+    },
+    {
+      "id": "D-C01",
+      "state": "respondida"
+    },
+    {
+      "id": "D-C02",
+      "state": "contradiccion"
+    },
+    {
+      "id": "D-C03",
+      "state": "contradiccion"
+    },
+    {
+      "id": "D-C04",
+      "state": "contradiccion"
+    },
+    {
+      "id": "D-C05",
+      "state": "contradiccion"
+    },
+    {
+      "id": "D-C06",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-C07",
+      "state": "respondida"
+    },
+    {
+      "id": "D-N01",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N02",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N03",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N04",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N05",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N06",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N07",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N08",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N09",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-N10",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X01",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X02",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X04",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X05",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X06",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X07",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X09",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X10",
+      "state": "respondida"
+    },
+    {
+      "id": "D-C08",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X03",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-X08",
+      "state": "abstencion"
+    },
+    {
+      "id": "D-A11",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A12",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A13",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A14",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A15",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A16",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A17",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A18",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A19",
+      "state": "respondida"
+    },
+    {
+      "id": "D-A20",
+      "state": "respondida"
+    }
+  ],
+  "unknown_query_fallback": true,
+  "online_generation_refused": true,
+  "review_survives_restart": true,
+  "external_connections_and_local_models": "forbidden; zero attempts",
+  "browser": {
+    "external_requests": [],
+    "javascript_errors": [],
+    "failed_requests": [],
+    "draft_saved_in_browser": true,
+    "desktop_and_mobile": true
+  },
+  "physical_wifi_disabled": false,
+  "isolation": "Server refuses non-loopback DNS/socket connections; browser aborts every external origin."
+}

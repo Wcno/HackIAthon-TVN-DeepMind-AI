@@ -9,7 +9,11 @@ __pycache__/
 *.sqlite3-wal
 *.sqlite3-shm
 dist/
+offline-demo/
+outputs/validation/g10*/bundle/
+outputs/validation/g10*/server-*.log
 
 # Evidence index cache of the query box (rebuilt by `whoami generar`)
 data/processed/evidencias_vectores.*
 .cache/
+outputs/experiments/embedding-validation/*.npy

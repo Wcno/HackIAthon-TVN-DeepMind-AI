@@ -1,0 +1,21 @@
+{
+  "readiness": {
+    "ready": true,
+    "retrieval": "hybrid: local embeddinggemma + BM25 (cosine >= 0.62)",
+    "persistence": "local SQLite",
+    "generation_daily_limit": 20
+  },
+  "draft_survived_real_process_restart": true,
+  "original_title_restored": true,
+  "screens": {
+    "/quality": 200,
+    "/inbox": 200,
+    "/methodology": 200,
+    "/queries": 200,
+    "/cases/CASO-da87849e79": 200,
+    "/cases/CASO-da87849e79/draft": 200,
+    "/cases/CASO-da87849e79/review": 200
+  },
+  "public_tunnel": "not_started_pending_allowed_email",
+  "human_labels_written": false
+}

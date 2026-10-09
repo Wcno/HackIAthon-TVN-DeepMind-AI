@@ -73,6 +73,12 @@ def document_text(row: Mapping[str, str]) -> str:
     return f"{row['titulo']}. {description}" if description else row["titulo"]
 
 
+def corpus_fingerprint(rows: Sequence[Mapping[str, str]]) -> str:
+    """Identity of the ordered document IDs and the exact texts that were embedded."""
+    content = [(row["id_noticia"], document_text(row)) for row in rows]
+    return hashlib.sha256(json.dumps(content, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
 class Embedder:
     """`embed_documents` and `embed_queries` return L2-normalized float32 `(n, 768)` matrices.
 
@@ -164,6 +170,7 @@ def embed_corpus(
         "prefijo_consulta": QUERY_PREFIX,
         "receta_texto": TEXT_RECIPE,
         "sha256_vectores": _sha256(path),
+        "sha256_textos": corpus_fingerprint(rows),
         "ids": [row["id_noticia"] for row in rows],
         "fecha_UTC": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

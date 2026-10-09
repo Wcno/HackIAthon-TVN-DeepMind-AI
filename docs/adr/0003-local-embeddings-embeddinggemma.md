@@ -33,3 +33,7 @@ Gemini stays for generation only.
 - No strict 512 MB tier fits; the API needs about 1 GB. The pipeline that builds the vectors runs offline (235 s on 2 CPU cores, 9 s on a GPU).
 - The model files (218 MB) are downloaded once with `whoami` (pinned) into `~/.cache/whoami/models/local/embeddinggemma-300m-q4`, never into `/tmp`.
 - Gemma's license (Gemma Terms of Use) applies to the embedding model; it allows this use, but it must be listed with the other conditions of the project.
+
+## Follow-up, 2026-10-08
+
+The historical quality figures above used model-generated relevance judgments, still pending human review. The old function called `recall@5` divided by `min(relevant, 5)`; it is not conventional recall. The historical 235-second full rebuild belongs to fp32, not a verified q4 rebuild on this PC. These observations do not establish a human-validated winner or a working free cloud deployment. q4 stays in use while the approved [blind development comparison](../embedding-validation.md) measures separate model spaces, genuine human judgments, coverage and current CPU performance. Generation stays with Gemini. The no-card route presently prepared for the full application is a temporary private PC tunnel; independent cloud compatibility remains unverified.

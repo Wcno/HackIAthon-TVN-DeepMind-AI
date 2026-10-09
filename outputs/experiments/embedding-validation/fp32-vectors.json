@@ -1,0 +1,17 @@
+{
+  "identity": {
+    "context": {
+      "corpus": "6722eeb0baa95d22681037d93758ad81c564bc5a42504ccb641ddcf84dc7d1f0",
+      "document_prefix": "title: none | text: ",
+      "max_tokens": 512,
+      "storage_dtype": "float16"
+    },
+    "model_files": {
+      "onnx/model.onnx": "ea91fd315a7c152d427d231746f0f811a1ac93beaba656abfdf2b24e091265e4",
+      "onnx/model.onnx_data": "ef835ae565d8695236652475903078e8ed794c7c35faf1164d78ec3238e8a88d",
+      "tokenizer.json": "4dda02faaf32bc91031dc8c88457ac272b00c1016cc679757d1c441b248b9c47"
+    }
+  },
+  "sha256": "17e1ca96cda499d7a013844348d106ec546182ae3ff320653e92ffdf8da5db5f",
+  "rebuild_seconds": 752.8856634999975
+}
