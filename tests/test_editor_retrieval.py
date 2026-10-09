@@ -139,3 +139,15 @@ def test_concurrent_searches_and_cache_eviction_preserve_results(local_corpus):
         results = list(pool.map(lambda query: retriever.search(query, 1), queries))
     assert all([key for key, _ in result] == ["N-1"] for result in results)
     assert retriever.mode.startswith("hybrid:")
+
+
+def test_related_keeps_only_evidence_that_contains_every_query_word_without_embeddings():
+    evidence = {
+        "N-1": {"titulo": "Canal de Panamá aumenta los tránsitos diarios", "campos": {"descripcion": "Desde octubre"}},
+        "N-2": {"titulo": "Tránsito vehicular en la capital", "campos": {}},
+    }
+    retriever = CorpusRetriever(evidence, None)
+    assert retriever.related("tránsitos diarios", 5) == ["N-1"]
+    assert retriever.related("tránsitos diarios en Marte", 5) == []
+    assert retriever.related("receta de sancocho", 5) == []
+    assert retriever.related("de la", 5) == []

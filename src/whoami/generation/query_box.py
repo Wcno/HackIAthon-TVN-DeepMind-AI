@@ -116,6 +116,7 @@ def answer_query(
     model: str,
     *,
     structured: bool = False,
+    task: str | None = None,
 ) -> Answer:
     hits = [(i, score) for i, score in retriever.search(consulta, TOP_K) if i in evidences]
     decision = gate.decide(consulta)
@@ -128,7 +129,7 @@ def answer_query(
         data = complete_json(
             llm,
             model,
-            build_messages(STRUCTURED_TASK if structured else TASK, [evidences[i] for i in ids], user_query=consulta),
+            build_messages(task or (STRUCTURED_TASK if structured else TASK), [evidences[i] for i in ids], user_query=consulta),
             purpose="consulta",
             evidence_ids=ids,
             response_format=response_format("respuesta", answer_schema(ids, structured=structured)),
