@@ -1,4 +1,12 @@
-<div class="page-card">
+{% macro source_list(label, ids) %}
+<section class="sources" aria-label="{{ label }}">
+  <h3 class="h2">{{ label }}</h3>
+  <ul class="sources__list">
+    {% for id in ids %}<li><a class="source-line" href="/evidence/{{ id|urlencode }}" hx-get="/evidence/{{ id|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML"><span class="source-line__n">{{ loop.index }}</span>{% set line = source_line(id) %}<span class="source-line__t"><span class="source-line__title">{{ line.titulo }}</span><span class="source-line__outlet">{{ line.detalle }}</span></span><span class="source-line__d">Ver evidencia</span></a></li>{% endfor %}
+  </ul>
+</section>
+{% endmacro %}
+<div class="page-card" hx-on::response-error="if (event.detail.target.id === 'source-body') { event.detail.target.textContent = 'Fuente no disponible'; event.detail.target.setAttribute('role', 'alert'); document.getElementById('source-panel').classList.add('is-open') }">
   <form class="query-form" action="/queries" method="get">
     <label class="field" for="query">Pregunta sobre la agenda</label>
     <div class="query-form__row">
@@ -27,7 +35,7 @@
   <div class="answer">
     <p class="answer__state">Respuesta con evidencia</p>
     <p class="answer__text">{{ answer.respuesta }}
-      <span class="cites">{% for citation in answer.citas %}{% if citation.id_evidencia not in shown %}{% set _ = shown.append(citation.id_evidencia) %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(citation.id_evidencia) + 1 }}">{{ sources.index(citation.id_evidencia) + 1 }}</a>{% endif %}{% endfor %}</span>
+      <span class="cites">{% for citation in answer.citas %}{% if citation.id_evidencia not in shown %}{% set _ = shown.append(citation.id_evidencia) %}<a class="cite" href="/evidence/{{ citation.id_evidencia|urlencode }}" hx-get="/evidence/{{ citation.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML" aria-label="Ver fuente {{ sources.index(citation.id_evidencia) + 1 }}">{{ sources.index(citation.id_evidencia) + 1 }}</a>{% endif %}{% endfor %}</span>
     </p>
   </div>
   {% elif answer.estado == "abstencion" %}
@@ -46,7 +54,7 @@
       <div class="version">
         <p class="version__value">{{ version.valor }}</p>
         <p class="version__scope">{{ version.alcance }}</p>
-        <a class="cite" href="/evidence/{{ version.id_evidencia|urlencode }}" aria-label="Ver fuente {{ sources.index(version.id_evidencia) + 1 }}">{{ sources.index(version.id_evidencia) + 1 }}</a>
+        <a class="cite" href="/evidence/{{ version.id_evidencia|urlencode }}" hx-get="/evidence/{{ version.id_evidencia|urlencode }}" hx-target="#source-body" hx-select="#evidence-card" hx-swap="innerHTML" aria-label="Ver fuente {{ sources.index(version.id_evidencia) + 1 }}">{{ sources.index(version.id_evidencia) + 1 }}</a>
       </div>
       {% endfor %}
     </div>
@@ -54,18 +62,16 @@
   </div>
   {% endif %}
   {% if sources %}
-  <section class="sources" aria-label="Fuentes">
-    <h3 class="h2">Fuentes</h3>
-    <ul class="sources__list">
-      {% for id in sources %}<li><a class="source-line" href="/evidence/{{ id|urlencode }}"><span class="source-line__n">{{ loop.index }}</span>{% set line = source_line(id) %}<span class="source-line__t"><span class="source-line__title">{{ line.titulo }}</span><span class="source-line__outlet">{{ line.detalle }}</span></span><span class="source-line__d">Ver evidencia</span></a></li>{% endfor %}
-    </ul>
-  </section>
+  {{ source_list("Fuentes", sources) }}
   {% endif %}
   {% else %}
   <div class="empty">
     <p>Pregunta sobre la agenda.</p>
     <p class="muted">{% if offline %}Sin conexión, solo se responden las consultas precalculadas de la lista.{% else %}Escribe tu pregunta arriba o elige una consulta precalculada de la lista.{% endif %}</p>
   </div>
+  {% endif %}
+  {% if related %}
+  {{ source_list("Noticias relacionadas", related) }}
   {% endif %}
   <section class="mt-12" aria-label="Consultas disponibles">
     <h2 class="h2">Consultas disponibles</h2>
@@ -82,4 +88,9 @@
     </ul>
   </section>
   {% endif %}
+  <aside class="drawer" id="source-panel" aria-label="Fuente" inert hx-on::after-swap="this.classList.add('is-open')">
+    <div class="drawer__head"><p class="drawer__kind">Fuente</p>
+      <button type="button" class="icon-btn" aria-label="Cerrar fuente" data-close-drawer>&times;</button></div>
+    <div id="source-body"></div>
+  </aside>
 </div>
