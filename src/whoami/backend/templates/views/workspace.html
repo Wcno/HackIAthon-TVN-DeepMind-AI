@@ -1,2 +1,7 @@
-{% if lead %}{% include 'views/lead.html' %}{% endif %}
+{% if lead and snapshot.tally %}{% set tally = snapshot.tally %}
+<section class="lead-band" aria-label="Datos del corpus">
+  <p class="snapshot"><span>{{ tally.read|number }} noticias leídas · {{ tally.kept|number }} en la ventana de 30 días · {{ tally.excluded|number }} excluidas</span>
+    <a class="link" href="/quality">Ver calidad de datos</a></p>
+</section>
+{% endif %}
 {% include 'views/desk.html' %}
