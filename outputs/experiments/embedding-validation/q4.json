@@ -1,0 +1,517 @@
+{
+  "context": {
+    "corpus": "6722eeb0baa95d22681037d93758ad81c564bc5a42504ccb641ddcf84dc7d1f0",
+    "full_rows": "1342ac71507afbb975b283730df9ec438c9bac02fe398458bdf5f993e610c8c8",
+    "queries": "ee44b15ed81e7d37ebaca48c7344367df391e6110639baadf6cdb28ac9618cc7",
+    "pairs": "824ed738ad3076ac9e6894e80b1f0d8ccbe8f7ae768e5da1e9917cf3cb9c4d4b",
+    "revision": "5090578d9565bb06545b4552f76e6bc2c93e4a66",
+    "storage_dtype": "float16",
+    "query_dtype": "float32",
+    "document_prefix": "title: none | text: ",
+    "query_prefix": "task: search result | query: ",
+    "max_tokens": 512,
+    "pool": 20,
+    "cosine_gate": 0.62,
+    "group_distance": 0.275,
+    "group_window_hours": 72,
+    "production_vector_manifest": "05bd9016905f3ab5f907a5171bed0f7ede283b374617f432277166c17cb38a1c",
+    "threads": 4
+  },
+  "rankings": {
+    "Q01": [
+      "N-05f712d5caeb",
+      "N-3cce5fdbad57",
+      "N-d18285de0b4f",
+      "N-64434241b521",
+      "N-3cc490477349"
+    ],
+    "Q02": [
+      "N-e569dd6d4ff3",
+      "N-4547da9fde11",
+      "N-6ebc15a90571",
+      "N-ce61701ce175",
+      "N-8896c847f609"
+    ],
+    "Q03": [
+      "N-f7bec13fe3c6",
+      "N-9549ded7fd91",
+      "N-fdc5e6208162",
+      "N-94a5b37aea61",
+      "N-6387046d0259"
+    ],
+    "Q04": [
+      "N-6db30631b626",
+      "N-7d2a383b4b15",
+      "N-2ba32cf19a59",
+      "N-fe14f0670dfe",
+      "N-9813521aa0ab"
+    ],
+    "Q05": [
+      "N-f7011db59880",
+      "N-0e9e16484323",
+      "N-2d1ff2e85fea",
+      "N-faeb915e276d",
+      "N-1565d1e4f63f"
+    ],
+    "Q06": [
+      "N-e645df877f4a",
+      "N-2c0cbc921148",
+      "N-2682c38c05a5",
+      "N-c878926e3009",
+      "N-7c8f1843c14b"
+    ],
+    "Q07": [
+      "N-0e4884f43720",
+      "N-9bd21aeaf900",
+      "N-ba31538ec901",
+      "N-91ea24e8d5eb",
+      "N-05c4610e22a7"
+    ],
+    "Q08": [
+      "N-a36576b09dd1",
+      "N-4f0ce8041595",
+      "N-fa6ec2670f16",
+      "N-8e6e0892a114",
+      "N-5ac5aa9ccc55"
+    ],
+    "Q09": [
+      "N-5a0c48620416",
+      "N-e2ee190e9353",
+      "N-bc90396647ed",
+      "N-dfbabfa24d4f",
+      "N-f8f8ad7946a8"
+    ],
+    "Q10": [
+      "N-8d3341b8c33c",
+      "N-7e5ad3f58e9a",
+      "N-7c98a6f8839c",
+      "N-94a5b37aea61",
+      "N-8f8ed7a0fa4b"
+    ],
+    "Q11": [
+      "N-ecf65f52c4f3",
+      "N-8fe996190667",
+      "N-f0b67a96cf67",
+      "N-3ba8608cf132",
+      "N-dc03cfe16b8a"
+    ],
+    "Q12": [
+      "N-18aa523e6849",
+      "N-0d87710e92fd",
+      "N-fa45304f21f0",
+      "N-c7aaf6a06ecc",
+      "N-147827745567"
+    ],
+    "Q13": [
+      "N-20471d8ecde9",
+      "N-fd29e8f6b026",
+      "N-9904c0a5d65c",
+      "N-93aacef474e1",
+      "N-718d3e5962e1"
+    ],
+    "Q14": [
+      "N-787d649b6df8",
+      "N-ccd682251e95",
+      "N-a5a999ae57d4",
+      "N-4105ec7d1b00",
+      "N-bee619f68f6f"
+    ],
+    "Q15": [
+      "N-74ff19bb7d33",
+      "N-ae9bdb7da4bd",
+      "N-d7348f38be7b",
+      "N-24f216b84ae4",
+      "N-eccf6ec48e14"
+    ],
+    "Q16": [
+      "N-3996c244f250",
+      "N-2207cfc7c484",
+      "N-b9917ac24701",
+      "N-47b673a32531",
+      "N-5cd75f8e3628"
+    ],
+    "Q17": [
+      "N-793400f15806",
+      "N-edbc86ce0857",
+      "N-feacb5bc5ca7",
+      "N-96835cb30807",
+      "N-54b2f3b19866"
+    ],
+    "Q18": [
+      "N-8ef24d3411e1",
+      "N-f24b7c8afd7a",
+      "N-d21ed6b5ab4c",
+      "N-f998a0d36d28",
+      "N-014395f3ed15"
+    ],
+    "Q19": [
+      "N-510be166d194",
+      "N-a7edd2dd656c",
+      "N-9ac6dff9f374",
+      "N-f8f8ad7946a8",
+      "N-fce92bd0ee1d"
+    ],
+    "Q20": [
+      "N-7d1886fb5bdb",
+      "N-a22a0f778b6f",
+      "N-8adcf195bc66",
+      "N-8c1b478d68b4",
+      "N-bdc4cc0d0dda"
+    ],
+    "Q21": [
+      "N-99c752cd0992",
+      "N-694899db984c",
+      "N-e66608d14ea6",
+      "N-04d9ed5d7d83",
+      "N-eee343622fcd"
+    ],
+    "Q22": [
+      "N-4f3de4b11eb2",
+      "N-3145d55a917c",
+      "N-00a0eb660713",
+      "N-6d0b6ca7925e",
+      "N-1abccec6c749"
+    ],
+    "Q23": [
+      "N-2596e54d97b4",
+      "N-f422ac021879",
+      "N-87977ae56b98",
+      "N-0921a97be552",
+      "N-2b3639f5403b"
+    ],
+    "Q24": [
+      "N-3a4a5369c67c",
+      "N-0457c524e976",
+      "N-4a4221776a9e",
+      "N-513098ee81c7",
+      "N-51eceb026e17"
+    ],
+    "Q25": [
+      "N-56ccf08012db",
+      "N-1e738347e528",
+      "N-6db30631b626",
+      "N-ed2918f17533",
+      "N-10592a4d7abb"
+    ],
+    "Q26": [
+      "N-8c116bfe3cfb",
+      "N-0a8bfe708b1d",
+      "N-955fc08e938e",
+      "N-c0af2201a8db",
+      "N-02a60f42258e"
+    ],
+    "Q27": [
+      "N-8376cee25cdb",
+      "N-305a5dacc529",
+      "N-4be8d5ab5b84",
+      "N-7fb1455f832c",
+      "N-6cc800346832"
+    ],
+    "Q28": [
+      "N-7dad495b9dd3",
+      "N-8539483ace42",
+      "N-07bb1519c92c",
+      "N-932898be8334",
+      "N-8f76f872660e"
+    ],
+    "Q29": [
+      "N-1f6faa125fc6",
+      "N-3c047c88dd87",
+      "N-2044a0dbdd8b",
+      "N-a21155db40ee",
+      "N-749deea92f07"
+    ],
+    "Q30": [
+      "N-c0814180a1bc",
+      "N-0ec9065667ee",
+      "N-df79fe824dcf",
+      "N-01652a5f46ec",
+      "N-7f89e536abe6"
+    ]
+  },
+  "hybrid_rankings": {
+    "Q01": [
+      "N-05f712d5caeb",
+      "N-403dd7d7257f",
+      "N-3cc490477349",
+      "N-64434241b521",
+      "N-3cce5fdbad57"
+    ],
+    "Q02": [
+      "N-e569dd6d4ff3",
+      "N-4547da9fde11",
+      "N-8896c847f609",
+      "N-c822136d66a6",
+      "N-daaa314e98c4"
+    ],
+    "Q03": [
+      "N-f7bec13fe3c6",
+      "N-9549ded7fd91",
+      "N-fdc5e6208162",
+      "N-f7efebcf208f",
+      "N-2b0baff5d551"
+    ],
+    "Q04": [
+      "N-6db30631b626",
+      "N-50ac7b41c67d",
+      "N-48768da80507",
+      "N-739d58f19f63",
+      "N-0cade5afc1af"
+    ],
+    "Q05": [
+      "N-f7011db59880",
+      "N-21076369a447",
+      "N-a7336f137047",
+      "N-0c4403142dee",
+      "N-1565d1e4f63f"
+    ],
+    "Q06": [
+      "N-2682c38c05a5",
+      "N-93f62512fee3",
+      "N-2c0cbc921148",
+      "N-c878926e3009",
+      "N-e645df877f4a"
+    ],
+    "Q07": [
+      "N-0e4884f43720",
+      "N-9bd21aeaf900",
+      "N-ba31538ec901",
+      "N-87d62880c310",
+      "N-11c925f4eef1"
+    ],
+    "Q08": [
+      "N-8e6e0892a114",
+      "N-a36576b09dd1",
+      "N-4f0ce8041595",
+      "N-510be166d194",
+      "N-e5f4983a9e53"
+    ],
+    "Q09": [
+      "N-5a0c48620416",
+      "N-e2ee190e9353",
+      "N-f8f8ad7946a8",
+      "N-fce92bd0ee1d",
+      "N-10592a4d7abb"
+    ],
+    "Q10": [
+      "N-3e939dacb0f1",
+      "N-7c98a6f8839c",
+      "N-de5656a12317",
+      "N-67d03f039090",
+      "N-680c03b97191"
+    ],
+    "Q11": [
+      "N-ecf65f52c4f3",
+      "N-641b2b6fa4ec",
+      "N-7790b15577ab",
+      "N-3ba8608cf132",
+      "N-f0b67a96cf67"
+    ],
+    "Q12": [
+      "N-18aa523e6849",
+      "N-147827745567",
+      "N-c7aaf6a06ecc",
+      "N-92ed6bae0808",
+      "N-3dad5201399c"
+    ],
+    "Q13": [
+      "N-20471d8ecde9",
+      "N-fd29e8f6b026",
+      "N-9904c0a5d65c",
+      "N-b9f6fd08d5d8",
+      "N-93aacef474e1"
+    ],
+    "Q14": [
+      "N-a5a999ae57d4",
+      "N-ccd682251e95",
+      "N-bee619f68f6f",
+      "N-4105ec7d1b00",
+      "N-787d649b6df8"
+    ],
+    "Q15": [
+      "N-eccf6ec48e14",
+      "N-38f42d679b9b",
+      "N-74ff19bb7d33",
+      "N-d7348f38be7b",
+      "N-ef112cb5249e"
+    ],
+    "Q16": [
+      "N-3996c244f250",
+      "N-2207cfc7c484",
+      "N-487ff820197e",
+      "N-72cadf980daa"
+    ],
+    "Q17": [
+      "N-1c583eea4327",
+      "N-feacb5bc5ca7",
+      "N-8dce5c317299",
+      "N-54b2f3b19866",
+      "N-619c2f11b7fd"
+    ],
+    "Q18": [
+      "N-8ef24d3411e1",
+      "N-f24b7c8afd7a",
+      "N-d21ed6b5ab4c",
+      "N-f998a0d36d28",
+      "N-2abe64d9957a"
+    ],
+    "Q19": [
+      "N-510be166d194",
+      "N-afdb424d1d50",
+      "N-e5f4983a9e53",
+      "N-f2f15b2a9d9d",
+      "N-8e6e0892a114"
+    ],
+    "Q20": [
+      "N-7d1886fb5bdb",
+      "N-8adcf195bc66",
+      "N-a22a0f778b6f",
+      "N-8c1b478d68b4",
+      "N-bdc4cc0d0dda"
+    ],
+    "Q21": [
+      "N-eee343622fcd",
+      "N-572da7425f88",
+      "N-6b81465e7776",
+      "N-999e6d03c79b",
+      "N-a6e7291cf4ee"
+    ],
+    "Q22": [
+      "N-00a0eb660713",
+      "N-3145d55a917c",
+      "N-4f3de4b11eb2",
+      "N-6d0b6ca7925e",
+      "N-1abccec6c749"
+    ],
+    "Q23": [
+      "N-2596e54d97b4",
+      "N-f422ac021879",
+      "N-87977ae56b98",
+      "N-0921a97be552",
+      "N-27ed8ed721b7"
+    ],
+    "Q24": [
+      "N-4a4221776a9e",
+      "N-3a4a5369c67c",
+      "N-95bf0e2dc45c",
+      "N-daf0793addbd",
+      "N-0a60f288a90a"
+    ],
+    "Q25": [
+      "N-6db30631b626",
+      "N-3322e5686877",
+      "N-b4cbfb22e5d2",
+      "N-cd9efdb65765",
+      "N-bef919b7f8f0"
+    ],
+    "Q26": [
+      "N-8c116bfe3cfb",
+      "N-c0af2201a8db",
+      "N-02a60f42258e",
+      "N-0a8bfe708b1d",
+      "N-955fc08e938e"
+    ],
+    "Q27": [
+      "N-4be8d5ab5b84",
+      "N-8376cee25cdb",
+      "N-7fb1455f832c",
+      "N-305a5dacc529",
+      "N-94ab9b57dc0f"
+    ],
+    "Q28": [
+      "N-7dad495b9dd3",
+      "N-8539483ace42",
+      "N-07bb1519c92c",
+      "N-8c116bfe3cfb",
+      "N-134efa7f9c98"
+    ],
+    "Q29": [
+      "N-1f6faa125fc6",
+      "N-749deea92f07",
+      "N-a550c33b5e81",
+      "N-afdad5964325",
+      "N-2044a0dbdd8b"
+    ],
+    "Q30": [
+      "N-a9c4cc3aa03e",
+      "N-08e82302ed08",
+      "N-c0814180a1bc",
+      "N-1d8fba2ad6bb",
+      "N-36309c5ebaa2"
+    ]
+  },
+  "pair_predictions": {
+    "P:N-a66b249708d2:N-49ffb27acbee": true,
+    "P:N-0fc61a540517:N-fa4be65fd59b": false,
+    "P:N-5f73bfe982c2:N-aa0c10592a37": true,
+    "P:N-5d7fa1620b34:N-2a7d2d7e222b": true,
+    "P:N-0e19e9b97369:N-088dead94fad": false,
+    "P:N-eccfd3c0e2f5:N-550a7a2a5ac0": false,
+    "P:N-1e738347e528:N-56ccf08012db": false,
+    "P:N-49571331497c:N-d69d7920c44d": false,
+    "P:N-3c07494c86f8:N-4ac26f98ebf4": true,
+    "P:N-e90bdb7e571b:N-22348a0e8801": true,
+    "P:N-83ba0a9b28ae:N-aa0c10592a37": false,
+    "P:N-7615f16e5d78:N-a7507714eedd": true,
+    "P:N-6875fa50a0f7:N-3d880cf28274": false,
+    "P:N-c363647b6c4c:N-abef656ec727": false,
+    "P:N-c3a32935b95f:N-559bdd487b41": false,
+    "P:N-b4c800340b76:N-c5b6c78d4d28": false,
+    "P:N-64434241b521:N-d18285de0b4f": false,
+    "P:N-aa1f6d5823d4:N-088dead94fad": false,
+    "P:N-37fc6e57873c:N-793400f15806": false,
+    "P:N-d0529d766f79:N-f8037d642bfc": false,
+    "P:N-eccfd3c0e2f5:N-889b0acfe440": false,
+    "P:N-d548ef4ab360:N-1498d1657740": false,
+    "P:N-ab3b5f4b5c59:N-38f2f7adea23": false,
+    "P:N-0e19e9b97369:N-87bc09ede1d8": false,
+    "P:N-9e9dde42e503:N-10e38c2c960a": false,
+    "P:N-11088bb99ee9:N-4064af3a85f2": false,
+    "P:N-0a2feb6eea86:N-10e38c2c960a": false,
+    "P:N-eac684098393:N-793400f15806": false,
+    "P:N-eec5c4e2d11c:N-1651d2c44a7c": true,
+    "P:N-ee6f7f9cc52e:N-0632282a4a68": false,
+    "P:N-bd596abd6b82:N-3455d54cbb48": true,
+    "P:N-19bd5ac55af6:N-44cd4059600b": false,
+    "P:N-755773b9032b:N-45479d743b25": false,
+    "P:N-deb04e4a673a:N-a0f6e4acd1ad": true,
+    "P:N-739d58f19f63:N-48768da80507": true,
+    "P:N-b730b6e4503f:N-cc843dc802a9": false,
+    "P:N-4bb108e501f6:N-aa450b5e1990": false,
+    "P:N-72cadf980daa:N-e645df877f4a": false,
+    "P:N-f7ec253778c7:N-6230ae921074": false,
+    "P:N-9da704bb1d45:N-720124750f16": false,
+    "P:N-99834b7d49c8:N-f72933c13204": true,
+    "P:N-40c721813aa1:N-2e25158d972f": true,
+    "P:N-8587d2f057c8:N-846d4426ab32": false,
+    "P:N-e183762b29cf:N-5489975ffb00": false,
+    "P:N-848ae196ca7e:N-2c7d926560fe": true,
+    "P:N-ea2f307b4378:N-26fd8f452945": false,
+    "P:N-e656037a87c5:N-ea2f307b4378": false,
+    "P:N-95b3bb774a78:N-e405c07a70bc": true,
+    "P:N-f224544bbf06:N-e345587ddf90": false,
+    "P:N-c585f8344b5d:N-67bf2e6ffc79": false
+  },
+  "provenance": {
+    "repository": "onnx-community/embeddinggemma-300m-ONNX",
+    "revision": "5090578d9565bb06545b4552f76e6bc2c93e4a66",
+    "files": {
+      "onnx/model_q4.onnx": "ad1dfee81a70f7944b9b9d1cc6e48075b832881cf33fab2f2b248be78f3f0043",
+      "onnx/model_q4.onnx_data": "599962c3143b040de2dd05e5975be3e9091dd067cacc6a8f7186e3203bab9e02",
+      "tokenizer.json": "4dda02faaf32bc91031dc8c88457ac272b00c1016cc679757d1c441b248b9c47"
+    },
+    "provider": [
+      "CPUExecutionProvider"
+    ],
+    "model": "q4",
+    "load_seconds": 7.304121199995279,
+    "corpus_rebuild_seconds": null,
+    "corpus_reused": true,
+    "warm_query_search_p50_ms": 238.41284998343326,
+    "warm_query_search_p95_ms": 303.3215149946045,
+    "peak_run_rss_mib": 672.9921875,
+    "memory_scope": "entire isolated process including grouping; not the web app",
+    "latency_scope": "embedding + index creation + semantic search, excluding BM25, after one warmup",
+    "corpus_rebuild_this_run_seconds": null
+  }
+}

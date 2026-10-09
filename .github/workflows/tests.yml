@@ -2,7 +2,7 @@ name: G5 validation
 
 on:
   pull_request:
-    branches: [prod]
+    branches: [prod, feat/g10-offline]
   push:
     branches: [prod, feat/g5-backend]
 
@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
@@ -29,6 +29,7 @@ jobs:
         env:
           WHOAMI_VALIDATION_REPORT: outputs/validation/runtime-ci.json
       - run: uv run --locked playwright install --with-deps chromium
+      - run: uv run --locked pytest tests/test_model_comparison_browser.py -q
       - run: uv run --locked python scripts/validate_g10.py --browser --output outputs/validation/g10-ci
       - run: uv build --wheel --out-dir dist
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

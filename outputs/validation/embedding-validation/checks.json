@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-08",
+  "platform": "Windows, Python 3.14",
+  "baseline_non_browser_suite": {
+    "command": "pytest -q -m 'not browser'",
+    "passed": 1064,
+    "deselected": 35,
+    "existing_warnings": 12,
+    "seconds": 431.89,
+    "note": "Collected before four extra checkpoint regressions and the new browser fixture were added."
+  },
+  "after_review_regressions": {
+    "command": "pytest tests/test_model_comparison.py -q",
+    "passed": 9,
+    "note": "Includes the original five tests and four new model/metadata identity regressions."
+  },
+  "real_browser_fixture": {
+    "command": "pytest tests/test_model_comparison_browser.py -q",
+    "browser": "Microsoft Edge",
+    "passed": 1,
+    "seconds": 43.38,
+    "actual_human_labels_changed": false
+  },
+  "wheel_build": "passed",
+  "powershell_launcher_parse": "passed",
+  "local_semantic_app_and_real_restart": "local-demo.json",
+  "human_quality_review": "pending, zero labels",
+  "authenticated_public_tunnel": "not started, allowed email and hosting preference pending",
+  "billing_enabled_or_payment_method_added": false
+}
