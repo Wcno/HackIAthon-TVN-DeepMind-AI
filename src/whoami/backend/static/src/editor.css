@@ -24,7 +24,7 @@
   .ed-add { @apply mt-2 -ml-3; }
   .editor-sources { @apply grid gap-3 pb-5; }
   .editor-sources .link { @apply justify-self-start text-left; }
-  .body--desk:has([data-editor]) .desk { @apply grid-cols-[minmax(240px,22%)_minmax(0,1fr)_minmax(320px,360px)]; }
+  .body--desk:has([data-editor]) .desk { @apply grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]; }
   .body--desk:has([data-editor]) .desk > * { @apply min-w-0; }
   .body--desk:has([data-editor]) .case { @apply px-10 pt-6; }
   .body--desk:has([data-editor]) .case > .pane { @apply max-w-none; }
@@ -50,8 +50,9 @@
   .assistant__title { @apply inline-flex items-center gap-2; }
   .assistant__title .icon { @apply size-6 text-blue; }
   /* Co-News: the scope picks the suggestions; a field's spark button picks the scope */
-  .cn-scope { @apply mt-4 grid gap-1.5 text-[15px] font-semibold text-ink; }
-  .cn-scope select { @apply h-10 w-full rounded-xl bg-white px-3 text-[15px] font-medium text-ink ring-1 ring-line outline-none focus:ring-2 focus:ring-blue; }
+  .cn-scope { @apply mt-3 flex items-center gap-3 text-[15px] font-semibold text-ink; }
+  .cn-scope span { @apply shrink-0; }
+  .cn-scope select { @apply h-10 min-w-0 flex-1 rounded-xl bg-white px-3 text-[15px] font-medium text-ink ring-1 ring-line outline-none focus:ring-2 focus:ring-blue; }
   .draft-assistant .cn-prompts { @apply hidden; }
   .draft-assistant:not(.has-replies)[data-scope="titulo"] [data-cn-prompts="titulo"],
   .draft-assistant:not(.has-replies)[data-scope="brief"] [data-cn-prompts="brief"],
@@ -60,8 +61,7 @@
   .draft-assistant:not(.has-replies)[data-scope="copy_digital"] [data-cn-prompts="copy_digital"] { @apply flex; }
   .draft-assistant:not([data-scope="todo"]) .cn-general { @apply hidden; }
   .cn-field { @apply text-blue hover:bg-blue-soft hover:text-blue-dark; }
-  .assistant__note { @apply mt-2 text-[15px] text-ink-3; }
-  .assistant__mode { @apply mt-3 text-sm font-medium text-ink-3; }
+  .assistant__mode { @apply mt-1 text-sm font-medium text-ink-3; }
   .assistant__scroll { @apply min-h-0 flex-1 overflow-y-auto pb-5; }
   .prompts { @apply mt-5 flex flex-wrap gap-2; }
   .prompt:disabled { @apply cursor-not-allowed opacity-50 hover:bg-blue-soft hover:text-navy; }
@@ -69,12 +69,8 @@
   .assistant__more { @apply mt-3 text-sm text-ink-3; }
   .assistant__more summary { @apply cursor-pointer font-semibold text-blue; }
   .assistant__more .prompts { @apply mt-2; }
-  .assistant__welcome { @apply mt-6 border-t border-line pt-5; }
-  .assistant__welcome h3 { @apply mb-2 font-title text-2xl font-semibold text-navy; }
-  .assistant__welcome p { @apply text-[15px] text-ink-3; }
-  .assistant__again { @apply mt-3 text-sm; }
   .draft-assistant.has-replies [data-prompts], .draft-assistant.has-replies .assistant__more { @apply hidden; }
-  .ask { @apply mt-auto grid shrink-0 gap-2 border-t border-line bg-white pt-4 pb-5; }
+  .ask { @apply mt-auto grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 border-t border-line bg-white pt-3 pb-4; }
   .ask__label { @apply text-[15px] font-semibold; }
   .ask__input { @apply w-full resize-none rounded-xl bg-white px-4 py-2.5 text-[15px] ring-1 ring-line transition placeholder:text-ink-3 focus:ring-2 focus:ring-blue; }
   .ask .btn { @apply justify-self-end; }
@@ -99,14 +95,18 @@
   .result { @apply grid gap-1.5 rounded-2xl bg-ground px-4 py-3.5; }
   .result__title { @apply font-semibold leading-snug; }
   .result__passage { @apply text-[15px] text-ink-2; }
-  .assistant__close, .sheet-toggle { @apply hidden; }
+  .btn.assistant__close, .btn.sheet-toggle { @apply hidden; }
   @media (min-width: 961px) {
     .draft-assistant .reply .btn { @apply min-h-9; }
     .draft-assistant .reply .cite { @apply min-h-8 min-w-8; }
   }
-  @media (min-width: 961px) and (max-width: 1280px) {
+  @media (min-width: 961px) {
     .body--desk:has([data-editor]) .inbox { @apply hidden; }
-    .body--desk:has([data-editor]) .desk { @apply grid-cols-[minmax(0,1fr)_minmax(300px,340px)]; }
+    .btn.assistant__close { @apply inline-flex; }
+    .body--desk:has([data-editor].cn-closed) .inbox { @apply block; }
+    .body--desk:has([data-editor].cn-closed) .desk { @apply grid-cols-[minmax(240px,22%)_minmax(0,1fr)]; }
+    .body--desk:has([data-editor].cn-closed) .draft-assistant { @apply hidden; }
+    .body--desk:has([data-editor].cn-closed) .btn.sheet-toggle { @apply fixed right-6 bottom-6 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
   }
   @media (max-width: 960px) {
     .body--desk:has([data-editor]) .desk { @apply grid-cols-[minmax(0,1fr)]; }
@@ -117,8 +117,8 @@
     .body--desk:has([data-editor]) .search { @apply hidden; }
     .draft-assistant, .editor-source { @apply fixed inset-x-0 bottom-0 z-40 h-[85dvh] max-h-[85dvh] rounded-t-3xl; box-shadow: 0 -16px 40px -16px rgb(0 70 111 / 0.45); }
     .draft-assistant:not(.is-open) { display: none; }
-    .assistant__close { @apply inline-flex; }
-    .sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
+    .btn.assistant__close { @apply inline-flex; }
+    .btn.sheet-toggle { @apply fixed right-4 bottom-4 z-30 inline-flex shadow-[0_12px_28px_-10px_rgb(0_70_111/0.5)]; }
     .savebar { @apply -mx-2 px-3; }
     .ask { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
     .draft-assistant .prompt, .draft-assistant .btn, .draft-assistant .cite, .draft-assistant .assistant__more summary, .editor-source .btn { @apply min-h-11; }

@@ -121,6 +121,16 @@
   .row__score { @apply flex flex-col items-end; }
   .row__score .score__value { @apply font-display text-3xl leading-none font-bold text-navy; }
   .row__score .score__range { @apply mt-1 text-xs font-semibold tracking-wide text-ink-3 uppercase; }
+  /* the top-ranked topic keeps the front-page accent inside the list */
+  .row--lead .row__hit { @apply bg-navy text-white shadow-[0_12px_32px_-12px_rgb(0_70_111/0.35)] hover:bg-navy/90; }
+  .row--lead.is-selected .row__hit { @apply bg-navy ring-2 ring-yellow; }
+  .row--lead .row__rank, .row--lead.is-selected .row__rank { @apply bg-transparent font-extrabold text-yellow ring-0 text-3xl; }
+  .row--lead .meta, .row--lead .row__coverage { @apply text-white/70; }
+  .row--lead .topic { @apply text-white; }
+  .row--lead .review { @apply bg-white/12 text-white ring-0; }
+  .row--lead .flag { @apply text-rose-200; }
+  .row--lead .row__score .score__value { @apply text-yellow; }
+  .row--lead .row__score .score__range { @apply text-white/70; }
 
   .badge { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-medium whitespace-nowrap ring-1; }
   .evidence--suficiente_para_borrador { @apply bg-emerald-50 text-emerald-800 ring-emerald-200; }

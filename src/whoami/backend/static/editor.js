@@ -59,7 +59,7 @@
     let sources = saved.source_ids.slice();
     let saving = false;
     let asking = false;
-    desk.append(assistant, source);
+    desk.append(assistant, source, toggle);
     const api = `/api/cases/${encodeURIComponent(caseId)}`;
 
     const notify = (text, error = false) => {
@@ -216,6 +216,7 @@
     };
     async function openSource(id, citation) {
       if (source.hidden) sourceOpener = document.activeElement;
+      root.classList.remove('cn-closed');
       source.hidden = false;
       const body = source.querySelector('[data-source-body]');
       body.replaceChildren(element('p', 'muted', 'Cargando fuente…'));
@@ -248,8 +249,6 @@
     }
     function showPrompts(show) {
       assistant.classList.toggle('has-replies', !show);
-      assistant.querySelector('.assistant__again').hidden = show;
-      assistant.querySelector('.assistant__welcome').hidden = !show;
     }
     function citations(row, values = []) {
       if (!values.length) return;
@@ -465,11 +464,10 @@
         setTimeout(() => { target.textContent = 'Copiar'; }, 1400);
       }
       const action = target.dataset.assist;
-      if (action === 'open') setAssistant(true);
-      if (action === 'close') setAssistant(false);
-      if (action === 'prompts') { showPrompts(true); scrollToLatest(); }
+      if (action === 'open') { root.classList.remove('cn-closed'); setAssistant(true); }
+      if (action === 'close') { root.classList.add('cn-closed'); setAssistant(false); }
       if (action === 'ask') ask(target.textContent, target.dataset.action);
-      if (action === 'scope') { setScope(target.dataset.cnField); setAssistant(true); input.focus({preventScroll: true}); }
+      if (action === 'scope') { setScope(target.dataset.cnField); root.classList.remove('cn-closed'); setAssistant(true); input.focus({preventScroll: true}); }
     }, {capture: true, signal: abort.signal});
     input.addEventListener('input', () => { askButton.disabled = asking || !input.value.trim(); }, {signal: abort.signal});
     input.addEventListener('keydown', event => {
@@ -491,7 +489,7 @@
     form.querySelectorAll('textarea').forEach(fit);
     refresh();
     setScope('todo');
-    return {root, dispose: () => { abort.abort(); assistant.remove(); source.remove(); }};
+    return {root, dispose: () => { abort.abort(); assistant.remove(); source.remove(); toggle.remove(); }};
   }
   function sync() {
     const root = document.querySelector('[data-editor]');

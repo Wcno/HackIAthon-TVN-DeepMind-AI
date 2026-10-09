@@ -78,7 +78,6 @@
     "copy_digital": ["Hazlo más cercano para redes", "Hazlo más neutral"]} %}
   <aside class="draft-assistant" aria-labelledby="cn-title">
     <div class="assistant__head"><h2 class="assistant__title" id="cn-title">{{ icon("spark") }}Co-News</h2><button type="button" class="btn btn--quiet btn--small assistant__close" data-assist="close">Cerrar</button></div>
-    <p class="assistant__note">Coescribe el borrador contigo: pídele cambios para un campo o para todo el borrador, o consulta la evidencia. Tú decides qué aplicar.</p>
     <p class="assistant__mode">{{ 'Sin conexión · corpus y respuestas precalculadas' if offline else 'Fuentes del corpus cargado · Gemini solo para redactar' }}</p>
     <label class="cn-scope"><span>Trabajar sobre</span>
       <select id="cn-scope" data-cn-scope>
@@ -104,10 +103,8 @@
         <button type="button" class="prompt" data-assist="ask" data-action="contradictions">¿Hay contradicciones entre las fuentes?</button>
         {% for example in case_questions %}<button type="button" class="prompt" data-assist="ask" data-action="ask">{{ example.consulta }}</button>{% endfor %}
       </div></details>
-      <div class="assistant__welcome"><h3>Una segunda mirada a tu borrador</h3><p>Pide un título alternativo o encuentra una fuente. Ninguna sugerencia cambia el documento hasta que la apliques.</p></div>
-      <button type="button" class="link assistant__again" data-assist="prompts" hidden>Ver preguntas sugeridas</button>
     </div>
-    <form class="ask"><label class="ask__label" for="ask-input">Pídele a Co-News</label>
+    <form class="ask"><label class="ask__label sr-only" for="ask-input">Pídele a Co-News</label>
       <textarea class="ask__input" id="ask-input" rows="2" maxlength="2000" placeholder="Por ejemplo: busca noticias sobre el Canal, o hazlo más neutral"></textarea>
       <button type="submit" class="btn btn--primary btn--small" disabled>Enviar</button>
     </form>

@@ -246,11 +246,10 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
                   and (not topic_search or topic_search.casefold() in item["titulo"].casefold())]
         filtering = bool(topic or estado or topic_search or cobertura)
         lead = None if filtering or not ranked else ranked[0]
-        listing = groups[1:] if lead else groups
         offset = int(request.query_params["desde"]) if request.query_params.get("desde", "").isdecimal() else 0
         end = offset + INBOX_PAGE_SIZE
         is_more = request.headers.get("HX-Request") == "true" and request.headers.get("HX-Target") == "more-rows"
-        rows = listing[offset:end] if is_more else listing[:end]
+        rows = groups[offset:end] if is_more else groups[:end]
         active = {key: value for key, value in {"topic": topic, "estado": estado, "cobertura": cobertura, "q": topic_search}.items() if value}
         opened = group is not None
         if group is None and groups:
@@ -261,7 +260,7 @@ def create_app(settings: Settings | None = None, *, query_provider: QueryProvide
         document_title = f"{PANE_LABELS[pane]} · {(case or group)['titulo']}" if opened and group else title
         filters = urlencode({"topic": topic, "estado": estado, "cobertura": cobertura, **({"q": topic_search} if topic_search else {})}) if filtering else ""
         return render(request, "workspace", title, status_code=status_code, groups=groups, rows=rows, total=len(groups), lead=lead,
-                      remaining=max(0, len(listing) - end), more_query=urlencode({**active, "desde": end}),
+                      remaining=max(0, len(groups) - end), more_query=urlencode({**active, "desde": end}),
                       rank={item["id_grupo"]: position for position, item in enumerate(ranked, 1)}, topic=topic, estado=estado, cobertura=cobertura,
                       topic_options=topic_options, group=group, case=case, pane=pane, opened=opened, document_title=document_title,
                       selected=group["id_grupo"] if group else None, filter_query=f"?{filters}" if filters else "", topic_search=topic_search, **context)
