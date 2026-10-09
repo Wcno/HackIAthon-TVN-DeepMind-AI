@@ -1,5 +1,6 @@
 """Prove live human decisions remain loadable by the final G2 file contract."""
 
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from threading import Barrier
@@ -8,7 +9,8 @@ from whoami.backend.export import export_backend
 from whoami.backend.pipeline import load_pipeline
 from whoami.backend.repository import EditorialRepository, ReviewConflict
 from whoami.backend.settings import Settings
-from whoami.store import load
+from whoami.contracts import DEMO, FICHAS_FILE, GROUPS_FILE, REVIEWS_FILE
+from whoami.store import load, read_jsonl, write_jsonl
 
 
 def test_export_round_trip_keeps_live_decision_and_seed_inputs(tmp_path):
@@ -101,3 +103,22 @@ def test_a_reviewed_case_whose_pipeline_content_changes_shows_each_event_once(tm
     timeline = review_timeline(history, audit)
     edits = [item for item in timeline if item["kind"] == "edit"]
     assert len(edits) == len({(item["title"], item["content_version"]) for item in edits}) == len(audit)
+
+
+def test_a_case_file_generated_live_is_exported_as_a_loadable_package(tmp_path):
+    data = tmp_path / "data"
+    shutil.copytree(DEMO, data)
+    generated = next(record for record in read_jsonl(data / FICHAS_FILE) if record["id_caso"] == "CASO-005")
+    write_jsonl(data / GROUPS_FILE, [group | {"id_caso": None} if group["id_grupo"] == generated["id_grupo"] else group
+                                     for group in read_jsonl(data / GROUPS_FILE)])
+    for name in (FICHAS_FILE, REVIEWS_FILE):
+        write_jsonl(data / name, [row for row in read_jsonl(data / name) if row["id_caso"] != "CASO-005"])
+    repository = EditorialRepository(tmp_path / "editorial.sqlite3")
+    repository.import_bundle(load_pipeline(data, data))
+    bundle = load_pipeline(DEMO, DEMO)
+    repository.add_generated_case(next(case for case in bundle.cases if case["id_caso"] == "CASO-005"))
+    destination = tmp_path / "delivery"
+    export_backend(repository, destination)
+    output = load(data, destination)
+    assert next(group for group in output.grupos if group.id_grupo == generated["id_grupo"]).id_caso == "CASO-005"
+    assert any(case.id_caso == "CASO-005" for case in output.fichas)
